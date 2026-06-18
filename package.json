@@ -1,0 +1,29 @@
+{
+  "name": "onestillpoint",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "One Still Point — a scientifically grounded, GPU-accelerated black hole visualizer.",
+  "license": "MIT",
+  "author": "Chris Portka",
+  "homepage": "https://onestillpoint.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cportka/onestillpoint.git"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lil-gui": "^0.21.0",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}

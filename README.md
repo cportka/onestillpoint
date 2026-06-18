@@ -1,2 +1,97 @@
-# onestillpoint
-The worldline The final resting place The circle of eternal return The spinning cycle of time
+# One Still Point
+
+> The worldline · The final resting place · The circle of eternal return · The spinning cycle of time
+
+A scientifically grounded, GPU-accelerated, animated **black hole visualizer** that
+runs in the browser — event-horizon shadow, photon ring, gravitationally lensed
+background, and a live relativistic accretion disk. Built on WebGPU (with an
+automatic WebGL2 fallback) and architected to grow into a general gravitational
+N-body simulator.
+
+🌐 **Live:** [onestillpoint.app](https://onestillpoint.app)
+
+---
+
+## Status
+
+**Phase 0 — Scaffold (current).** The full rendering pipeline is in place and
+demoable: a WebGPU renderer with WebGL2 fallback, a fullscreen TSL pass painting
+a procedural test grid, an orbit camera whose position/orientation feed the
+shader as uniforms, a time uniform threaded through the loop, and a GitHub Pages
+deploy. The physics arrives in later phases.
+
+| Phase | What | State |
+| ----- | ---- | ----- |
+| 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ in progress |
+| 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ⏳ |
+| 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ⏳ |
+| 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ⏳ |
+| 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ⏳ |
+| 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ |
+| 6 | Time acceleration with representation crossfade | ⏳ |
+| 7 | Formation sequence (art-directed) | ⏳ |
+
+## Stack
+
+- **TypeScript** + **Vite**
+- **Three.js r184** via `three/webgpu` (`WebGPURenderer`, auto WebGL2 fallback)
+- **TSL** (`three/tsl`) — one shader source compiles to both WGSL and GLSL
+- **OrbitControls** for swipe-orbit / pinch-zoom
+- **lil-gui** for the look + animation panel (Phase 4)
+
+## Develop
+
+Requires Node 20.19+ or 22.12+.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173 (a secure context, so WebGPU works)
+```
+
+```bash
+npm run typecheck  # tsc --noEmit
+npm run build      # typecheck + vite build → dist/
+npm run preview    # serve the production build locally
+```
+
+Append **`?webgl`** to the URL to force the WebGL2 fallback path for testing
+(e.g. `http://localhost:5173/?webgl`). The on-screen HUD reports the active
+backend and frame rate.
+
+## Architecture
+
+The camera is an *input device only*. We render a single fullscreen quad and
+feed the orbit camera's position/orientation into the raymarch shader as
+uniforms each frame.
+
+```
+src/
+  main.ts            bootstrap: wire uniforms → camera/loop/pass → render loop
+  core/
+    Renderer.ts      WebGPURenderer + automatic WebGL2 fallback
+    CameraRig.ts     PerspectiveCamera + OrbitControls → camera uniforms
+    Loop.ts          frame driver + simulation clock → time uniform
+  render/
+    uniforms.ts      the shared uniform "bus" (camera, time, resolution)
+    RaymarchPass.ts  fullscreen quad + node material (the shader lives here)
+    tsl/
+      gradient.ts    Phase 0 test pattern (Phase 1 replaces with the geodesic raymarch)
+```
+
+A guiding constraint: the infalling dust is a **volumetric participating
+medium** sampled inside the raymarch, never rasterized particles — only that way
+does it lens correctly along the bent light rays. See the build plan for the
+full design and physics.
+
+## Deploy
+
+Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds with
+Vite and publishes `dist/` to GitHub Pages. The custom apex domain is set in
+**Settings → Pages → Custom domain** (`onestillpoint.app`); with artifact-based
+deploys no committed `CNAME` file is needed. `vite.config.ts` uses `base: '/'`
+because the site serves from the domain root.
+
+## License
+
+[MIT](./LICENSE) © 2026 Chris Portka. Bundled environment assets (star
+cubemaps / HDRIs), if any, retain their own licenses.
