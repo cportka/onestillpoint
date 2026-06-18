@@ -1,0 +1,57 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  overscroll-behavior: none;
+}
+
+/* The renderer's canvas. touch-action:none hands all touch gestures to
+   OrbitControls (swipe = orbit, pinch = zoom) instead of the browser. */
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Phase 0 heads-up display: active backend + frame rate. Folds into the
+   lil-gui panel in Phase 4. */
+.hud {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 10;
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.fatal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #ffb4b4;
+  background: #000;
+  text-align: center;
+}
