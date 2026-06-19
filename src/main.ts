@@ -2,6 +2,7 @@ import { CameraRig } from './core/CameraRig';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { ResolutionScaler } from './core/ResolutionScaler';
+import { createPostPipeline } from './render/PostPipeline';
 import { RaymarchPass } from './render/RaymarchPass';
 import { createBlackHoleNode } from './render/tsl/raymarch';
 import { createUniforms } from './render/uniforms';
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
 
   const rig = new CameraRig(uniforms, renderer.domElement);
   const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole));
+  const post = createPostPipeline(renderer, pass.scene, pass.camera);
   const loop = new Loop(renderer, uniforms);
   const scaler = new ResolutionScaler();
   scaler.scale = 0.85; // start a touch soft; the scaler ramps to native if there's headroom
@@ -42,24 +44,25 @@ async function main(): Promise<void> {
     const w = Math.max(1, Math.floor(cssW * dprCap * scaler.scale));
     const h = Math.max(1, Math.floor(cssH * dprCap * scaler.scale));
     renderer.setSize(w, h, false);
+    post.resize();
     rig.setAspect(cssW / cssH);
     uniforms.resolution.value.set(w, h);
   };
   window.addEventListener('resize', applySize);
   applySize();
 
-  createControls({ blackHole, loop, renderer, scaler });
+  createControls({ blackHole, loop, renderer, scaler, bloom: post.bloom });
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
     rig.update();
-    pass.render(renderer);
+    post.render();
     hud.update(frameDelta);
   };
   loop.start();
 
   // Expose handles for console poking during development.
-  Object.assign(globalThis, { osp: { renderer, rig, pass, loop, uniforms, blackHole, scaler } });
+  Object.assign(globalThis, { osp: { renderer, rig, pass, post, loop, uniforms, blackHole, scaler } });
 }
 
 main().catch((error) => {

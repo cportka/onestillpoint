@@ -24,7 +24,9 @@ export class RaymarchPass {
 
     this.material = new MeshBasicNodeMaterial();
     this.material.colorNode = colorNode;
-    this.material.toneMapped = true; // HDR disk → renderer ACES tone mapping
+    // Output linear HDR; bloom consumes it and the RenderPipeline's output
+    // colour transform applies ACES tone mapping at the end (see PostPipeline).
+    this.material.toneMapped = false;
     this.material.depthTest = false;
     this.material.depthWrite = false;
     this.material.side = DoubleSide;

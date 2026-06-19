@@ -14,12 +14,13 @@ N-body simulator.
 
 ## Status
 
-**Phase 4 — look UI + perf (current).** A **lil-gui panel** exposes the look,
-animation, and quality controls (with Physical / EHT / Interstellar / Stylized
-presets), and **dynamic resolution** drives the drawing-buffer size from the
-measured frame time so the heavy volume march stays interactive across GPUs (the
-HUD shows the current render scale). Bloom + tone-mapping-operator selection are
-the remaining Phase 4 piece.
+**Phase 4 — look UI + post + perf (v0.4).** A collapsible **lil-gui panel**
+exposes the look, animation, bloom, and quality controls (with Physical / EHT /
+Interstellar / Stylized presets and a click-to-copy version chip). **HDR bloom**
+runs through the WebGPU node pipeline (linear HDR → bloom → ACES tone-map), and
+**dynamic resolution** drives the drawing-buffer size from the measured frame
+time so the heavy volume march stays interactive across GPUs (the HUD shows the
+current render scale).
 
 | Phase | What | State |
 | ----- | ---- | ----- |
@@ -27,8 +28,8 @@ the remaining Phase 4 piece.
 | 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ done |
 | 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ done |
-| 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ in progress |
-| 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ |
+| 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ done |
+| 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ next (v0.5) |
 | 6 | Time acceleration with representation crossfade | ⏳ |
 | 7 | Formation sequence (art-directed) | ⏳ |
 
@@ -76,12 +77,14 @@ src/
   scene/
     BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
   ui/
-    Controls.ts        lil-gui panel (look / animation / quality) + presets
+    Controls.ts        lil-gui panel (look / animation / bloom / quality) + presets
     presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
+    versionBadge.ts    click-to-copy version chip
     hud.ts             backend + fps + render-scale readout
   render/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
+    PostPipeline.ts    WebGPU node pipeline: HDR bloom → ACES tone-map
     tsl/
       raymarch.ts      geodesic loop + volume march → disk / shadow / lensing
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
