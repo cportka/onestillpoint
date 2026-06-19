@@ -20,8 +20,8 @@ export class CameraRig {
     domElement: HTMLElement,
   ) {
     this.camera = new PerspectiveCamera(60, 1, 0.01, 1000);
-    // Start elevated, looking down onto the disk from above the ring.
-    this.camera.position.set(0, 13, 17);
+    // Near the ring, just above the disc plane.
+    this.camera.position.set(0, 4, 19);
 
     this.controls = new OrbitControls(this.camera, domElement);
     this.controls.enableDamping = true;
@@ -30,6 +30,9 @@ export class CameraRig {
     this.controls.zoomSpeed = 0.8;
     this.controls.minDistance = 4; // stay outside the 3M photon sphere
     this.controls.maxDistance = 120;
+    // Allow the full vertical sweep — directly overhead through to directly below.
+    this.controls.minPolarAngle = 0;
+    this.controls.maxPolarAngle = Math.PI;
     this.controls.target.set(0, 0, 0);
     this.controls.update();
 
