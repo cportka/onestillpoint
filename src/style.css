@@ -22,10 +22,14 @@ body {
   overscroll-behavior: none;
 }
 
-/* The renderer's canvas. touch-action:none hands all touch gestures to
-   OrbitControls (swipe = orbit, pinch = zoom) instead of the browser. */
+/* The renderer's canvas. We drive the drawing-buffer size directly for dynamic
+   resolution, so force the canvas to always fill the viewport (the buffer is
+   upscaled by the browser when rendering below native resolution).
+   touch-action:none hands all touch gestures to OrbitControls. */
 canvas {
   display: block;
+  width: 100% !important;
+  height: 100% !important;
   touch-action: none;
 }
 

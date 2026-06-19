@@ -14,23 +14,20 @@ N-body simulator.
 
 ## Status
 
-**Phase 3 — animate & volumetric dust (current).** The disk is now a volumetric
-participating medium marched along the bent ray (not a surface), so it lenses
-correctly. The gas rotates differentially (Keplerian Ω(r) ∝ r^−3/2, inner
-outpacing outer), turbulence is advected by the flow and evolved smoothly so it
-shears into spiral arms without boiling, and it drifts inward. Lighting is heat
-emission (relativistically beamed) + a cheap single-scatter of the inner light +
-Beer–Lambert extinction. `osp.loop.paused = true` freezes it to inspect lensing.
-(Full TAA/frame-accumulation is deferred to Phase 4, paired with the perf work.)
+**Phase 4 — look UI + perf (current).** A **lil-gui panel** exposes the look,
+animation, and quality controls (with Physical / EHT / Interstellar / Stylized
+presets), and **dynamic resolution** drives the drawing-buffer size from the
+measured frame time so the heavy volume march stays interactive across GPUs (the
+HUD shows the current render scale). Bloom + tone-mapping-operator selection are
+the remaining Phase 4 piece.
 
 | Phase | What | State |
 | ----- | ---- | ----- |
 | 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ done |
 | 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ done |
 | 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
-| 3 | Animate & volumetric dust: differential rotation, advected turbulence, infall, scattering | ✅ in progress |
-| 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ⏳ |
-| 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ⏳ |
+| 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ done |
+| 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ in progress |
 | 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ |
 | 6 | Time acceleration with representation crossfade | ⏳ |
 | 7 | Formation sequence (art-directed) | ⏳ |
@@ -75,8 +72,13 @@ src/
     Renderer.ts        WebGPURenderer + automatic WebGL2 fallback
     CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms
     Loop.ts            frame driver + simulation clock → time uniform
+    ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
   scene/
     BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
+  ui/
+    Controls.ts        lil-gui panel (look / animation / quality) + presets
+    presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
+    hud.ts             backend + fps + render-scale readout
   render/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
