@@ -2,11 +2,12 @@ import { CameraRig } from './core/CameraRig';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { ResolutionScaler } from './core/ResolutionScaler';
+import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
 import { createPostPipeline } from './render/PostPipeline';
 import { RaymarchPass } from './render/RaymarchPass';
 import { createBlackHoleNode } from './render/tsl/raymarch';
 import { createUniforms } from './render/uniforms';
-import { createBlackHole } from './scene/BlackHole';
+import { Scene } from './scene/Scene';
 import { createControls } from './ui/Controls';
 import { createHud, showFatalError } from './ui/hud';
 
@@ -22,13 +23,15 @@ import { createHud, showFatalError } from './ui/hud';
  */
 async function main(): Promise<void> {
   const uniforms = createUniforms();
-  const blackHole = createBlackHole();
+  const scene = new Scene();
+  const blackHole = scene.blackHole;
+  const bodyUniforms = createBodyUniforms();
 
   const { renderer, backend } = await createRenderer();
   document.body.appendChild(renderer.domElement);
 
   const rig = new CameraRig(uniforms, renderer.domElement);
-  const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole));
+  const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole, bodyUniforms));
   const post = createPostPipeline(renderer, pass.scene, pass.camera);
   const loop = new Loop(renderer, uniforms);
   const scaler = new ResolutionScaler();
@@ -51,10 +54,12 @@ async function main(): Promise<void> {
   window.addEventListener('resize', applySize);
   applySize();
 
-  createControls({ blackHole, loop, renderer, scaler, bloom: post.bloom });
+  createControls({ blackHole, scene, loop, renderer, scaler, bloom: post.bloom });
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
+    if (!loop.paused) scene.step(frameDelta);
+    updateBodyUniforms(bodyUniforms, scene);
     rig.update();
     post.render();
     hud.update(frameDelta);
@@ -62,7 +67,9 @@ async function main(): Promise<void> {
   loop.start();
 
   // Expose handles for console poking during development.
-  Object.assign(globalThis, { osp: { renderer, rig, pass, post, loop, uniforms, blackHole, scaler } });
+  Object.assign(globalThis, {
+    osp: { renderer, rig, pass, post, loop, uniforms, blackHole, scene, bodyUniforms, scaler },
+  });
 }
 
 main().catch((error) => {
