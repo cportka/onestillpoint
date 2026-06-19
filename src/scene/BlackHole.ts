@@ -27,7 +27,7 @@ export function createBlackHole() {
 
     // Volumetric dust (Phase 3, retuned in Phase 4)
     diskDensity: uniform(1.0), // overall density scale
-    emissiveStrength: uniform(2.5), // HDR heat-emission scale
+    emissiveStrength: uniform(0.1), // HDR heat-emission scale
     scatterStrength: uniform(0.2), // cheap single-scatter of inner light
     extinction: uniform(0.25), // Beer–Lambert opacity (lower = more transparent)
     volumeStep: uniform(0.25), // affine step inside the disk slab (M)

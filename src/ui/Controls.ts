@@ -4,7 +4,9 @@ import type { WebGPURenderer } from 'three/webgpu';
 import { VERSION } from '../version';
 import type { Loop } from '../core/Loop';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
+import { MAX_BODIES } from '../render/bodyUniforms';
 import type { BlackHole } from '../scene/BlackHole';
+import type { Scene } from '../scene/Scene';
 import { PRESETS } from './presets';
 import { createVersionBadge } from './versionBadge';
 
@@ -15,12 +17,13 @@ import { createVersionBadge } from './versionBadge';
  */
 export function createControls(ctx: {
   blackHole: BlackHole;
+  scene: Scene;
   loop: Loop;
   renderer: WebGPURenderer;
   scaler: ResolutionScaler;
   bloom: BloomNode;
 }): GUI {
-  const { blackHole: bh, loop, renderer, scaler, bloom } = ctx;
+  const { blackHole: bh, scene, loop, renderer, scaler, bloom } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
 
   const proxy = { preset: 'Physical' };
@@ -44,7 +47,7 @@ export function createControls(ctx: {
     });
 
   const look = gui.addFolder('Look');
-  look.add(bh.emissiveStrength, 'value', 0, 25, 0.1).name('Disk brightness');
+  look.add(bh.emissiveStrength, 'value', 0, 2, 0.01).name('Disk brightness');
   look.add(bh.diskDensity, 'value', 0, 3, 0.05).name('Density');
   look.add(bh.diskTemp, 'value', 3000, 30000, 100).name('Temperature (K)');
   look.add(bh.scatterStrength, 'value', 0, 2, 0.05).name('Scattering');
@@ -65,6 +68,27 @@ export function createControls(ctx: {
   post.add(bloom.strength, 'value', 0, 2, 0.02).name('Strength');
   post.add(bloom.radius, 'value', 0, 1, 0.02).name('Radius');
   post.add(bloom.threshold, 'value', 0, 2, 0.02).name('Threshold');
+
+  const bodies = gui.addFolder('Bodies');
+  const actions = {
+    addStar: () => {
+      if (scene.companions.length < MAX_BODIES) scene.addStar();
+    },
+    addPlanet: () => {
+      if (scene.companions.length < MAX_BODIES) scene.addPlanet();
+    },
+    clear: () => scene.clearCompanions(),
+    timeScale: scene.physics.timeScale,
+  };
+  bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`);
+  bodies.add(actions, 'addPlanet').name('Add planet');
+  bodies.add(actions, 'clear').name('Clear companions');
+  bodies
+    .add(actions, 'timeScale', 0, 300, 1)
+    .name('Orbit speed')
+    .onChange((v: number) => {
+      scene.physics.timeScale = v;
+    });
 
   const quality = gui.addFolder('Quality');
   quality.add(scaler, 'enabled').name('Auto resolution');

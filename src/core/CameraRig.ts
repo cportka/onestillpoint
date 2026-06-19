@@ -20,7 +20,8 @@ export class CameraRig {
     domElement: HTMLElement,
   ) {
     this.camera = new PerspectiveCamera(60, 1, 0.01, 1000);
-    this.camera.position.set(0, 6, 22);
+    // Start elevated, looking down onto the disk from above the ring.
+    this.camera.position.set(0, 13, 17);
 
     this.controls = new OrbitControls(this.camera, domElement);
     this.controls.enableDamping = true;

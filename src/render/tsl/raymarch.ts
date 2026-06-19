@@ -19,32 +19,31 @@ import {
   vec2,
   vec3,
 } from 'three/tsl';
+import type { BodyUniforms } from '../bodyUniforms';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
+import { segmentHitsSphere } from './bodies';
 import { mediumDensity, mediumSource } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
 import { starfield } from './starfield';
 
-// Hard cap on integration steps per pixel. Far from the disk rays take big
-// steps and escape quickly; inside the disk slab the step shrinks to resolve
-// the volume, and high optical depth terminates the march early.
 const MAX_STEPS = 512;
 
 /**
  * The black-hole shader. Per-pixel Schwarzschild photon geodesics by RK4
- * integration of a(x) = -3M·h²·x/r⁵ (schwarzschild.ts). Within a bounded slab
- * around the equatorial plane the ray marches the volumetric accretion dust
- * (medium.ts) — emission, single-scatter and Beer–Lambert extinction — so the
- * disk lenses correctly (including its far side wrapped over and under the
- * shadow) because we integrate along the bent ray. Captured rays end black;
- * escaping rays sample the lensed star field through the remaining transmittance.
+ * integration of a(x) = -3M·h²·x/r⁵ (schwarzschild.ts). Along each bent ray:
+ *   - the volumetric accretion dust is marched (medium.ts);
+ *   - orbiting companion bodies are tested as opaque emissive spheres — because
+ *     they sit in the hole's curved spacetime, they lens and are occluded by the
+ *     shadow for free;
+ *   - crossing the 2M horizon is the shadow; escaping samples the lensed stars.
  */
-export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
+export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUniforms) {
   return Fn(() => {
     const M = bh.mass;
     const rIn = bh.diskInner;
     const rOut = bh.diskOuter;
-    const yMax = bh.diskThickness.mul(3.5); // vertical half-extent of the slab
+    const yMax = bh.diskThickness.mul(3.5);
 
     // --- camera-local pinhole ray ---
     const ndc = screenUV.sub(0.5).mul(2);
@@ -52,21 +51,26 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
     const py = ndc.y.mul(u.tanHalfFov);
     const localDir = normalize(u.camForward.add(u.camRight.mul(px)).add(u.camUp.mul(py)));
 
-    // --- initial geodesic state, in Schwarzschild coordinates ---
+    // --- initial geodesic state ---
     const ro = u.camPos;
     const rd = staticObserverRay(localDir, ro, M);
     const pos = ro.toVar();
     const vel = rd.toVar();
 
     const r0 = length(ro);
-    const h2 = dot(cross(pos, vel), cross(pos, vel)).toVar(); // |x×v|², conserved
+    // Integrate out far enough to reach the outermost companion (or just to the
+    // camera radius when there are none).
+    const escapeR = max(r0, bodies.sceneRadius);
+    const h2 = dot(cross(pos, vel), cross(pos, vel)).toVar();
     const rHorizon = M.mul(2);
 
     const captured = float(0).toVar();
     const escaped = float(0).toVar();
-    const radiance = vec3(0).toVar(); // accumulated emitted/scattered light
-    const transmittance = float(1).toVar(); // remaining light fraction (Beer–Lambert)
-    const volSamples = float(0).toVar(); // bounds cost on disk-grazing rays
+    const radiance = vec3(0).toVar();
+    const transmittance = float(1).toVar();
+    const volSamples = float(0).toVar();
+    const bodyHit = float(0).toVar();
+    const bodyColor = vec3(0).toVar();
 
     Loop(MAX_STEPS, () => {
       const r = length(pos);
@@ -75,22 +79,19 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
         captured.assign(1);
         Break();
       });
-      If(r.greaterThan(r0).and(dot(pos, vel).greaterThan(0)), () => {
+      If(r.greaterThan(escapeR).and(dot(pos, vel).greaterThan(0)), () => {
         escaped.assign(1);
         Break();
       });
 
-      // Step finely near the disk; the slab is thin, so a coarse step must not
-      // be allowed to jump over it. Within the disk's radial range we cap the
-      // step by the distance to the plane (shrinking to volumeStep at y=0).
+      // Fine steps near the disk plane so a coarse step can't skip the thin slab.
       const cylR = length(vec2(pos.x, pos.z));
       const distY = abs(pos.y);
       const inRadial = cylR.greaterThan(rIn.sub(2)).and(cylR.lessThan(rOut.add(2)));
       const inSlab = inRadial.and(distY.lessThan(yMax));
 
       const coarse = clamp(r.sub(M.mul(1.5)).mul(0.06), float(0.02), float(3));
-      const diskStep = min(coarse, max(distY.mul(0.4), bh.volumeStep));
-      const dl = select(inRadial, diskStep, coarse);
+      const dl = select(inRadial, min(coarse, max(distY.mul(0.4), bh.volumeStep)), coarse);
       const half = dl.mul(0.5);
 
       // RK4 for dx/dλ = v, dv/dλ = a(x).
@@ -119,9 +120,17 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
         });
       });
 
-      // Stop once the dust has absorbed what's behind it, or a grazing ray has
-      // taken enough volume samples (bounds worst-case cost).
-      If(transmittance.lessThan(0.02).or(volSamples.greaterThan(64)), () => {
+      // Opaque companion spheres (lensed + occluded by the curved-space march).
+      bodies.slots.forEach((slot) => {
+        const center = slot.posRadius.xyz;
+        const radius = slot.posRadius.w;
+        If(radius.greaterThan(0).and(segmentHitsSphere(pos, newPos, center, radius)), () => {
+          bodyColor.assign(slot.color);
+          bodyHit.assign(1);
+        });
+      });
+
+      If(transmittance.lessThan(0.02).or(volSamples.greaterThan(64)).or(bodyHit.greaterThan(0.5)), () => {
         Break();
       });
 
@@ -129,9 +138,10 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
       vel.assign(newVel);
     });
 
-    // Background behind the dust: lensed star field if the ray escaped, else the
-    // black horizon. Composite by the surviving transmittance.
-    const bg = select(escaped.greaterThan(0.5), starfield(normalize(vel), float(1.2)), vec3(0));
-    return radiance.add(transmittance.mul(bg));
+    // Background behind the dust: a hit body, else the lensed star field (escaped)
+    // or the black horizon. Composite by the surviving transmittance.
+    const stars = starfield(normalize(vel), float(1.2)).mul(escaped);
+    const background = select(bodyHit.greaterThan(0.5), bodyColor, stars);
+    return radiance.add(transmittance.mul(background));
   })();
 }

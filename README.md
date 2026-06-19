@@ -14,13 +14,14 @@ N-body simulator.
 
 ## Status
 
-**Phase 4 — look UI + post + perf (v0.4).** A collapsible **lil-gui panel**
-exposes the look, animation, bloom, and quality controls (with Physical / EHT /
-Interstellar / Stylized presets and a click-to-copy version chip). **HDR bloom**
-runs through the WebGPU node pipeline (linear HDR → bloom → ACES tone-map), and
-**dynamic resolution** drives the drawing-buffer size from the measured frame
-time so the heavy volume march stays interactive across GPUs (the HUD shows the
-current render scale).
+**Phase 5 — gravitational body simulator (v0.5).** The engine now grows past a
+single hole: a `Scene` of gravitating `Body` objects is advanced by an N-body
+`PhysicsEngine` (CPU velocity-Verlet, symplectic → stable orbits, validated in
+`scripts/validate-orbit.mjs`). Companion stars orbit the primary and are
+raymarched as emissive spheres **inside the hole's curved spacetime**, so they
+lens and are occluded by the shadow for free. Add/remove bodies from the panel's
+**Bodies** folder. Next within v0.5.x: moving the integrator to a WebGPU compute
+kernel and adding weak-field lensing for the secondaries themselves.
 
 | Phase | What | State |
 | ----- | ---- | ----- |
@@ -29,7 +30,7 @@ current render scale).
 | 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ done |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ done |
-| 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ next (v0.5) |
+| 5 | Gravitational body simulator: N-body, primary-lensed companions | ✅ in progress (v0.5) |
 | 6 | Time acceleration with representation crossfade | ⏳ |
 | 7 | Formation sequence (art-directed) | ⏳ |
 
@@ -75,7 +76,12 @@ src/
     Loop.ts            frame driver + simulation clock → time uniform
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
   scene/
+    Scene.ts           owns the Body list + PhysicsEngine; spawns companions
+    Body.ts            a gravitating body (hole / star / planet)
     BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
+  physics/
+    PhysicsEngine.ts   N-body integrator driver (CPU velocity-Verlet)
+    integrators.ts     velocity-Verlet + Newtonian accelerations
   ui/
     Controls.ts        lil-gui panel (look / animation / bloom / quality) + presets
     presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
@@ -85,18 +91,21 @@ src/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
     PostPipeline.ts    WebGPU node pipeline: HDR bloom → ACES tone-map
+    bodyUniforms.ts    companion render slots (position / radius / colour)
     tsl/
-      raymarch.ts      geodesic loop + volume march → disk / shadow / lensing
+      raymarch.ts      geodesic loop + volume march + body spheres
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
       disk.ts          flux/temperature profile + Doppler & redshift shift
       medium.ts        volumetric dust: density, emission, scatter, extinction
       flow.ts          Keplerian Ω(r) + advected (co-rotating) noise coordinate
       turbulence.ts    fractal (FBM) noise
       blackbody.ts     temperature (K) → linear RGB
+      bodies.ts        segment–sphere test for companions
       starfield.ts     procedural lensed background
 scripts/
   validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M
-  validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming (npm run validate)
+  validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming
+  validate-orbit.mjs     CPU check: orbit stability + energy conservation (npm run validate)
 ```
 
 A guiding constraint: the infalling dust is a **volumetric participating
