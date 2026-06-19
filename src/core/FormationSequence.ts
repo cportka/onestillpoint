@@ -43,6 +43,13 @@ export class FormationSequence {
     this.begin();
   }
 
+  /** Linear intro progress 0→1 (and 1 once done) — drives the staggered body
+   *  entrance. Distinct from the eased `formation` ignition curve. */
+  get progress(): number {
+    if (this.done) return 1;
+    return this.duration > 0 ? Math.min(this.elapsed / this.duration, 1) : 1;
+  }
+
   /** Advance the intro; call once per frame with the real frame delta. */
   update(frameDelta: number): void {
     if (this.done) return;

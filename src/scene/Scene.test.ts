@@ -2,12 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { Scene } from './Scene';
 
 describe('Scene', () => {
-  it('starts with a fixed primary hole and two companions', () => {
+  it('starts with a fixed primary hole, two stars and two retrograde planets', () => {
     const scene = new Scene();
     const primary = scene.bodies[0]!;
     expect(primary.type).toBe('hole');
     expect(primary.fixed).toBe(true);
-    expect(scene.companions.length).toBe(2);
+
+    const stars = scene.companions.filter((b) => b.type === 'star');
+    const planets = scene.companions.filter((b) => b.type === 'planet');
+    expect(scene.companions.length).toBe(4);
+    expect(stars.length).toBe(2);
+    expect(planets.length).toBe(2);
+
+    // Planets orbit the opposite way to the stars (the reverse-direction swoosh):
+    // their vertical angular momentum L_y = (r × v)_y has the opposite sign.
+    const ly = (b: { position: { x: number; z: number }; velocity: { x: number; z: number } }): number =>
+      b.position.z * b.velocity.x - b.position.x * b.velocity.z;
+    expect(Math.sign(ly(stars[0]!))).toBe(Math.sign(ly(stars[1]!))); // stars agree
+    expect(Math.sign(ly(planets[0]!))).toBe(-Math.sign(ly(stars[0]!))); // planets opposed
   });
 
   it('addStar adds a companion on a (near-)circular bound orbit', () => {

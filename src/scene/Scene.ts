@@ -32,12 +32,19 @@ export class Scene {
     });
     this.physics = new PhysicsEngine(this.bodies);
 
+    // Outer prograde stars (the load-in swoosh) and inner retrograde planets
+    // (the reverse-direction swoosh that follows them in the formation intro).
     this.addStar(30);
     this.addStar(42);
+    this.addPlanet(24);
+    this.addPlanet(28);
   }
 
+  /** Everything orbiting the primary — stars, planets, and any added black hole.
+   *  The primary (body 0) is the only fixed body, so movability is the divide
+   *  (a secondary hole is type 'hole' too, but it orbits and must render). */
   get companions(): Body[] {
-    return this.bodies.filter((b) => b.type !== 'hole');
+    return this.bodies.filter((b) => !b.fixed);
   }
 
   addStar(orbitRadius = 26 + Math.random() * 22): Body {
@@ -48,11 +55,12 @@ export class Scene {
   }
 
   addPlanet(orbitRadius = 24 + Math.random() * 24): Body {
-    return this.addBody('planet', orbitRadius, 0.6, new Vector3(0.5, 0.6, 0.8).multiplyScalar(1.2), 1e-5, 0);
+    // Planets orbit retrograde — the reverse-direction swoosh vs the stars.
+    return this.addBody('planet', orbitRadius, 0.6, new Vector3(0.5, 0.6, 0.8).multiplyScalar(1.2), 1e-5, 0, true);
   }
 
   /** A secondary black hole: massive enough to perturb orbits and to lens light
-   *  (lensMass = mass), rendered as a dark sphere. Enables weak-field lensing. */
+   *  (lensMass = mass), rendered as a dark core ringed by a lensed photon ring. */
   addBlackHole(orbitRadius = 32 + Math.random() * 14): Body {
     return this.addBody('hole', orbitRadius, 1.5, new Vector3(0.02, 0.01, 0.0), 0.3, 0.3);
   }
@@ -64,6 +72,7 @@ export class Scene {
     color: Vector3,
     mass: number,
     lensMass: number,
+    retrograde = false,
   ): Body {
     const azimuth = Math.random() * Math.PI * 2;
     const inclination = (Math.random() - 0.5) * 0.6; // modest orbital tilt
@@ -83,7 +92,7 @@ export class Scene {
       lensMass,
       fixed: false,
       position: pos,
-      velocity: tangent.multiplyScalar(speed),
+      velocity: tangent.multiplyScalar(retrograde ? -speed : speed),
       radius,
       color,
     };
@@ -94,7 +103,7 @@ export class Scene {
   }
 
   clearCompanions(): void {
-    this.bodies = this.bodies.filter((b) => b.type === 'hole');
+    this.bodies = this.bodies.filter((b) => b.fixed); // keep only the primary hole
     this.physics.bodies = this.bodies;
     this.physics.reset();
   }
