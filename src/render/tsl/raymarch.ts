@@ -143,13 +143,19 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
       });
 
       // Opaque companion spheres (lensed + occluded by the curved-space march).
+      // Gated on `appear` so a body that has not yet swooshed in during the intro
+      // neither occludes (as a black disc) nor flashes at full brightness.
       bodies.slots.forEach((slot) => {
         const center = slot.posRadius.xyz;
         const radius = slot.posRadius.w;
-        If(radius.greaterThan(0).and(segmentHitsSphere(pos, newPos, center, radius)), () => {
-          bodyColor.assign(slot.color);
-          bodyHit.assign(1);
-        });
+        const appear = slot.appear;
+        If(
+          radius.greaterThan(0).and(appear.greaterThan(0.02)).and(segmentHitsSphere(pos, newPos, center, radius)),
+          () => {
+            bodyColor.assign(slot.color.mul(appear));
+            bodyHit.assign(1);
+          },
+        );
 
         // A secondary black hole (lensMass > 0) gets a luminous lensed photon-ring
         // halo so it reads as a black hole, not an unlit sphere. The glow is
@@ -158,7 +164,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         If(slot.lensMass.greaterThan(0), () => {
           const dC = length(mix(pos, newPos, 0.5).sub(center));
           const shell = dC.sub(radius.mul(1.25)).div(radius.mul(0.5));
-          const glow = exp(shell.mul(shell).mul(-1)).mul(dl).mul(u.formation);
+          const glow = exp(shell.mul(shell).mul(-1)).mul(dl).mul(appear);
           radiance.assign(radiance.add(transmittance.mul(vec3(1.0, 0.7, 0.45)).mul(glow.mul(3))));
         });
       });
@@ -174,7 +180,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
     // Background behind the dust: a hit body, else the lensed star field (escaped)
     // or the black horizon. Composite by the surviving transmittance.
     const stars = starfield(normalize(vel), float(1.2)).mul(escaped);
-    const background = select(bodyHit.greaterThan(0.5), bodyColor.mul(u.formation), stars);
+    const background = select(bodyHit.greaterThan(0.5), bodyColor, stars); // bodyColor already faded by appear
     return radiance.add(transmittance.mul(background));
   })();
 }

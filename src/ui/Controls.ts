@@ -2,6 +2,7 @@ import GUI, { type Controller } from 'lil-gui';
 import type BloomNode from 'three/addons/tsl/display/BloomNode.js';
 import type { WebGPURenderer } from 'three/webgpu';
 import { VERSION } from '../version';
+import { isCoarsePointer } from '../core/device';
 import type { FormationSequence } from '../core/FormationSequence';
 import type { RendererBundle } from '../core/Renderer';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
@@ -10,6 +11,7 @@ import type { PhysicsController } from '../physics/PhysicsController';
 import { MAX_BODIES } from '../render/bodyUniforms';
 import type { BlackHole } from '../scene/BlackHole';
 import type { Scene } from '../scene/Scene';
+import { loadPrefs, savePrefs } from './prefs';
 import { PRESETS } from './presets';
 import { attachTouchTooltips } from './touchTooltips';
 import { createVersionBadge } from './versionBadge';
@@ -21,9 +23,11 @@ function tip<T extends Controller>(controller: T, text: string): T {
 }
 
 /**
- * The lil-gui control panel. Controllers bind straight to the live uniform
- * `.value` fields, and every row carries a hover tooltip explaining what it does
- * and which way to push it.
+ * The lil-gui control panel. Expanded, it shows just the essentials —
+ * version · Filter (presets) · Time · Bodies · an Advanced-settings toggle — and
+ * the deep tuning (Look / Animation / Bloom / Quality / Movie / Replay) is folded
+ * away behind that toggle, whose state is remembered across sessions. Every row
+ * carries a hover tooltip (and a long-press tooltip on touch).
  */
 export function createControls(ctx: {
   blackHole: BlackHole;
@@ -38,7 +42,36 @@ export function createControls(ctx: {
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
+  const prefs = loadPrefs();
 
+  // --- Filter (named looks; formerly "Preset") ---
+  const filterProxy = { preset: 'Physical' };
+  tip(
+    gui
+      .add(filterProxy, 'preset', Object.keys(PRESETS))
+      .name('Filter')
+      .onChange((name: string) => {
+        const p = PRESETS[name];
+        if (!p) return;
+        bh.emissiveStrength.value = p.emissiveStrength;
+        bh.diskDensity.value = p.diskDensity;
+        bh.diskTemp.value = p.diskTemp;
+        bh.scatterStrength.value = p.scatterStrength;
+        bh.extinction.value = p.extinction;
+        bh.doppler.value = p.doppler;
+        bh.redshift.value = p.redshift;
+        bh.turbAmount.value = p.turbAmount;
+        bh.rotationSpeed.value = p.rotationSpeed;
+        renderer.toneMappingExposure = p.exposure;
+        gui.controllersRecursive().forEach((c) => c.updateDisplay());
+      }),
+    'A named look. Physical = accurate (full beaming + redshift). EHT (Event Horizon ' +
+      'Telescope) = the real imaged look of M87*/Sgr A*: a cooler, smoother orange photon ' +
+      'ring. Interstellar = symmetric, beaming OFF (stylised). Stylized = hot, punchy, ' +
+      'turbulent. Filters toggle real physics on/off.',
+  );
+
+  // --- Time ---
   const timeFolder = gui.addFolder('Time');
   const timeProxy = { exp: 0 };
   const fmtScale = (s: number): string => {
@@ -59,42 +92,52 @@ export function createControls(ctx: {
       '×1,000,000. Speeding up accelerates the orbits and smoothly averages the fine ' +
       'turbulence into a steady disk instead of strobing; slowing down resolves every detail.',
   );
-  tip(timeFolder.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+
+  // --- Bodies ---
+  const bodies = gui.addFolder('Bodies');
+  const addBody = (fn: () => void) => () => {
+    if (scene.companions.length < MAX_BODIES) {
+      fn();
+      physics.syncBodies();
+    }
+  };
+  const actions = {
+    addStar: addBody(() => scene.addStar()),
+    addPlanet: addBody(() => scene.addPlanet()),
+    addBlackHole: addBody(() => scene.addBlackHole()),
+    clear: () => {
+      scene.clearCompanions();
+      physics.syncBodies();
+    },
+    gpu: backend === 'webgpu', // auto-on where WebGPU compute exists (see main.ts)
+  };
+  tip(bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`), 'Drop a bright star onto a prograde circular orbit. It is lensed and occluded by the shadow as it passes behind.');
+  tip(bodies.add(actions, 'addPlanet').name('Add planet'), 'Drop a small dim body onto a retrograde orbit (it circles the opposite way to the stars).');
   tip(
-    timeFolder.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
-    'Advance a single frame while paused.',
+    bodies.add(actions, 'addBlackHole').name('Add black hole'),
+    'Drop in a second black hole — a dark core ringed by a luminous lensed photon ring — ' +
+      'that bends light around it and gravitationally slings the other bodies. Costs extra ' +
+      'GPU time while present.',
   );
+  tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
+  const gpuAvailable = backend === 'webgpu';
+  const gpuCtrl = bodies.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
+    physics.setGPU(v);
+  });
+  if (!gpuAvailable) gpuCtrl.disable();
   tip(
-    timeFolder.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
-    'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
+    gpuCtrl,
+    gpuAvailable
+      ? 'Run the N-body simulation on the GPU (WebGPU compute). Auto-enabled here because this ' +
+          'browser has WebGPU — the scaling path for many bodies (no visible change for a few).'
+      : 'Requires WebGPU. This browser is on the WebGL2 fallback, so the N-body sim runs on the ' +
+          'CPU (exact, and fine for a handful of bodies).',
   );
 
-  const proxy = { preset: 'Physical' };
-  tip(
-    gui
-      .add(proxy, 'preset', Object.keys(PRESETS))
-      .name('Preset')
-      .onChange((name: string) => {
-        const p = PRESETS[name];
-        if (!p) return;
-        bh.emissiveStrength.value = p.emissiveStrength;
-        bh.diskDensity.value = p.diskDensity;
-        bh.diskTemp.value = p.diskTemp;
-        bh.scatterStrength.value = p.scatterStrength;
-        bh.extinction.value = p.extinction;
-        bh.doppler.value = p.doppler;
-        bh.redshift.value = p.redshift;
-        bh.turbAmount.value = p.turbAmount;
-        bh.rotationSpeed.value = p.rotationSpeed;
-        renderer.toneMappingExposure = p.exposure;
-        gui.controllersRecursive().forEach((c) => c.updateDisplay());
-      }),
-    'A named look. Physical = accurate (full beaming + redshift). EHT (Event Horizon ' +
-      'Telescope) = the real imaged look of M87*/Sgr A*: a cooler, smoother orange photon ' +
-      'ring. Interstellar = symmetric, beaming OFF (stylised). Stylized = hot, punchy, ' +
-      'turbulent. Presets toggle real physics on/off.',
-  );
+  // --- Advanced settings toggle (remembered across sessions) ---
+  const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
 
+  // --- Advanced: deep tuning, hidden until the toggle is on ---
   const look = gui.addFolder('Look');
   tip(
     look.add(bh.emissiveStrength, 'value', 0, 2, 0.01).name('Disk brightness'),
@@ -180,46 +223,6 @@ export function createControls(ctx: {
       'lower = more of the image blooms.',
   );
 
-  const bodies = gui.addFolder('Bodies');
-  const addBody = (fn: () => void) => () => {
-    if (scene.companions.length < MAX_BODIES) {
-      fn();
-      physics.syncBodies();
-    }
-  };
-  const actions = {
-    addStar: addBody(() => scene.addStar()),
-    addPlanet: addBody(() => scene.addPlanet()),
-    addBlackHole: addBody(() => scene.addBlackHole()),
-    clear: () => {
-      scene.clearCompanions();
-      physics.syncBodies();
-    },
-    gpu: backend === 'webgpu', // auto-on where WebGPU compute exists (see main.ts)
-  };
-  tip(bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`), 'Drop a bright star onto a circular orbit around the hole. It is lensed and occluded by the shadow as it passes behind.');
-  tip(bodies.add(actions, 'addPlanet').name('Add planet'), 'Drop a small dim body onto an orbit.');
-  tip(
-    bodies.add(actions, 'addBlackHole').name('Add black hole'),
-    'Drop in a second black hole — a dark core ringed by a luminous lensed photon ring — ' +
-      'that bends light around it and gravitationally slings the other bodies. Costs extra ' +
-      'GPU time while present.',
-  );
-  tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
-  const gpuAvailable = backend === 'webgpu';
-  const gpuCtrl = bodies.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
-    physics.setGPU(v);
-  });
-  if (!gpuAvailable) gpuCtrl.disable();
-  tip(
-    gpuCtrl,
-    gpuAvailable
-      ? 'Run the N-body simulation on the GPU (WebGPU compute). Auto-enabled here because this ' +
-          'browser has WebGPU — the scaling path for many bodies (no visible change for a few).'
-      : 'Requires WebGPU. This browser is on the WebGL2 fallback, so the N-body sim runs on the ' +
-          'CPU (exact, and fine for a handful of bodies).',
-  );
-
   const quality = gui.addFolder('Quality');
   tip(
     quality.add(scaler, 'enabled').name('Auto resolution'),
@@ -237,12 +240,61 @@ export function createControls(ctx: {
       'volume but slower.',
   );
 
+  // Movie (playback) — its own section under Advanced.
+  const movie = gui.addFolder('Movie');
+  tip(movie.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+  tip(
+    movie.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
+    'Advance a single frame while paused.',
+  );
+
+  // Mobile: tap outside the panel to collapse it (remembered).
+  const tapOutsideCtrl = tip(
+    gui.add(prefs, 'tapOutsideClose').name('Tap outside closes (mobile)'),
+    'On phones/tablets, tapping the scene outside this panel collapses it. (No effect with a mouse.)',
+  );
+  tapOutsideCtrl.onChange(() => savePrefs(prefs));
+
+  // Replay the formation intro — the last button under Advanced.
+  const replayCtrl = tip(
+    gui.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
+    'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
+  );
+
+  const advanced: Array<{ show(): unknown; hide(): unknown }> = [
+    look,
+    anim,
+    post,
+    quality,
+    movie,
+    tapOutsideCtrl,
+    replayCtrl,
+  ];
+  const applyAdvanced = (on: boolean): void => {
+    advanced.forEach((x) => (on ? x.show() : x.hide()));
+  };
+  applyAdvanced(prefs.advanced);
+  advCtrl.onChange((v: boolean) => {
+    applyAdvanced(v);
+    savePrefs(prefs);
+  });
+  tip(advCtrl, 'Reveal the deeper tuning (Look, Animation, Bloom, Quality, Movie, Replay). Remembered for next time.');
+
   // Version chip pinned above the folders; start collapsed.
   gui.$children.prepend(createVersionBadge(VERSION));
   gui.close();
 
   // Long-press on a row shows its tooltip on touch devices (no native hover).
   attachTouchTooltips(gui.domElement);
+
+  // Mobile-only: collapse the panel when the user taps the scene outside it.
+  if (isCoarsePointer()) {
+    document.addEventListener('pointerdown', (e) => {
+      if (!prefs.tapOutsideClose) return;
+      if (gui.domElement.contains(e.target as Node)) return;
+      gui.close();
+    });
+  }
 
   return gui;
 }

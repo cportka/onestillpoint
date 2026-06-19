@@ -14,6 +14,18 @@ N-body simulator.
 
 ## Status
 
+**Phase 8 — choreography & panel (v0.8).** The formation intro is now
+choreographed: the default scene gains **two inner retrograde planets** that
+swoosh in *after* the outer stars (a per-type `appear` fade staggers the entrance,
+so the two swooshes read as a sequence in opposite directions). The control panel
+is reorganised to lead with the essentials — version · **Filter** (formerly
+Preset) · **Time** · **Bodies** · an **Advanced settings** toggle (remembered
+across sessions) that folds the deep tuning, the **Movie** pause/step, and
+**Replay intro** away. Touch gains an optional *tap-outside-to-close*. And a
+latent bug is fixed: an added **black hole** was filtered out of the render slots
+entirely (so it never drew) — companions are now split by movability, so a
+secondary hole renders (dark core + lensed photon ring) and is properly cleared.
+
 **Phase 7 — formation sequence (v0.7).** On load the visualizer now *forms*: the
 camera dollies in from far while the accretion disk **ignites** (a `formation`
 factor 0 → 1 the shader multiplies into the dust, so the disk condenses and
@@ -61,6 +73,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 5 | Gravitational body simulator: N-body (CPU + opt-in GPU compute), lensed companions | ✅ done |
 | 6 | Time acceleration with representation crossfade | ✅ done |
 | 7 | Formation sequence (art-directed): camera dolly + disk ignition, skip/replay | ✅ done |
+| 8 | Choreographed entrance (retrograde planets) + panel reorg (Filter / Advanced settings) | ✅ done |
 
 ## Stack
 
@@ -113,7 +126,7 @@ src/
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
     device.ts          coarse-pointer / reduced-motion probes (framing, tooltips, intro)
   scene/
-    Scene.ts           owns the Body list + PhysicsEngine; spawns companions
+    Scene.ts           owns the Body list + PhysicsEngine; spawns companions (prograde stars + retrograde planets)
     Body.ts            a gravitating body (hole / star / planet)
     BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
   physics/
@@ -122,8 +135,9 @@ src/
     integrators.ts     velocity-Verlet + Newtonian accelerations
     GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
-    Controls.ts        lil-gui panel (time / look / animation / bloom / bodies / quality) + presets
-    presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
+    Controls.ts        lil-gui panel: Filter / Time / Bodies up front, deep tuning behind Advanced
+    presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
+    prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
     touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
     hud.ts             backend + fps + render-scale readout
@@ -131,7 +145,7 @@ src/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
     PostPipeline.ts    WebGPU node pipeline: HDR bloom → ACES tone-map
-    bodyUniforms.ts    companion render slots (position / radius / colour)
+    bodyUniforms.ts    companion render slots (position / radius / colour / staggered appear)
     tsl/
       raymarch.ts      geodesic loop + volume march + body spheres + secondary-hole halo
       schwarzschild.ts photon acceleration + static-observer ray (the metric)

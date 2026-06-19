@@ -82,7 +82,7 @@ async function main(): Promise<void> {
     physics.timeScale = t.orbitMul;
     if (t.fd > 0) physics.step(t.fd);
 
-    updateBodyUniforms(bodyUniforms, scene);
+    updateBodyUniforms(bodyUniforms, scene, formation.progress);
     // The intro drives the camera (controls disabled) until it settles home.
     if (formation.done) rig.update();
     else formation.update(frameDelta);
