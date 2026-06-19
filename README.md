@@ -22,14 +22,13 @@ raymarched as emissive spheres **inside the hole's curved spacetime**, so they
 lens and are occluded by the shadow for free. Add/remove bodies from the panel's
 **Bodies** folder.
 
-_v0.5.1–0.5.2_ add unit tests (Vitest) + CI (lint/typecheck/test/validate), fix a
-vertical render-flip so camera elevation is correct, free the full vertical orbit
-sweep, and add **weak-field lensing of secondary masses** — the panel's **Add
-black hole** drops in a massive companion that bends light around it (linear
-superposition `a = −2·m·d/|d|³`, CPU-validated against the GR value 4Gm/b). The
-secondary block is gated, so with no lensing body the default geodesic is
-unchanged and costs nothing. Still deferred: a **WebGPU compute N-body kernel** (a
-perf path for *many* bodies; CPU velocity-Verlet is exact and ample for a handful).
+_v0.5.1–0.5.3_ round out Phase 5: unit tests (Vitest) + CI (lint/typecheck/test/
+validate); a vertical render-flip fix and the full vertical orbit sweep; **weak-field
+lensing of secondary masses** — the panel's **Add black hole** drops in a massive
+companion that bends light around it (`a = −2·m·d/|d|³`, CPU-validated against the GR
+value 4Gm/b, gated so the default scene is unchanged); an **opt-in WebGPU compute
+N-body kernel** (a *GPU physics* toggle — CPU velocity-Verlet stays the exact default,
+the GPU path is the scaling road for many bodies); and hover tooltips on every control.
 
 | Phase | What | State |
 | ----- | ---- | ----- |
@@ -38,7 +37,7 @@ perf path for *many* bodies; CPU velocity-Verlet is exact and ample for a handfu
 | 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ done |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ done |
-| 5 | Gravitational body simulator: N-body, primary-lensed companions | ✅ in progress (v0.5) |
+| 5 | Gravitational body simulator: N-body (CPU + opt-in GPU compute), lensed companions | ✅ done |
 | 6 | Time acceleration with representation crossfade | ⏳ |
 | 7 | Formation sequence (art-directed) | ⏳ |
 
@@ -94,8 +93,10 @@ src/
     Body.ts            a gravitating body (hole / star / planet)
     BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
   physics/
+    PhysicsController.ts  switches CPU/GPU integrators behind one step(dt)
     PhysicsEngine.ts   N-body integrator driver (CPU velocity-Verlet)
     integrators.ts     velocity-Verlet + Newtonian accelerations
+    GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
     Controls.ts        lil-gui panel (look / animation / bloom / quality) + presets
     presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
