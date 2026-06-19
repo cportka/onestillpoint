@@ -13,14 +13,21 @@ export class ResolutionScaler {
   scale = 1;
   minScale = 0.5;
   readonly maxScale = 1;
+  /** Frame rate the auto-scaler aims to hold (adjustable in Quality). */
+  targetFps = 50;
 
   private smoothed = 1 / 60; // EMA of frame time (s)
   private cooldown = 0; // seconds until the next adjustment is allowed
 
-  // Frame-time thresholds: slower than `slow` → scale down; faster than `fast`
-  // (with room to spare) → scale up.
-  private readonly slow = 1 / 48;
-  private readonly fast = 1 / 58;
+  // Frame-time thresholds derived from the target: slower than (target − 2) fps →
+  // scale down; faster than (target + 8) fps (headroom) → scale up. The gap keeps
+  // it from oscillating around the target.
+  private get slow(): number {
+    return 1 / Math.max(this.targetFps - 2, 5);
+  }
+  private get fast(): number {
+    return 1 / (this.targetFps + 8);
+  }
 
   /** Feed the real frame delta; returns true when `scale` changed (re-apply size). */
   update(frameDelta: number): boolean {

@@ -14,6 +14,18 @@ N-body simulator.
 
 ## Status
 
+**Phase 11 — the secondary black hole's accretion disk (v0.11).** "Add black
+hole" now drops in a *full* second system: a dark core wrapped in its **own
+compact volumetric accretion disk** (`secondaryDisk.ts`) — radial envelope × thin
+Gaussian × co-rotating, inward-drifting turbulence, blackbody-coloured by the
+shared flux law, scaled to the hole and marched only where a ray grazes its slab
+(with a step-cap so the thin disk is never skipped). To keep slower machines
+smooth as the scene gets heavier, the auto-resolution now targets a configurable
+**frame rate (default 50 fps, adjustable in Quality)**. Plus panel polish:
+elegant spacing and **bolder section dividers**, a bold **Advanced settings**
+break, the **Add-body buttons show live counts** and flash **✓ / ✗** on click,
+and "Click outside closes" moves up to the first batch of Advanced toggles.
+
 **Phase 10 — UX polish & intro robustness (v0.10).** The panel leads with the
 essentials and tucks **GPU physics · Display FPS · Pause · Step** as the first
 items under **Advanced settings**, with **Replay intro** as the last basic row;
@@ -96,6 +108,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 8 | Choreographed entrance (retrograde planets) + panel reorg (Filter / Advanced settings) | ✅ done |
 | 9 | Performance auto-tuning (quality tiers) + cheaper companion lensing + panel polish | ✅ done |
 | 10 | UX polish (panel reorder / flush-right, opaque tooltip) + reduced-motion intro fix | ✅ done |
+| 11 | Secondary black hole's own accretion disk + frame-rate-targeted auto-resolution + panel polish | ✅ done |
 
 ## Stack
 
@@ -174,6 +187,7 @@ src/
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
       disk.ts          flux/temperature profile + Doppler & redshift shift
       medium.ts        volumetric dust: density, emission, scatter, extinction
+      secondaryDisk.ts compact accretion disk around an added (secondary) black hole
       flow.ts          Keplerian Ω(r) + advected (co-rotating) noise coordinate
       turbulence.ts    fractal (FBM) noise
       blackbody.ts     temperature (K) → linear RGB

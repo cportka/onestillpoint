@@ -9,6 +9,7 @@ import type { ResolutionScaler } from '../core/ResolutionScaler';
 import type { TimeController } from '../core/TimeController';
 import type { PhysicsController } from '../physics/PhysicsController';
 import { MAX_BODIES } from '../render/bodyUniforms';
+import type { BodyType } from '../scene/Body';
 import type { BlackHole } from '../scene/BlackHole';
 import type { Scene } from '../scene/Scene';
 import type { Hud } from './hud';
@@ -21,6 +22,17 @@ import { createVersionBadge } from './versionBadge';
 function tip<T extends Controller>(controller: T, text: string): T {
   controller.domElement.title = text;
   return controller;
+}
+
+/** Briefly flash a controller's row to confirm an action: green ✓ on success,
+ *  red ✗ when it was blocked (e.g. the body limit was reached). */
+function flash(controller: Controller, ok: boolean): void {
+  const el = controller.domElement;
+  const cls = ok ? 'osp-flash-ok' : 'osp-flash-max';
+  el.classList.remove('osp-flash-ok', 'osp-flash-max');
+  void el.offsetWidth; // reflow so the animation restarts on a repeat click
+  el.classList.add(cls);
+  window.setTimeout(() => el.classList.remove(cls), 750);
 }
 
 /**
@@ -100,31 +112,52 @@ export function createControls(ctx: {
 
   // --- Bodies ---
   const bodies = gui.addFolder('Bodies');
-  const addBody = (fn: () => void) => () => {
-    if (scene.companions.length < MAX_BODIES) {
-      fn();
+  const countOf = (type: BodyType): number => scene.companions.filter((b) => b.type === type).length;
+  const addCtrls: Partial<Record<BodyType, Controller>> = {};
+  // Subtle live count on each button ("Add star · 2").
+  const refreshCounts = (): void => {
+    addCtrls.star?.name(`Add star · ${countOf('star')}`);
+    addCtrls.planet?.name(`Add planet · ${countOf('planet')}`);
+    addCtrls.hole?.name(`Add black hole · ${countOf('hole')}`);
+  };
+  // Add if there's room (shared limit of MAX_BODIES); flash ✓ added / ✗ at max.
+  const tryAdd = (type: BodyType, add: () => void) => () => {
+    const ok = scene.companions.length < MAX_BODIES;
+    if (ok) {
+      add();
       physics.syncBodies();
+      refreshCounts();
     }
+    const ctrl = addCtrls[type];
+    if (ctrl) flash(ctrl, ok);
   };
   const actions = {
-    addStar: addBody(() => scene.addStar()),
-    addPlanet: addBody(() => scene.addPlanet()),
-    addBlackHole: addBody(() => scene.addBlackHole()),
+    addStar: tryAdd('star', () => scene.addStar()),
+    addPlanet: tryAdd('planet', () => scene.addPlanet()),
+    addBlackHole: tryAdd('hole', () => scene.addBlackHole()),
     clear: () => {
       scene.clearCompanions();
       physics.syncBodies();
+      refreshCounts();
     },
     gpu: backend === 'webgpu', // auto-on where WebGPU compute exists (see main.ts)
   };
-  tip(bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`), 'Drop a bright star onto a prograde circular orbit. It is lensed and occluded by the shadow as it passes behind.');
-  tip(bodies.add(actions, 'addPlanet').name('Add planet'), 'Drop a small dim body onto a retrograde orbit (it circles the opposite way to the stars).');
-  tip(
-    bodies.add(actions, 'addBlackHole').name('Add black hole'),
-    'Drop in a second black hole — a dark core ringed by a luminous lensed photon ring — ' +
-      'that bends light around it and gravitationally slings the other bodies. Costs extra ' +
-      'GPU time while present.',
+  addCtrls.star = tip(
+    bodies.add(actions, 'addStar'),
+    `Drop a bright star onto a prograde circular orbit (up to ${MAX_BODIES} bodies total). It is lensed and occluded by the shadow as it passes behind.`,
+  );
+  addCtrls.planet = tip(
+    bodies.add(actions, 'addPlanet'),
+    'Drop a small dim body onto a retrograde orbit (it circles the opposite way to the stars).',
+  );
+  addCtrls.hole = tip(
+    bodies.add(actions, 'addBlackHole'),
+    'Drop in a second black hole — a dark core wrapped in its own glowing, rotating accretion ' +
+      'disk — that bends light around it and slings the other bodies. The heaviest thing to ' +
+      'add; auto-resolution trades sharpness to keep it smooth.',
   );
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
+  refreshCounts(); // set the initial counts ("Add star · 2", …)
 
   // --- Replay intro (basic; the last item before the Advanced toggle) ---
   tip(
@@ -134,6 +167,7 @@ export function createControls(ctx: {
 
   // --- Advanced settings toggle (remembered across sessions) ---
   const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
+  advCtrl.domElement.classList.add('osp-section'); // bold label + a stronger divider
 
   // --- Advanced, in order: GPU physics, Display FPS, Pause, Step, then tuning ---
   const gpuAvailable = backend === 'webgpu';
@@ -166,6 +200,13 @@ export function createControls(ctx: {
     gui.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
     'Advance a single frame while paused.',
   );
+
+  // Last of the first batch of Advanced toggles: click/tap outside to collapse.
+  const tapOutsideCtrl = tip(
+    gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
+    'Clicking or tapping the scene outside this panel collapses it. On by default.',
+  );
+  tapOutsideCtrl.onChange(() => savePrefs(prefs));
 
   // --- Advanced: deep tuning folders ---
   const look = gui.addFolder('Look');
@@ -273,6 +314,11 @@ export function createControls(ctx: {
       'it when there is headroom. Off = always render at full resolution.',
   );
   tip(
+    quality.add(scaler, 'targetFps', 30, 60, 1).name('Target FPS'),
+    'The frame rate auto-resolution aims to hold. Lower = it drops resolution sooner to stay ' +
+      'smooth on slower devices; higher = sharper but may stutter. 50 is a good balance.',
+  );
+  tip(
     quality.add(scaler, 'minScale', 0.3, 1, 0.05).name('Min resolution'),
     'Lowest resolution auto-scaling may drop to. Lower = smoother but softer when busy; ' +
       'higher = always sharper but may drop frames.',
@@ -283,24 +329,18 @@ export function createControls(ctx: {
       'volume but slower.',
   );
 
-  // Click/tap outside the panel to collapse it (remembered; on by default).
-  const tapOutsideCtrl = tip(
-    gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
-    'Clicking or tapping the scene outside this panel collapses it. On by default.',
-  );
-  tapOutsideCtrl.onChange(() => savePrefs(prefs));
-
-  // Everything revealed by the Advanced toggle: GPU/FPS/Pause/Step first, then folders.
+  // Everything revealed by the Advanced toggle: GPU/FPS/Pause/Step/Click-outside
+  // first, then the deeper tuning folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
     gpuCtrl,
     fpsCtrl,
     pauseCtrl,
     stepCtrl,
+    tapOutsideCtrl,
     look,
     anim,
     post,
     quality,
-    tapOutsideCtrl,
   ];
   const applyAdvanced = (on: boolean): void => {
     advanced.forEach((x) => (on ? x.show() : x.hide()));
