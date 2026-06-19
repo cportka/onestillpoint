@@ -23,6 +23,7 @@ export class Scene {
       id: 0,
       type: 'hole',
       mass: PRIMARY_MASS,
+      lensMass: 0, // the primary is lensed exactly by the Schwarzschild metric, not weak-field
       fixed: true,
       position: new Vector3(0, 0, 0),
       velocity: new Vector3(),
@@ -42,14 +43,28 @@ export class Scene {
   addStar(orbitRadius = 26 + Math.random() * 22): Body {
     const warm = Math.random() < 0.5;
     const tint = warm ? new Vector3(1.0, 0.84, 0.62) : new Vector3(0.7, 0.82, 1.0);
-    return this.addBody('star', orbitRadius, 1.2, tint.multiplyScalar(7)); // HDR → blooms
+    // HDR colour → blooms; test-particle mass; too light to lens (lensMass 0).
+    return this.addBody('star', orbitRadius, 1.2, tint.multiplyScalar(7), 1e-3, 0);
   }
 
   addPlanet(orbitRadius = 24 + Math.random() * 24): Body {
-    return this.addBody('planet', orbitRadius, 0.6, new Vector3(0.5, 0.6, 0.8).multiplyScalar(1.2));
+    return this.addBody('planet', orbitRadius, 0.6, new Vector3(0.5, 0.6, 0.8).multiplyScalar(1.2), 1e-5, 0);
   }
 
-  addBody(type: BodyType, orbitRadius: number, radius: number, color: Vector3): Body {
+  /** A secondary black hole: massive enough to perturb orbits and to lens light
+   *  (lensMass = mass), rendered as a dark sphere. Enables weak-field lensing. */
+  addBlackHole(orbitRadius = 32 + Math.random() * 14): Body {
+    return this.addBody('hole', orbitRadius, 1.5, new Vector3(0.02, 0.01, 0.0), 0.3, 0.3);
+  }
+
+  addBody(
+    type: BodyType,
+    orbitRadius: number,
+    radius: number,
+    color: Vector3,
+    mass: number,
+    lensMass: number,
+  ): Body {
     const azimuth = Math.random() * Math.PI * 2;
     const inclination = (Math.random() - 0.5) * 0.6; // modest orbital tilt
     const pos = new Vector3(
@@ -64,7 +79,8 @@ export class Scene {
     const body: Body = {
       id: this.nextId++,
       type,
-      mass: type === 'star' ? 1e-3 : 1e-5, // test particles (negligible mutual pull)
+      mass,
+      lensMass,
       fixed: false,
       position: pos,
       velocity: tangent.multiplyScalar(speed),

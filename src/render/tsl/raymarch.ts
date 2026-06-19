@@ -14,11 +14,13 @@ import {
   min,
   mix,
   normalize,
+  pow,
   screenUV,
   select,
   vec2,
   vec3,
 } from 'three/tsl';
+import type { Node } from 'three/webgpu';
 import type { BodyUniforms } from '../bodyUniforms';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
@@ -67,6 +69,23 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
     const h2 = dot(cross(pos, vel), cross(pos, vel)).toVar();
     const rHorizon = M.mul(2);
 
+    // Photon acceleration = exact Schwarzschild (primary) + weak-field deflection
+    // from any massive companion (linear superposition, a = -2·m·d/|d|³, validated
+    // in scripts/validate-lensing.mjs). The whole secondary block is gated on
+    // `lensingActive`, so with no lensing body it is one skipped uniform branch —
+    // the default scene's geodesic is unchanged and costs nothing extra.
+    const totalAccel = (p: Node<'vec3'>) => {
+      const a = photonAccel(p, h2, M).toVar();
+      If(bodies.lensingActive.greaterThan(0.5), () => {
+        bodies.slots.forEach((slot) => {
+          const d = p.sub(slot.posRadius.xyz);
+          const invR3 = pow(dot(d, d).add(0.04), float(-1.5));
+          a.assign(a.add(d.mul(slot.lensMass.mul(-2).mul(invR3))));
+        });
+      });
+      return a;
+    };
+
     const captured = float(0).toVar();
     const escaped = float(0).toVar();
     const radiance = vec3(0).toVar();
@@ -99,13 +118,13 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
 
       // RK4 for dx/dλ = v, dv/dλ = a(x).
       const k1x = vel;
-      const k1v = photonAccel(pos, h2, M);
+      const k1v = totalAccel(pos);
       const k2x = vel.add(k1v.mul(half));
-      const k2v = photonAccel(pos.add(k1x.mul(half)), h2, M);
+      const k2v = totalAccel(pos.add(k1x.mul(half)));
       const k3x = vel.add(k2v.mul(half));
-      const k3v = photonAccel(pos.add(k2x.mul(half)), h2, M);
+      const k3v = totalAccel(pos.add(k2x.mul(half)));
       const k4x = vel.add(k3v.mul(dl));
-      const k4v = photonAccel(pos.add(k3x.mul(dl)), h2, M);
+      const k4v = totalAccel(pos.add(k3x.mul(dl)));
 
       const sixth = dl.div(6);
       const newPos = pos.add(k1x.add(k2x.mul(2)).add(k3x.mul(2)).add(k4x).mul(sixth));

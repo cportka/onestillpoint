@@ -77,11 +77,15 @@ export function createControls(ctx: {
     addPlanet: () => {
       if (scene.companions.length < MAX_BODIES) scene.addPlanet();
     },
+    addBlackHole: () => {
+      if (scene.companions.length < MAX_BODIES) scene.addBlackHole();
+    },
     clear: () => scene.clearCompanions(),
     timeScale: scene.physics.timeScale,
   };
   bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`);
   bodies.add(actions, 'addPlanet').name('Add planet');
+  bodies.add(actions, 'addBlackHole').name('Add black hole (lenses light)');
   bodies.add(actions, 'clear').name('Clear companions');
   bodies
     .add(actions, 'timeScale', 0, 300, 1)
