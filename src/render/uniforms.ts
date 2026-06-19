@@ -24,6 +24,10 @@ export function createUniforms() {
      *  disk (rises as the time scale climbs). */
     timeBlur: uniform(0),
 
+    /** Formation "ignition": 0 = no disk, 1 = fully formed. Driven by the intro
+     *  (FormationSequence) and multiplied into the dust; 1 in steady state. */
+    formation: uniform(1),
+
     /** Orbit-camera world position — the ray origin for every pixel. */
     camPos: uniform(new Vector3(0, 6, 22)),
     /** Orthonormal camera basis in world space (right / up / forward). */

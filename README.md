@@ -14,6 +14,17 @@ N-body simulator.
 
 ## Status
 
+**Phase 7 — formation sequence (v0.7).** On load the visualizer now *forms*: the
+camera dollies in from far while the accretion disk **ignites** (a `formation`
+factor 0 → 1 the shader multiplies into the dust, so the disk condenses and
+brightens into being). It is skippable (tap the scene), replayable (**Time →
+Replay intro**), and honours `prefers-reduced-motion` by settling instantly.
+Alongside it: touch devices start pulled further back and gain **long-press
+tooltips**; the **Time** speed scrubs down to ×1/1000 slow-motion; **GPU physics**
+auto-enables where WebGPU compute exists (and is disabled, explained, on the
+WebGL2 fallback); and **Add black hole** now reads as one — a dark core ringed by
+a luminous lensed photon ring (its full accretion disk is the next step).
+
 **Phase 6 — time acceleration (v0.6).** Simulation time is now decoupled from
 wall-clock by a `TimeController`: a **Time** folder scrubs the rate from ×1
 (real-time) up to ×1,000,000, with pause and single-step. The key idea (build
@@ -49,7 +60,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ done |
 | 5 | Gravitational body simulator: N-body (CPU + opt-in GPU compute), lensed companions | ✅ done |
 | 6 | Time acceleration with representation crossfade | ✅ done |
-| 7 | Formation sequence (art-directed) | ⏳ |
+| 7 | Formation sequence (art-directed): camera dolly + disk ignition, skip/replay | ✅ done |
 
 ## Stack
 
@@ -95,10 +106,12 @@ src/
   main.ts              bootstrap: wire uniforms → camera/loop/pass → render loop
   core/
     Renderer.ts        WebGPURenderer + automatic WebGL2 fallback
-    CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms
+    CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms; intro dolly driver
     Loop.ts            requestAnimationFrame driver → real frame delta
     TimeController.ts  decouples sim time from wall-clock: scale / pause / step + crossfade
+    FormationSequence.ts  the intro: camera dolly + disk "ignition" (skip / replay / reduced-motion)
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
+    device.ts          coarse-pointer / reduced-motion probes (framing, tooltips, intro)
   scene/
     Scene.ts           owns the Body list + PhysicsEngine; spawns companions
     Body.ts            a gravitating body (hole / star / planet)
@@ -111,6 +124,7 @@ src/
   ui/
     Controls.ts        lil-gui panel (time / look / animation / bloom / bodies / quality) + presets
     presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
+    touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
     hud.ts             backend + fps + render-scale readout
   render/
@@ -119,7 +133,7 @@ src/
     PostPipeline.ts    WebGPU node pipeline: HDR bloom → ACES tone-map
     bodyUniforms.ts    companion render slots (position / radius / colour)
     tsl/
-      raymarch.ts      geodesic loop + volume march + body spheres
+      raymarch.ts      geodesic loop + volume march + body spheres + secondary-hole halo
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
       disk.ts          flux/temperature profile + Doppler & redshift shift
       medium.ts        volumetric dust: density, emission, scatter, extinction

@@ -105,3 +105,27 @@ canvas {
   background: #000;
   text-align: center;
 }
+
+/* Long-press tooltip popup for touch devices (desktop uses native title hovers). */
+.osp-tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(18, 18, 22, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  font: 12px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.osp-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
