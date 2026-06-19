@@ -2,25 +2,28 @@ import { CameraRig } from './core/CameraRig';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { RaymarchPass } from './render/RaymarchPass';
+import { createBlackHoleNode } from './render/tsl/raymarch';
 import { createUniforms } from './render/uniforms';
+import { createBlackHole } from './scene/BlackHole';
 import { createHud, showFatalError } from './ui/hud';
 
 /**
- * Bootstrap. The shape here is the spine of every later phase:
+ * Bootstrap. The shape here is the spine of every phase:
  *
  *   uniforms ── written by ── CameraRig (camera) + Loop (time) + resize (size)
- *      └── read by ── RaymarchPass shader ── drawn each frame by ── Loop
+ *      └── read by ── RaymarchPass colour node ── drawn each frame by ── Loop
  *
- * Phase 0 paints a procedural test grid; Phases 1+ replace only the shader.
+ * Phases swap only the colour node; the wiring stays put.
  */
 async function main(): Promise<void> {
   const uniforms = createUniforms();
+  const blackHole = createBlackHole();
 
   const { renderer, backend } = await createRenderer();
   document.body.appendChild(renderer.domElement);
 
   const rig = new CameraRig(uniforms, renderer.domElement);
-  const pass = new RaymarchPass(uniforms);
+  const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole));
   const loop = new Loop(renderer, uniforms);
   const hud = createHud(backend);
 
@@ -43,7 +46,7 @@ async function main(): Promise<void> {
   loop.start();
 
   // Expose handles for console poking during development.
-  Object.assign(globalThis, { osp: { renderer, rig, pass, loop, uniforms } });
+  Object.assign(globalThis, { osp: { renderer, rig, pass, loop, uniforms, blackHole } });
 }
 
 main().catch((error) => {
