@@ -11,7 +11,12 @@ import { fbm } from './turbulence';
  * ISCO to the outer edge) × a vertical Gaussian (thin disk) × advected
  * turbulence that carves wispy filaments and gaps.
  */
-export function mediumDensity(p: Node<'vec3'>, time: Node<'float'>, bh: BlackHole) {
+export function mediumDensity(
+  p: Node<'vec3'>,
+  time: Node<'float'>,
+  timeBlur: Node<'float'>,
+  bh: BlackHole,
+) {
   const r = length(vec2(p.x, p.z));
 
   const inner = smoothstep(bh.diskInner, bh.diskInner.add(2), r);
@@ -21,8 +26,11 @@ export function mediumDensity(p: Node<'vec3'>, time: Node<'float'>, bh: BlackHol
   const yh = p.y.div(bh.diskThickness);
   const vertical = exp(yh.mul(yh).mul(-1)); // Gaussian in height
 
+  // Fade the turbulent filaments out as the time scale climbs → a smooth,
+  // time-averaged disk instead of strobing fine structure.
   const turb = fbm(advectedCoord(p, time, bh));
-  const filaments = max(float(0), float(1).add(turb.mul(bh.turbAmount)));
+  const amount = bh.turbAmount.mul(float(1).sub(timeBlur));
+  const filaments = max(float(0), float(1).add(turb.mul(amount)));
 
   return radial.mul(vertical).mul(filaments).mul(bh.diskDensity);
 }

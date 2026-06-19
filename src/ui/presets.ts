@@ -34,7 +34,7 @@ export const PRESETS: Record<string, Preset> = {
   },
   // Stylised: punchy, hot, turbulent.
   Stylized: {
-    emissiveStrength: 0.35, diskDensity: 1.4, diskTemp: 18000, scatterStrength: 0.5,
+    emissiveStrength: 0.2, diskDensity: 1.4, diskTemp: 18000, scatterStrength: 0.5,
     extinction: 0.2, doppler: 1, redshift: 1, turbAmount: 1.2, rotationSpeed: 9, exposure: 1.2,
   },
 };

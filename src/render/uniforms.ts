@@ -16,8 +16,13 @@ import { uniform } from 'three/tsl';
  */
 export function createUniforms() {
   return {
-    /** Simulation time in seconds. Advanced by Loop; honours pause + time scale. */
+    /** Dust-animation clock in seconds. Advanced by the TimeController at a
+     *  bounded rate so the turbulence never strobes. */
     time: uniform(0),
+
+    /** Representation crossfade: 0 = resolved turbulence, 1 = smooth averaged
+     *  disk (rises as the time scale climbs). */
+    timeBlur: uniform(0),
 
     /** Orbit-camera world position — the ray origin for every pixel. */
     camPos: uniform(new Vector3(0, 6, 22)),

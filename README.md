@@ -14,6 +14,16 @@ N-body simulator.
 
 ## Status
 
+**Phase 6 — time acceleration (v0.6).** Simulation time is now decoupled from
+wall-clock by a `TimeController`: a **Time** folder scrubs the rate from ×1
+(real-time) up to ×1,000,000, with pause and single-step. The key idea (build
+plan §6) is that you *cannot* brute-force integrate sub-second dynamics billions
+of times — it is wrong, impossibly slow, and strobes. Instead the visualizer
+**crossfades the representation**: orbits accelerate (bounded), the
+dust-animation clock saturates at a rate it can resolve, and the fine turbulence
+smoothly fades into a steady, time-averaged disk — so the image stays coherent
+at every scale.
+
 **Phase 5 — gravitational body simulator (v0.5).** The engine now grows past a
 single hole: a `Scene` of gravitating `Body` objects is advanced by an N-body
 `PhysicsEngine` (CPU velocity-Verlet, symplectic → stable orbits, validated in
@@ -38,7 +48,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ done |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ done |
 | 5 | Gravitational body simulator: N-body (CPU + opt-in GPU compute), lensed companions | ✅ done |
-| 6 | Time acceleration with representation crossfade | ⏳ |
+| 6 | Time acceleration with representation crossfade | ✅ done |
 | 7 | Formation sequence (art-directed) | ⏳ |
 
 ## Stack
@@ -86,7 +96,8 @@ src/
   core/
     Renderer.ts        WebGPURenderer + automatic WebGL2 fallback
     CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms
-    Loop.ts            frame driver + simulation clock → time uniform
+    Loop.ts            requestAnimationFrame driver → real frame delta
+    TimeController.ts  decouples sim time from wall-clock: scale / pause / step + crossfade
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
   scene/
     Scene.ts           owns the Body list + PhysicsEngine; spawns companions
@@ -98,7 +109,7 @@ src/
     integrators.ts     velocity-Verlet + Newtonian accelerations
     GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
-    Controls.ts        lil-gui panel (look / animation / bloom / quality) + presets
+    Controls.ts        lil-gui panel (time / look / animation / bloom / bodies / quality) + presets
     presets.ts         named looks (Physical / EHT / Interstellar / Stylized)
     versionBadge.ts    click-to-copy version chip
     hud.ts             backend + fps + render-scale readout
