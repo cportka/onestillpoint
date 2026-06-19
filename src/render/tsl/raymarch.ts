@@ -3,20 +3,19 @@ import {
   clamp,
   cross,
   dot,
-  exp,
   float,
   Fn,
   If,
   length,
   Loop,
-  min,
+  mix,
   normalize,
-  pow,
   screenUV,
   vec3,
 } from 'three/tsl';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
+import { sampleDisk } from './disk';
 import { photonAccel, staticObserverRay } from './schwarzschild';
 import { starfield } from './starfield';
 
@@ -26,16 +25,21 @@ import { starfield } from './starfield';
 const MAX_STEPS = 512;
 
 /**
- * The Phase 1 black-hole shader: per-pixel Schwarzschild photon geodesics by RK4
- * integration of a(x) = -3M·h²·x/r⁵ (see schwarzschild.ts). Rays that cross the
- * horizon are the shadow (black); rays that escape sample the lensed star field;
- * rays grazing the photon sphere brighten into the photon ring.
+ * The black-hole shader. Per-pixel Schwarzschild photon geodesics by RK4
+ * integration of a(x) = -3M·h²·x/r⁵ (see schwarzschild.ts). Along each ray:
+ *   - crossing the equatorial plane within [r_in, r_out] hits the opaque thin
+ *     accretion disk (Phase 2) — this also lenses the disk's far side into arcs
+ *     above and below the shadow;
+ *   - crossing the 2M horizon is the shadow (black);
+ *   - escaping samples the gravitationally lensed star field.
  */
 export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
   return Fn(() => {
     const M = bh.mass;
+    const rIn = bh.diskInner;
+    const rOut = bh.diskOuter;
 
-    // --- camera-local pinhole ray (same setup the dust march will inherit) ---
+    // --- camera-local pinhole ray (the dust march will inherit this setup) ---
     const ndc = screenUV.sub(0.5).mul(2);
     const px = ndc.x.mul(u.tanHalfFov).mul(u.aspect);
     const py = ndc.y.mul(u.tanHalfFov);
@@ -53,18 +57,16 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
 
     const captured = float(0).toVar();
     const escaped = float(0).toVar();
-    const minR = r0.toVar(); // closest approach (periapsis) → photon-ring test
+    const diskHit = float(0).toVar();
+    const diskColor = vec3(0).toVar();
 
     Loop(MAX_STEPS, () => {
       const r = length(pos);
-      minR.assign(min(minR, r));
 
-      // Crossed the horizon → captured (shadow).
       If(r.lessThan(rHorizon), () => {
         captured.assign(1);
         Break();
       });
-      // Climbed back out past the start radius, heading outward → escaped.
       If(r.greaterThan(r0).and(dot(pos, vel).greaterThan(0)), () => {
         escaped.assign(1);
         Break();
@@ -85,23 +87,27 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
       const k4v = photonAccel(pos.add(k3x.mul(dl)), h2, M);
 
       const sixth = dl.div(6);
-      pos.assign(pos.add(k1x.add(k2x.mul(2)).add(k3x.mul(2)).add(k4x).mul(sixth)));
-      vel.assign(vel.add(k1v.add(k2v.mul(2)).add(k3v.mul(2)).add(k4v).mul(sixth)));
+      const newPos = pos.add(k1x.add(k2x.mul(2)).add(k3x.mul(2)).add(k4x).mul(sixth));
+      const newVel = vel.add(k1v.add(k2v.mul(2)).add(k3v.mul(2)).add(k4v).mul(sixth));
+
+      // Equatorial-plane crossing (y changes sign) → opaque thin disk.
+      If(pos.y.mul(newPos.y).lessThan(0), () => {
+        const t = pos.y.div(pos.y.sub(newPos.y)); // fraction of step to the plane
+        const cp = mix(pos, newPos, t);
+        const cr = length(cp);
+        If(cr.greaterThan(rIn).and(cr.lessThan(rOut)), () => {
+          diskColor.assign(sampleDisk(cp, vel, bh));
+          diskHit.assign(1);
+          Break();
+        });
+      });
+
+      pos.assign(newPos);
+      vel.assign(newVel);
     });
 
-    const notCaptured = float(1).sub(captured);
-
-    // Lensed star field along the escape direction (escaped rays only).
-    const bg = starfield(normalize(vel), float(1)).mul(escaped);
-
-    // Photon ring: photons whose periapsis grazes the photon sphere (3M) are
-    // strongly magnified, forming a thin bright ring just outside the shadow.
-    // A Gaussian in closest-approach is a stand-in for that magnification; the
-    // true ring of lensed *disk* light arrives with the accretion disk (Phase 2).
-    const ringT = minR.sub(M.mul(3)).div(M.mul(0.6));
-    const ring = exp(pow(ringT, 2).mul(-1)).mul(notCaptured);
-    const ringColor = vec3(0.75, 0.82, 1.0).mul(ring).mul(0.5);
-
-    return bg.add(ringColor);
+    // Compose: disk over (lensed star field for escaped rays; black otherwise).
+    const bg = starfield(normalize(vel), float(1.2)).mul(escaped);
+    return mix(bg, diskColor, diskHit);
   })();
 }

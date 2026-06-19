@@ -1,3 +1,4 @@
+import { ACESFilmicToneMapping } from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 
 export interface RendererBundle {
@@ -28,6 +29,12 @@ export async function createRenderer(): Promise<RendererBundle> {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x000000, 1);
+
+  // The accretion disk is HDR (relativistic beaming spans a huge dynamic
+  // range), so tone-map to a viewable range. Bloom + a look/exposure UI follow
+  // in Phase 4; this is the minimum needed to evaluate Phase 2 honestly.
+  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
 
   await renderer.init();
 

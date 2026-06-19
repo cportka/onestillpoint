@@ -14,19 +14,20 @@ N-body simulator.
 
 ## Status
 
-**Phase 1 — Schwarzschild geometry (current).** Per-pixel photon geodesics are
-integrated by RK4 through the curved spacetime: rays that cross the horizon form
-the black shadow, rays that escape sample a gravitationally lensed procedural
-star field, and rays grazing the photon sphere brighten into the photon ring.
-The physics is validated on the CPU (`npm run validate`): the critical impact
-parameter comes out at 3√3·M and the apparent shadow radius matches the textbook
-static-observer formula to machine precision.
+**Phase 2 — Accretion disk, static (current).** A geometrically thin
+Shakura–Sunyaev / Novikov–Thorne disk is sampled where each photon geodesic
+crosses the equatorial plane (inner edge at the ISCO, 6M). Temperature → linear
+blackbody colour; the orbiting gas gets relativistic Doppler beaming (approaching
+side brighter and bluer) and gravitational redshift, and the lensing wraps the
+disk's far side into arcs above and below the shadow. Still for now — motion
+arrives in Phase 3. Numbers are CPU-validated (`npm run validate`): ISCO orbital
+speed 0.5c, flux zero at the inner edge peaking at 8.17M, ~80× beaming asymmetry.
 
 | Phase | What | State |
 | ----- | ---- | ----- |
 | 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ done |
-| 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ in progress |
-| 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ⏳ |
+| 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ done |
+| 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ in progress |
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ⏳ |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ⏳ |
 | 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ |
@@ -79,11 +80,14 @@ src/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
     tsl/
-      raymarch.ts      per-pixel geodesic integration loop → shadow / ring / lensing
+      raymarch.ts      per-pixel geodesic loop → disk / shadow / lensing
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
+      disk.ts          thin-disk flux, Doppler beaming + gravitational redshift
+      blackbody.ts     temperature (K) → linear RGB
       starfield.ts     procedural lensed background
 scripts/
-  validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M (run via npm run validate)
+  validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M
+  validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming (npm run validate)
 ```
 
 A guiding constraint: the infalling dust is a **volumetric participating
