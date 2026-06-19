@@ -6,12 +6,16 @@
 export interface Prefs {
   /** Show the Advanced-settings folders (Look / Animation / Bloom / Quality / …). */
   advanced: boolean;
-  /** Mobile: tapping outside the expanded panel collapses it. */
+  /** Tapping/clicking outside the expanded panel collapses it. */
   tapOutsideClose: boolean;
+  /** Show the corner FPS / backend / resolution readout. */
+  showFps: boolean;
 }
 
-const KEY = 'osp.prefs';
-const DEFAULTS: Prefs = { advanced: false, tapOutsideClose: false };
+// Bumped to .v2 when the defaults changed (tapOutsideClose now on, showFps added),
+// so the new defaults take effect rather than being masked by a stored .v1 blob.
+const KEY = 'osp.prefs.v2';
+const DEFAULTS: Prefs = { advanced: false, tapOutsideClose: true, showFps: false };
 
 export function loadPrefs(): Prefs {
   try {

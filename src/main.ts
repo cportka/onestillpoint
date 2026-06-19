@@ -3,6 +3,7 @@ import { prefersReducedMotion } from './core/device';
 import { FormationSequence } from './core/FormationSequence';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
+import { detectQualityTier, QUALITY_TIERS, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
 import { TimeController } from './core/TimeController';
 import { GPUPhysicsEngine } from './physics/GPUPhysicsEngine';
@@ -45,7 +46,6 @@ async function main(): Promise<void> {
   // fallback has no compute, so it stays on the (exact) CPU integrator.
   physics.setGPU(backend === 'webgpu');
   const scaler = new ResolutionScaler();
-  scaler.scale = 0.85; // start a touch soft; the scaler ramps to native if there's headroom
   const hud = createHud(backend, () => scaler.scale);
 
   // The art-directed intro: dolly in from far while the disk ignites.
@@ -56,8 +56,10 @@ async function main(): Promise<void> {
   renderer.domElement.addEventListener('pointerdown', () => formation.skip(), { once: true });
 
   // Drawing-buffer size = CSS size × capped DPR × adaptive scale. The canvas is
-  // forced to fill the viewport in CSS, so a smaller buffer simply upscales.
-  const dprCap = Math.min(window.devicePixelRatio, 2);
+  // forced to fill the viewport in CSS, so a smaller buffer simply upscales. The
+  // DPR cap is the biggest single lever on a high-DPR phone, so the quality tier
+  // sets it (below) alongside the starting resolution and the dust step.
+  let dprCap = Math.min(window.devicePixelRatio, 2);
   const applySize = (): void => {
     const cssW = window.innerWidth;
     const cssH = window.innerHeight;
@@ -69,9 +71,24 @@ async function main(): Promise<void> {
     uniforms.resolution.value.set(w, h);
   };
   window.addEventListener('resize', applySize);
-  applySize();
 
-  createControls({ blackHole, scene, physics, time, formation, backend, renderer, scaler, bloom: post.bloom });
+  // Auto-detect a quality tier for this device and apply it (resolution, dust
+  // step, DPR cap). Re-appliable from the Quality panel (Auto / Low / Med / High).
+  const autoTier = detectQualityTier();
+  const applyQuality = (tier: QualityTier): void => {
+    const q = QUALITY_TIERS[tier];
+    scaler.scale = q.scale;
+    scaler.minScale = q.minScale;
+    blackHole.volumeStep.value = q.volumeStep;
+    dprCap = Math.min(window.devicePixelRatio, q.dprCap);
+    applySize();
+  };
+  applyQuality(autoTier);
+
+  createControls({
+    blackHole, scene, physics, time, formation, backend, renderer, scaler,
+    bloom: post.bloom, hud, autoTier, applyQuality,
+  });
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
