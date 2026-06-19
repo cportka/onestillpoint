@@ -13,6 +13,10 @@ export interface Body {
   id: number;
   type: BodyType;
   mass: number;
+  /** Mass used for weak-field light deflection. 0 for bodies too light to lens
+   *  measurably (stars/planets), so the shader can skip them; = mass for a
+   *  secondary black hole. */
+  lensMass: number;
   fixed: boolean;
   position: Vector3;
   velocity: Vector3;

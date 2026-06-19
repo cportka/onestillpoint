@@ -22,13 +22,14 @@ raymarched as emissive spheres **inside the hole's curved spacetime**, so they
 lens and are occluded by the shadow for free. Add/remove bodies from the panel's
 **Bodies** folder.
 
-_v0.5.1_ adds unit tests (Vitest) + CI (lint/typecheck/test/validate), fixes a
-vertical render-flip so camera elevation is correct, and frees the full vertical
-orbit sweep. Still deferred (both currently invisible at this scale, so held back
-to avoid risking the working orbits): moving the N-body integrator to a **WebGPU
-compute kernel** (a perf path for *many* bodies) and **weak-field lensing of the
-secondaries themselves** (only visible with a massive companion, e.g. a second
-black hole).
+_v0.5.1–0.5.2_ add unit tests (Vitest) + CI (lint/typecheck/test/validate), fix a
+vertical render-flip so camera elevation is correct, free the full vertical orbit
+sweep, and add **weak-field lensing of secondary masses** — the panel's **Add
+black hole** drops in a massive companion that bends light around it (linear
+superposition `a = −2·m·d/|d|³`, CPU-validated against the GR value 4Gm/b). The
+secondary block is gated, so with no lensing body the default geodesic is
+unchanged and costs nothing. Still deferred: a **WebGPU compute N-body kernel** (a
+perf path for *many* bodies; CPU velocity-Verlet is exact and ample for a handful).
 
 | Phase | What | State |
 | ----- | ---- | ----- |
@@ -118,7 +119,8 @@ src/
 scripts/
   validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M
   validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming
-  validate-orbit.mjs     CPU check: orbit stability + energy conservation (npm run validate)
+  validate-orbit.mjs     CPU check: orbit stability + energy conservation
+  validate-lensing.mjs   CPU check: weak-field deflection = 4Gm/b (npm run validate)
 ```
 
 A guiding constraint: the infalling dust is a **volumetric participating
