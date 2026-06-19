@@ -28,8 +28,7 @@ Beer–Lambert extinction. `osp.loop.paused = true` freezes it to inspect lensin
 | 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ done |
 | 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ done |
 | 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
-| 3 | Animate & volumetric dust: differential rotation, advected turbulence, infall, scattering | ✅ in progress |
-| 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ⏳ |
+| 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ in progress |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ⏳ |
 | 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ |
 | 6 | Time acceleration with representation crossfade | ⏳ |
