@@ -14,20 +14,21 @@ N-body simulator.
 
 ## Status
 
-**Phase 2 — Accretion disk, static (current).** A geometrically thin
-Shakura–Sunyaev / Novikov–Thorne disk is sampled where each photon geodesic
-crosses the equatorial plane (inner edge at the ISCO, 6M). Temperature → linear
-blackbody colour; the orbiting gas gets relativistic Doppler beaming (approaching
-side brighter and bluer) and gravitational redshift, and the lensing wraps the
-disk's far side into arcs above and below the shadow. Still for now — motion
-arrives in Phase 3. Numbers are CPU-validated (`npm run validate`): ISCO orbital
-speed 0.5c, flux zero at the inner edge peaking at 8.17M, ~80× beaming asymmetry.
+**Phase 3 — animate & volumetric dust (current).** The disk is now a volumetric
+participating medium marched along the bent ray (not a surface), so it lenses
+correctly. The gas rotates differentially (Keplerian Ω(r) ∝ r^−3/2, inner
+outpacing outer), turbulence is advected by the flow and evolved smoothly so it
+shears into spiral arms without boiling, and it drifts inward. Lighting is heat
+emission (relativistically beamed) + a cheap single-scatter of the inner light +
+Beer–Lambert extinction. `osp.loop.paused = true` freezes it to inspect lensing.
+(Full TAA/frame-accumulation is deferred to Phase 4, paired with the perf work.)
 
 | Phase | What | State |
 | ----- | ---- | ----- |
 | 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ done |
 | 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ done |
-| 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ in progress |
+| 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
+| 3 | Animate & volumetric dust: differential rotation, advected turbulence, infall, scattering | ✅ in progress |
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ⏳ |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ⏳ |
 | 5 | Gravitational body simulator: N-body compute, weak-field lensing for secondaries | ⏳ |
@@ -80,9 +81,12 @@ src/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
     tsl/
-      raymarch.ts      per-pixel geodesic loop → disk / shadow / lensing
+      raymarch.ts      geodesic loop + volume march → disk / shadow / lensing
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
-      disk.ts          thin-disk flux, Doppler beaming + gravitational redshift
+      disk.ts          flux/temperature profile + Doppler & redshift shift
+      medium.ts        volumetric dust: density, emission, scatter, extinction
+      flow.ts          Keplerian Ω(r) + advected (co-rotating) noise coordinate
+      turbulence.ts    fractal (FBM) noise
       blackbody.ts     temperature (K) → linear RGB
       starfield.ts     procedural lensed background
 scripts/

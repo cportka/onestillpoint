@@ -1,45 +1,52 @@
 import {
+  abs,
   Break,
   clamp,
   cross,
   dot,
+  exp,
   float,
   Fn,
   If,
   length,
   Loop,
+  max,
+  min,
   mix,
   normalize,
   screenUV,
+  select,
+  vec2,
   vec3,
 } from 'three/tsl';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
-import { sampleDisk } from './disk';
+import { mediumDensity, mediumSource } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
 import { starfield } from './starfield';
 
-// Hard cap on integration steps per pixel. Most rays escape in well under 30
-// steps; only near-critical rays winding the photon sphere approach this. The
-// CPU validator confirms this budget resolves the shadow edge exactly.
+// Hard cap on integration steps per pixel. Far from the disk rays take big
+// steps and escape quickly; inside the disk slab the step shrinks to resolve
+// the volume, and high optical depth terminates the march early.
 const MAX_STEPS = 512;
 
 /**
  * The black-hole shader. Per-pixel Schwarzschild photon geodesics by RK4
- * integration of a(x) = -3M·h²·x/r⁵ (see schwarzschild.ts). Along each ray:
- *   - crossing the equatorial plane within [r_in, r_out] hits the opaque thin
- *     accretion disk (Phase 2) — this also lenses the disk's far side into arcs
- *     above and below the shadow;
- *   - crossing the 2M horizon is the shadow (black);
- *   - escaping samples the gravitationally lensed star field.
+ * integration of a(x) = -3M·h²·x/r⁵ (schwarzschild.ts). Within a bounded slab
+ * around the equatorial plane the ray marches the volumetric accretion dust
+ * (medium.ts) — emission, single-scatter and Beer–Lambert extinction — so the
+ * disk lenses correctly (including its far side wrapped over and under the
+ * shadow) because we integrate along the bent ray. Captured rays end black;
+ * escaping rays sample the lensed star field through the remaining transmittance.
  */
 export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
   return Fn(() => {
     const M = bh.mass;
     const rIn = bh.diskInner;
     const rOut = bh.diskOuter;
+    const yMax = bh.diskThickness.mul(3.5); // vertical half-extent of the slab
 
-    // --- camera-local pinhole ray (the dust march will inherit this setup) ---
+    // --- camera-local pinhole ray ---
     const ndc = screenUV.sub(0.5).mul(2);
     const px = ndc.x.mul(u.tanHalfFov).mul(u.aspect);
     const py = ndc.y.mul(u.tanHalfFov);
@@ -57,8 +64,9 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
 
     const captured = float(0).toVar();
     const escaped = float(0).toVar();
-    const diskHit = float(0).toVar();
-    const diskColor = vec3(0).toVar();
+    const radiance = vec3(0).toVar(); // accumulated emitted/scattered light
+    const transmittance = float(1).toVar(); // remaining light fraction (Beer–Lambert)
+    const volSamples = float(0).toVar(); // bounds cost on disk-grazing rays
 
     Loop(MAX_STEPS, () => {
       const r = length(pos);
@@ -72,11 +80,20 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
         Break();
       });
 
-      // Adaptive affine step: fine near the hole, coarse far out.
-      const dl = clamp(r.sub(M.mul(1.5)).mul(0.06), float(0.02), float(4));
+      // Step finely near the disk; the slab is thin, so a coarse step must not
+      // be allowed to jump over it. Within the disk's radial range we cap the
+      // step by the distance to the plane (shrinking to volumeStep at y=0).
+      const cylR = length(vec2(pos.x, pos.z));
+      const distY = abs(pos.y);
+      const inRadial = cylR.greaterThan(rIn.sub(2)).and(cylR.lessThan(rOut.add(2)));
+      const inSlab = inRadial.and(distY.lessThan(yMax));
+
+      const coarse = clamp(r.sub(M.mul(1.5)).mul(0.06), float(0.02), float(3));
+      const diskStep = min(coarse, max(distY.mul(0.4), bh.volumeStep));
+      const dl = select(inRadial, diskStep, coarse);
       const half = dl.mul(0.5);
 
-      // RK4 for dx/dλ = v, dv/dλ = a(x) (a depends only on x given conserved h²).
+      // RK4 for dx/dλ = v, dv/dλ = a(x).
       const k1x = vel;
       const k1v = photonAccel(pos, h2, M);
       const k2x = vel.add(k1v.mul(half));
@@ -90,24 +107,31 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
       const newPos = pos.add(k1x.add(k2x.mul(2)).add(k3x.mul(2)).add(k4x).mul(sixth));
       const newVel = vel.add(k1v.add(k2v.mul(2)).add(k3v.mul(2)).add(k4v).mul(sixth));
 
-      // Equatorial-plane crossing (y changes sign) → opaque thin disk.
-      If(pos.y.mul(newPos.y).lessThan(0), () => {
-        const t = pos.y.div(pos.y.sub(newPos.y)); // fraction of step to the plane
-        const cp = mix(pos, newPos, t);
-        const cr = length(cp);
-        If(cr.greaterThan(rIn).and(cr.lessThan(rOut)), () => {
-          diskColor.assign(sampleDisk(cp, vel, bh));
-          diskHit.assign(1);
-          Break();
+      // Volume sample at the segment midpoint (front-to-back compositing).
+      If(inSlab, () => {
+        volSamples.assign(volSamples.add(1));
+        const midPos = mix(pos, newPos, 0.5);
+        const density = mediumDensity(midPos, u.time, bh);
+        If(density.greaterThan(0.001), () => {
+          const source = mediumSource(midPos, vel, density, bh);
+          radiance.assign(radiance.add(transmittance.mul(source).mul(dl)));
+          transmittance.assign(transmittance.mul(exp(density.mul(bh.extinction).mul(dl).mul(-1))));
         });
+      });
+
+      // Stop once the dust has absorbed what's behind it, or a grazing ray has
+      // taken enough volume samples (bounds worst-case cost).
+      If(transmittance.lessThan(0.02).or(volSamples.greaterThan(120)), () => {
+        Break();
       });
 
       pos.assign(newPos);
       vel.assign(newVel);
     });
 
-    // Compose: disk over (lensed star field for escaped rays; black otherwise).
-    const bg = starfield(normalize(vel), float(1.2)).mul(escaped);
-    return mix(bg, diskColor, diskHit);
+    // Background behind the dust: lensed star field if the ray escaped, else the
+    // black horizon. Composite by the surviving transmittance.
+    const bg = select(escaped.greaterThan(0.5), starfield(normalize(vel), float(1.2)), vec3(0));
+    return radiance.add(transmittance.mul(bg));
   })();
 }
