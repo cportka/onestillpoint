@@ -2,6 +2,8 @@ import { CameraRig } from './core/CameraRig';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { ResolutionScaler } from './core/ResolutionScaler';
+import { GPUPhysicsEngine } from './physics/GPUPhysicsEngine';
+import { PhysicsController } from './physics/PhysicsController';
 import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
 import { createPostPipeline } from './render/PostPipeline';
 import { RaymarchPass } from './render/RaymarchPass';
@@ -34,6 +36,7 @@ async function main(): Promise<void> {
   const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole, bodyUniforms));
   const post = createPostPipeline(renderer, pass.scene, pass.camera);
   const loop = new Loop(renderer, uniforms);
+  const physics = new PhysicsController(scene, new GPUPhysicsEngine(renderer));
   const scaler = new ResolutionScaler();
   scaler.scale = 0.85; // start a touch soft; the scaler ramps to native if there's headroom
   const hud = createHud(backend, () => scaler.scale);
@@ -54,11 +57,11 @@ async function main(): Promise<void> {
   window.addEventListener('resize', applySize);
   applySize();
 
-  createControls({ blackHole, scene, loop, renderer, scaler, bloom: post.bloom });
+  createControls({ blackHole, scene, physics, loop, renderer, scaler, bloom: post.bloom });
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
-    if (!loop.paused) scene.step(frameDelta);
+    if (!loop.paused) physics.step(frameDelta);
     updateBodyUniforms(bodyUniforms, scene);
     rig.update();
     post.render();
@@ -68,7 +71,7 @@ async function main(): Promise<void> {
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, uniforms, blackHole, scene, bodyUniforms, scaler },
+    osp: { renderer, rig, pass, post, loop, uniforms, blackHole, scene, physics, bodyUniforms, scaler },
   });
 }
 
