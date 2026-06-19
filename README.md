@@ -1,6 +1,6 @@
 # One Still Point
 
-> The worldline · The final resting place · The circle of eternal return · The spinning cycle of time
+> The worldline · The present resting place · The circle of eternal return · The spinning cycle of time
 
 A scientifically grounded, GPU-accelerated, animated **black hole visualizer** that
 runs in the browser — event-horizon shadow, photon ring, gravitationally lensed
