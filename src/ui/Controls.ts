@@ -2,8 +2,8 @@ import GUI, { type Controller } from 'lil-gui';
 import type BloomNode from 'three/addons/tsl/display/BloomNode.js';
 import type { WebGPURenderer } from 'three/webgpu';
 import { VERSION } from '../version';
-import { isCoarsePointer } from '../core/device';
 import type { FormationSequence } from '../core/FormationSequence';
+import type { QualityTier } from '../core/quality';
 import type { RendererBundle } from '../core/Renderer';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
 import type { TimeController } from '../core/TimeController';
@@ -11,6 +11,7 @@ import type { PhysicsController } from '../physics/PhysicsController';
 import { MAX_BODIES } from '../render/bodyUniforms';
 import type { BlackHole } from '../scene/BlackHole';
 import type { Scene } from '../scene/Scene';
+import type { Hud } from './hud';
 import { loadPrefs, savePrefs } from './prefs';
 import { PRESETS } from './presets';
 import { attachTouchTooltips } from './touchTooltips';
@@ -39,8 +40,12 @@ export function createControls(ctx: {
   renderer: WebGPURenderer;
   scaler: ResolutionScaler;
   bloom: BloomNode;
+  hud: Hud;
+  autoTier: QualityTier;
+  applyQuality: (tier: QualityTier) => void;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
+  const { hud, autoTier, applyQuality } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   const prefs = loadPrefs();
 
@@ -134,6 +139,18 @@ export function createControls(ctx: {
           'CPU (exact, and fine for a handful of bodies).',
   );
 
+  // --- Display FPS (basic; default off) ---
+  hud.setVisible(prefs.showFps);
+  const fpsCtrl = tip(
+    gui.add(prefs, 'showFps').name('Display FPS'),
+    'Show a small corner readout: renderer (WebGPU / WebGL2), frame rate, and the current ' +
+      'render-resolution scale ("% res" — auto-resolution lowers it under load).',
+  );
+  fpsCtrl.onChange((v: boolean) => {
+    hud.setVisible(v);
+    savePrefs(prefs);
+  });
+
   // --- Advanced settings toggle (remembered across sessions) ---
   const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
 
@@ -224,6 +241,19 @@ export function createControls(ctx: {
   );
 
   const quality = gui.addFolder('Quality');
+  const qProxy = { tier: 'Auto' };
+  tip(
+    quality
+      .add(qProxy, 'tier', ['Auto', 'Low', 'Medium', 'High'])
+      .name('Quality')
+      .onChange((v: string) => {
+        applyQuality(v === 'Auto' ? autoTier : (v.toLowerCase() as QualityTier));
+        gui.controllersRecursive().forEach((c) => c.updateDisplay());
+      }),
+    'Overall performance vs. fidelity. Auto picks a tier for your device on load; Low is ' +
+      'lightest (best for phones), High is sharpest. It sets the starting resolution, the dust ' +
+      'step, and the pixel-ratio cap — the controls below fine-tune them.',
+  );
   tip(
     quality.add(scaler, 'enabled').name('Auto resolution'),
     'Automatically lower the render resolution to hold a smooth frame rate, then raise ' +
@@ -248,10 +278,10 @@ export function createControls(ctx: {
     'Advance a single frame while paused.',
   );
 
-  // Mobile: tap outside the panel to collapse it (remembered).
+  // Click/tap outside the panel to collapse it (remembered; on by default).
   const tapOutsideCtrl = tip(
-    gui.add(prefs, 'tapOutsideClose').name('Tap outside closes (mobile)'),
-    'On phones/tablets, tapping the scene outside this panel collapses it. (No effect with a mouse.)',
+    gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
+    'Clicking or tapping the scene outside this panel collapses it. On by default.',
   );
   tapOutsideCtrl.onChange(() => savePrefs(prefs));
 
@@ -287,14 +317,12 @@ export function createControls(ctx: {
   // Long-press on a row shows its tooltip on touch devices (no native hover).
   attachTouchTooltips(gui.domElement);
 
-  // Mobile-only: collapse the panel when the user taps the scene outside it.
-  if (isCoarsePointer()) {
-    document.addEventListener('pointerdown', (e) => {
-      if (!prefs.tapOutsideClose) return;
-      if (gui.domElement.contains(e.target as Node)) return;
-      gui.close();
-    });
-  }
+  // Collapse the panel when the user clicks/taps the scene outside it (default on).
+  document.addEventListener('pointerdown', (e) => {
+    if (!prefs.tapOutsideClose) return;
+    if (gui.domElement.contains(e.target as Node)) return;
+    gui.close();
+  });
 
   return gui;
 }

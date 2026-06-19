@@ -129,3 +129,23 @@ canvas {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* lil-gui control panel: ~70% opaque, monospace + letter-spacing to match the
+   corner readout. Variable names are lil-gui's own (they cascade to folders). */
+.lil-gui {
+  --background-color: rgba(20, 20, 24, 0.7);
+  --title-background-color: rgba(12, 12, 15, 0.72);
+  --widget-color: rgba(58, 58, 66, 0.7);
+  --hover-color: rgba(78, 78, 88, 0.74);
+  --focus-color: rgba(98, 98, 110, 0.8);
+  --text-color: rgba(255, 255, 255, 0.72);
+  --title-text-color: rgba(255, 255, 255, 0.86);
+  --font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-size: 12px;
+  --input-font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.lil-gui.root {
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}

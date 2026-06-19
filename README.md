@@ -14,6 +14,17 @@ N-body simulator.
 
 ## Status
 
+**Phase 9 — performance auto-tuning & panel polish (v0.9).** A new quality
+**auto-detect** picks a tier (Low / Medium / High) from device signals on load —
+phones default Low — setting the starting resolution, the dust step, and the
+device-pixel-ratio cap (overridable in **Quality → Quality**). Adding a second
+black hole is now far cheaper: its weak-field deflection is evaluated **once per
+geodesic step** (shared across the RK4 stages) instead of four times, and empty
+companion slots short-circuit. The panel is restyled (≈70% opaque, monospace to
+match the corner readout); the duplicate name is gone from the HUD, which is now
+a **Display FPS** toggle (off by default; the "% res" is the live render-scale);
+and click/tap-outside-to-close is on by default.
+
 **Phase 8 — choreography & panel (v0.8).** The formation intro is now
 choreographed: the default scene gains **two inner retrograde planets** that
 swoosh in *after* the outer stars (a per-type `appear` fade staggers the entrance,
@@ -74,6 +85,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 6 | Time acceleration with representation crossfade | ✅ done |
 | 7 | Formation sequence (art-directed): camera dolly + disk ignition, skip/replay | ✅ done |
 | 8 | Choreographed entrance (retrograde planets) + panel reorg (Filter / Advanced settings) | ✅ done |
+| 9 | Performance auto-tuning (quality tiers) + cheaper companion lensing + panel polish | ✅ done |
 
 ## Stack
 
@@ -124,6 +136,7 @@ src/
     TimeController.ts  decouples sim time from wall-clock: scale / pause / step + crossfade
     FormationSequence.ts  the intro: camera dolly + disk "ignition" (skip / replay / reduced-motion)
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
+    quality.ts         device-tier auto-detect (resolution / dust step / DPR cap)
     device.ts          coarse-pointer / reduced-motion probes (framing, tooltips, intro)
   scene/
     Scene.ts           owns the Body list + PhysicsEngine; spawns companions (prograde stars + retrograde planets)
@@ -140,7 +153,7 @@ src/
     prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
     touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
-    hud.ts             backend + fps + render-scale readout
+    hud.ts             corner readout (backend / fps / % res), toggled by "Display FPS"
   render/
     uniforms.ts        the shared uniform "bus" (camera, time, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)

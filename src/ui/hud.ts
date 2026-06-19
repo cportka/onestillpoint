@@ -3,13 +3,14 @@ import type { RendererBundle } from '../core/Renderer';
 export interface Hud {
   /** Call once per frame with the real frame delta (seconds). */
   update(frameDelta: number): void;
+  /** Show/hide the readout (the panel's "Display FPS" toggle). */
+  setVisible(on: boolean): void;
 }
 
 /**
- * A minimal corner readout: active GPU backend + live frame rate. It exists to
- * satisfy the Phase 0 acceptance check (confirm WebGPU is active, and that the
- * forced WebGL2 fallback renders) and to keep an eye on perf. It folds into the
- * lil-gui panel in Phase 4.
+ * A minimal corner readout: active GPU backend · live frame rate · current
+ * render-resolution scale (the "% res" — auto-resolution lowers it under load).
+ * Hidden by default; revealed by the panel's "Display FPS" toggle.
  */
 export function createHud(
   backend: RendererBundle['backend'],
@@ -17,6 +18,7 @@ export function createHud(
 ): Hud {
   const el = document.createElement('div');
   el.className = 'hud';
+  el.style.display = 'none'; // shown only when "Display FPS" is on
   document.body.appendChild(el);
 
   const label = backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
@@ -25,8 +27,8 @@ export function createHud(
   let fps = 0;
 
   const render = () => {
-    const res = getScale ? ` · ${Math.round(getScale() * 100)}%` : '';
-    el.textContent = `One Still Point · ${label} · ${fps} fps${res}`;
+    const res = getScale ? ` · ${Math.round(getScale() * 100)}% res` : '';
+    el.textContent = `${label} · ${fps} fps${res}`;
   };
   render();
 
@@ -40,6 +42,9 @@ export function createHud(
         acc = 0;
         render();
       }
+    },
+    setVisible(on: boolean): void {
+      el.style.display = on ? '' : 'none';
     },
   };
 }

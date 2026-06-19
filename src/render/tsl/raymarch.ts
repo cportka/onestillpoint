@@ -69,23 +69,6 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
     const h2 = dot(cross(pos, vel), cross(pos, vel)).toVar();
     const rHorizon = M.mul(2);
 
-    // Photon acceleration = exact Schwarzschild (primary) + weak-field deflection
-    // from any massive companion (linear superposition, a = -2·m·d/|d|³, validated
-    // in scripts/validate-lensing.mjs). The whole secondary block is gated on
-    // `lensingActive`, so with no lensing body it is one skipped uniform branch —
-    // the default scene's geodesic is unchanged and costs nothing extra.
-    const totalAccel = (p: Node<'vec3'>) => {
-      const a = photonAccel(p, h2, M).toVar();
-      If(bodies.lensingActive.greaterThan(0.5), () => {
-        bodies.slots.forEach((slot) => {
-          const d = p.sub(slot.posRadius.xyz);
-          const invR3 = pow(dot(d, d).add(0.04), float(-1.5));
-          a.assign(a.add(d.mul(slot.lensMass.mul(-2).mul(invR3))));
-        });
-      });
-      return a;
-    };
-
     const captured = float(0).toVar();
     const escaped = float(0).toVar();
     const radiance = vec3(0).toVar();
@@ -116,15 +99,33 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
       const dl = select(inRadial, min(coarse, max(distY.mul(0.4), bh.volumeStep)), coarse);
       const half = dl.mul(0.5);
 
+      // Acceleration = exact Schwarzschild (primary, strong-field) + weak-field
+      // deflection from any massive companion (a = −2·m·d/|d|³, validated in
+      // scripts/validate-lensing.mjs). The secondary term varies slowly, so it is
+      // evaluated ONCE per step here and shared across the RK4 stages — only the
+      // primary is re-evaluated per stage. That keeps the geodesic accurate while
+      // cutting the companion-lensing cost ~4×, which is what made adding a black
+      // hole expensive. The whole block is gated on `lensingActive`, so the
+      // default (no-lensing) scene pays nothing.
+      const secAccel = vec3(0).toVar();
+      If(bodies.lensingActive.greaterThan(0.5), () => {
+        bodies.slots.forEach((slot) => {
+          const d = pos.sub(slot.posRadius.xyz);
+          const invR3 = pow(dot(d, d).add(0.04), float(-1.5));
+          secAccel.assign(secAccel.add(d.mul(slot.lensMass.mul(-2).mul(invR3))));
+        });
+      });
+      const accelAt = (p: Node<'vec3'>) => photonAccel(p, h2, M).add(secAccel);
+
       // RK4 for dx/dλ = v, dv/dλ = a(x).
       const k1x = vel;
-      const k1v = totalAccel(pos);
+      const k1v = accelAt(pos);
       const k2x = vel.add(k1v.mul(half));
-      const k2v = totalAccel(pos.add(k1x.mul(half)));
+      const k2v = accelAt(pos.add(k1x.mul(half)));
       const k3x = vel.add(k2v.mul(half));
-      const k3v = totalAccel(pos.add(k2x.mul(half)));
+      const k3v = accelAt(pos.add(k2x.mul(half)));
       const k4x = vel.add(k3v.mul(dl));
-      const k4v = totalAccel(pos.add(k3x.mul(dl)));
+      const k4v = accelAt(pos.add(k3x.mul(dl)));
 
       const sixth = dl.div(6);
       const newPos = pos.add(k1x.add(k2x.mul(2)).add(k3x.mul(2)).add(k4x).mul(sixth));
@@ -142,30 +143,30 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         });
       });
 
-      // Opaque companion spheres (lensed + occluded by the curved-space march).
-      // Gated on `appear` so a body that has not yet swooshed in during the intro
-      // neither occludes (as a black disc) nor flashes at full brightness.
+      // Companion bodies. The whole per-slot block is gated on an active radius,
+      // so empty slots (most of them, most scenes) cost just one branch per step.
       bodies.slots.forEach((slot) => {
-        const center = slot.posRadius.xyz;
         const radius = slot.posRadius.w;
-        const appear = slot.appear;
-        If(
-          radius.greaterThan(0).and(appear.greaterThan(0.02)).and(segmentHitsSphere(pos, newPos, center, radius)),
-          () => {
+        If(radius.greaterThan(0), () => {
+          const center = slot.posRadius.xyz;
+          const appear = slot.appear;
+          // Opaque emissive sphere (lensed + occluded by the curved-space march),
+          // gated on `appear` so a body still swooshing in during the intro
+          // neither occludes as a black disc nor flashes at full brightness.
+          If(appear.greaterThan(0.02).and(segmentHitsSphere(pos, newPos, center, radius)), () => {
             bodyColor.assign(slot.color.mul(appear));
             bodyHit.assign(1);
-          },
-        );
+          });
 
-        // A secondary black hole (lensMass > 0) gets a luminous lensed photon-ring
-        // halo so it reads as a black hole, not an unlit sphere. The glow is
-        // integrated ∝ dl (step-size independent) and gated, so ordinary
-        // stars/planets — and the default scene — cost nothing here.
-        If(slot.lensMass.greaterThan(0), () => {
-          const dC = length(mix(pos, newPos, 0.5).sub(center));
-          const shell = dC.sub(radius.mul(1.25)).div(radius.mul(0.5));
-          const glow = exp(shell.mul(shell).mul(-1)).mul(dl).mul(appear);
-          radiance.assign(radiance.add(transmittance.mul(vec3(1.0, 0.7, 0.45)).mul(glow.mul(3))));
+          // A secondary black hole (lensMass > 0) gets a luminous lensed
+          // photon-ring halo so it reads as a black hole, not an unlit sphere.
+          // The glow is integrated ∝ dl (step-size independent).
+          If(slot.lensMass.greaterThan(0), () => {
+            const dC = length(mix(pos, newPos, 0.5).sub(center));
+            const shell = dC.sub(radius.mul(1.25)).div(radius.mul(0.5));
+            const glow = exp(shell.mul(shell).mul(-1)).mul(dl).mul(appear);
+            radiance.assign(radiance.add(transmittance.mul(vec3(1.0, 0.7, 0.45)).mul(glow.mul(3))));
+          });
         });
       });
 
