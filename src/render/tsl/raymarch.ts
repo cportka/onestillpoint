@@ -27,6 +27,7 @@ import type { Uniforms } from '../uniforms';
 import { segmentHitsSphere } from './bodies';
 import { mediumDensity, mediumSource } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
+import { secondaryDisk } from './secondaryDisk';
 import { starfield } from './starfield';
 
 const MAX_STEPS = 512;
@@ -96,7 +97,19 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
       const inSlab = inRadial.and(distY.lessThan(yMax));
 
       const coarse = clamp(r.sub(M.mul(1.5)).mul(0.06), float(0.02), float(3));
-      const dl = select(inRadial, min(coarse, max(distY.mul(0.4), bh.volumeStep)), coarse);
+      const dlBase = select(inRadial, min(coarse, max(distY.mul(0.4), bh.volumeStep)), coarse);
+      // Near a secondary hole, cap the step so its thin disk slab can't be jumped
+      // by a coarse step far from the primary. Gated, so the default scene pays nothing.
+      const stepCap = float(99).toVar();
+      If(bodies.lensingActive.greaterThan(0.5), () => {
+        bodies.slots.forEach((slot) => {
+          If(slot.lensMass.greaterThan(0), () => {
+            const near = length(pos.sub(slot.posRadius.xyz)).lessThan(slot.posRadius.w.mul(6).add(2));
+            stepCap.assign(select(near, min(stepCap, max(slot.posRadius.w.mul(0.3), bh.volumeStep)), stepCap));
+          });
+        });
+      });
+      const dl = min(dlBase, stepCap);
       const half = dl.mul(0.5);
 
       // Acceleration = exact Schwarzschild (primary, strong-field) + weak-field
@@ -158,14 +171,26 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
             bodyHit.assign(1);
           });
 
-          // A secondary black hole (lensMass > 0) gets a luminous lensed
-          // photon-ring halo so it reads as a black hole, not an unlit sphere.
-          // The glow is integrated ∝ dl (step-size independent).
+          // A secondary black hole (lensMass > 0) carries its own compact
+          // volumetric accretion disk — marched only where the ray crosses its
+          // slab and composited front-to-back like the primary's. Its inner edge
+          // glows hot, so the dark core reads as a black hole framed by the disk.
           If(slot.lensMass.greaterThan(0), () => {
-            const dC = length(mix(pos, newPos, 0.5).sub(center));
-            const shell = dC.sub(radius.mul(1.25)).div(radius.mul(0.5));
-            const glow = exp(shell.mul(shell).mul(-1)).mul(dl).mul(appear);
-            radiance.assign(radiance.add(transmittance.mul(vec3(1.0, 0.7, 0.45)).mul(glow.mul(3))));
+            const mid = mix(pos, newPos, 0.5);
+            const pl = mid.sub(center);
+            const rl = length(vec2(pl.x, pl.z));
+            const inSecSlab = rl
+              .greaterThan(radius.mul(1.4))
+              .and(rl.lessThan(radius.mul(6)))
+              .and(abs(pl.y).lessThan(radius.mul(0.7)));
+            If(inSecSlab.and(appear.greaterThan(0.02)), () => {
+              const disk = secondaryDisk(mid, center, radius, slot.lensMass, u.time, u.timeBlur, bh);
+              const density = disk.density.mul(appear);
+              If(density.greaterThan(0.001), () => {
+                radiance.assign(radiance.add(transmittance.mul(disk.emission).mul(appear).mul(dl)));
+                transmittance.assign(transmittance.mul(exp(density.mul(bh.extinction).mul(dl).mul(-1))));
+              });
+            });
           });
         });
       });

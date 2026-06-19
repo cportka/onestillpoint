@@ -145,6 +145,8 @@ canvas {
   --font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-size: 12px;
   --input-font-size: 12px;
+  --spacing: 7px;
+  --widget-height: 26px;
   letter-spacing: 0.04em;
 }
 .lil-gui.root {
@@ -155,4 +157,60 @@ canvas {
 .lil-gui.autoPlace,
 .lil-gui.lil-auto-place {
   right: 0;
+}
+
+/* Bolder section dividers: a brighter line atop each folder header. */
+.lil-gui .lil-children .lil-title {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+/* "Advanced settings" reads as a section break: bold label + a stronger divider. */
+.lil-controller.osp-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  margin-top: 7px;
+  padding-top: 5px;
+}
+.lil-controller.osp-section .lil-name {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Add-body confirmation flash: ✓ added (green) / ✗ at max (red). */
+.lil-controller.osp-flash-ok,
+.lil-controller.osp-flash-max {
+  position: relative;
+}
+.lil-controller.osp-flash-ok::after,
+.lil-controller.osp-flash-max::after {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  font-weight: 700;
+  pointer-events: none;
+  animation: osp-flash 0.75s ease forwards;
+}
+.lil-controller.osp-flash-ok::after {
+  content: '✓';
+  color: #7ee787;
+}
+.lil-controller.osp-flash-max::after {
+  content: '✗';
+  color: #ff7b72;
+}
+@keyframes osp-flash {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.15);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(1);
+  }
 }
