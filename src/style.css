@@ -106,17 +106,19 @@ canvas {
   text-align: center;
 }
 
-/* Long-press tooltip popup for touch devices (desktop uses native title hovers). */
+/* Long-press tooltip popup for touch devices (desktop uses native title hovers).
+   z-index sits above lil-gui (1001) so it is never hidden behind the panel, and
+   the background is fully opaque for legibility over both the panel and scene. */
 .osp-tooltip {
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 100;
+  z-index: 10000;
   max-width: 260px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(18, 18, 22, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #15151a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.92);
   font: 12px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
@@ -148,4 +150,9 @@ canvas {
 .lil-gui.root {
   -webkit-backdrop-filter: blur(7px);
   backdrop-filter: blur(7px);
+}
+/* Flush to the right edge (lil-gui's autoPlace leaves a 15px gap by default). */
+.lil-gui.autoPlace,
+.lil-gui.lil-auto-place {
+  right: 0;
 }

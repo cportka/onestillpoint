@@ -51,21 +51,31 @@ describe('FormationSequence', () => {
     }
   });
 
-  it('completes instantly when reduced motion is preferred', () => {
-    const driver = new StubDriver();
-    const formation = { value: 0.5 };
-    const seq = new FormationSequence(driver, formation, { reducedMotion: true });
+  it('plays a gentler, shorter zoom under reduced motion (not skipped)', () => {
+    const reduced = new StubDriver();
+    const seq = new FormationSequence(reduced, { value: 1 }, { reducedMotion: true });
+    expect(reduced.began).toBe(1); // it still runs (no instant skip)
+    expect(seq.done).toBe(false);
 
+    // Gentler: it starts closer in than the full intro would pull back to.
+    const full = new StubDriver();
+    new FormationSequence(full, { value: 1 }, {});
+    expect(reduced.lastDistance).toBeLessThan(full.lastDistance);
+
+    runToEnd(seq);
     expect(seq.done).toBe(true);
-    expect(driver.began).toBe(0); // no dolly
-    expect(driver.finished).toBe(1);
-    expect(formation.value).toBe(1);
+    expect(reduced.lastDistance).toBeCloseTo(reduced.homeDistance, 4);
   });
 
-  it('skips to the formed state on demand', () => {
+  it('skips to the formed state on demand, but not before the load guard', () => {
     const driver = new StubDriver();
     const formation = { value: 1 };
     const seq = new FormationSequence(driver, formation, { duration: 6 });
+
+    seq.skip(); // too early — guarded against a stray load tap
+    expect(seq.done).toBe(false);
+
+    for (let i = 0; i < 60; i++) seq.update(0.016); // ~1s, past the guard
     seq.skip();
     expect(seq.done).toBe(true);
     expect(driver.finished).toBe(1);

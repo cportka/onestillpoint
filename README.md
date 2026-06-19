@@ -14,6 +14,15 @@ N-body simulator.
 
 ## Status
 
+**Phase 10 — UX polish & intro robustness (v0.10).** The panel leads with the
+essentials and tucks **GPU physics · Display FPS · Pause · Step** as the first
+items under **Advanced settings**, with **Replay intro** as the last basic row;
+it sits flush to the right edge. The long-press tooltip now renders fully opaque
+and above the panel. And the formation intro is hardened for mobile: it no longer
+skips entirely under `prefers-reduced-motion` (which iOS Low Power Mode reports) —
+it plays a gentler, shorter zoom — and a brief guard stops a stray load-time tap
+from cancelling it, fixing the "no intro zoom" seen on an older iPhone.
+
 **Phase 9 — performance auto-tuning & panel polish (v0.9).** A new quality
 **auto-detect** picks a tier (Low / Medium / High) from device signals on load —
 phones default Low — setting the starting resolution, the dust step, and the
@@ -86,6 +95,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 7 | Formation sequence (art-directed): camera dolly + disk ignition, skip/replay | ✅ done |
 | 8 | Choreographed entrance (retrograde planets) + panel reorg (Filter / Advanced settings) | ✅ done |
 | 9 | Performance auto-tuning (quality tiers) + cheaper companion lensing + panel polish | ✅ done |
+| 10 | UX polish (panel reorder / flush-right, opaque tooltip) + reduced-motion intro fix | ✅ done |
 
 ## Stack
 

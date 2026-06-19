@@ -1,6 +1,16 @@
 const DURATION = 6.5; // seconds of intro
 const FAR_FACTOR = 2.6; // how far back the dolly starts, in units of the home distance
 
+// Reduced motion: a gentler, shorter zoom rather than skipping it outright. iOS
+// Low Power Mode reports `prefers-reduced-motion: reduce`, so an old phone on low
+// battery would otherwise see no intro at all — we still want *some* arrival.
+const REDUCED_DURATION = 2.6;
+const REDUCED_FAR_FACTOR = 1.5;
+
+// Ignore tap-to-skip for the first instant: a stray touch as the page loads
+// (common on mobile) must not cancel the intro before it has visibly begun.
+const SKIP_GUARD = 0.5;
+
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 const smootherstep = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10);
 
@@ -24,8 +34,9 @@ export interface IntroDriver {
  * Phase 7 — the art-directed formation sequence. On load the camera dollies in
  * from far while the accretion disk **ignites** (a `formation` factor 0 → 1 that
  * the shader multiplies into the dust, so the disk condenses and brightens into
- * being). It is skippable (tap), replayable, and honours `prefers-reduced-motion`
- * by completing instantly. The easing is pure so it can be tested headless.
+ * being). It is skippable (tap, after a brief guard) and replayable; under
+ * `prefers-reduced-motion` it plays a gentler, shorter zoom. The easing is pure
+ * so it can be tested headless.
  */
 export class FormationSequence {
   done = false;
@@ -38,8 +49,9 @@ export class FormationSequence {
     private readonly formation: { value: number },
     opts: { reducedMotion?: boolean; duration?: number } = {},
   ) {
-    this.duration = opts.reducedMotion ? 0 : (opts.duration ?? DURATION);
-    this.far = driver.homeDistance * FAR_FACTOR;
+    const reduced = opts.reducedMotion ?? false;
+    this.duration = opts.duration ?? (reduced ? REDUCED_DURATION : DURATION);
+    this.far = driver.homeDistance * (reduced ? REDUCED_FAR_FACTOR : FAR_FACTOR);
     this.begin();
   }
 
@@ -59,9 +71,9 @@ export class FormationSequence {
     if (t >= 1) this.finish();
   }
 
-  /** Jump straight to the formed state (tap-to-skip). */
+  /** Jump straight to the formed state (tap-to-skip), once past the load guard. */
   skip(): void {
-    if (!this.done) this.finish();
+    if (!this.done && this.elapsed >= SKIP_GUARD) this.finish();
   }
 
   /** Play it again from the top (the panel's "Replay intro"). */

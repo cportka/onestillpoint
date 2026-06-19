@@ -125,8 +125,19 @@ export function createControls(ctx: {
       'GPU time while present.',
   );
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
+
+  // --- Replay intro (basic; the last item before the Advanced toggle) ---
+  tip(
+    gui.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
+    'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
+  );
+
+  // --- Advanced settings toggle (remembered across sessions) ---
+  const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
+
+  // --- Advanced, in order: GPU physics, Display FPS, Pause, Step, then tuning ---
   const gpuAvailable = backend === 'webgpu';
-  const gpuCtrl = bodies.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
+  const gpuCtrl = gui.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
     physics.setGPU(v);
   });
   if (!gpuAvailable) gpuCtrl.disable();
@@ -139,7 +150,6 @@ export function createControls(ctx: {
           'CPU (exact, and fine for a handful of bodies).',
   );
 
-  // --- Display FPS (basic; default off) ---
   hud.setVisible(prefs.showFps);
   const fpsCtrl = tip(
     gui.add(prefs, 'showFps').name('Display FPS'),
@@ -151,10 +161,13 @@ export function createControls(ctx: {
     savePrefs(prefs);
   });
 
-  // --- Advanced settings toggle (remembered across sessions) ---
-  const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
+  const pauseCtrl = tip(gui.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+  const stepCtrl = tip(
+    gui.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
+    'Advance a single frame while paused.',
+  );
 
-  // --- Advanced: deep tuning, hidden until the toggle is on ---
+  // --- Advanced: deep tuning folders ---
   const look = gui.addFolder('Look');
   tip(
     look.add(bh.emissiveStrength, 'value', 0, 2, 0.01).name('Disk brightness'),
@@ -270,14 +283,6 @@ export function createControls(ctx: {
       'volume but slower.',
   );
 
-  // Movie (playback) — its own section under Advanced.
-  const movie = gui.addFolder('Movie');
-  tip(movie.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
-  tip(
-    movie.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
-    'Advance a single frame while paused.',
-  );
-
   // Click/tap outside the panel to collapse it (remembered; on by default).
   const tapOutsideCtrl = tip(
     gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
@@ -285,20 +290,17 @@ export function createControls(ctx: {
   );
   tapOutsideCtrl.onChange(() => savePrefs(prefs));
 
-  // Replay the formation intro — the last button under Advanced.
-  const replayCtrl = tip(
-    gui.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
-    'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
-  );
-
+  // Everything revealed by the Advanced toggle: GPU/FPS/Pause/Step first, then folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
+    gpuCtrl,
+    fpsCtrl,
+    pauseCtrl,
+    stepCtrl,
     look,
     anim,
     post,
     quality,
-    movie,
     tapOutsideCtrl,
-    replayCtrl,
   ];
   const applyAdvanced = (on: boolean): void => {
     advanced.forEach((x) => (on ? x.show() : x.hide()));
@@ -308,7 +310,7 @@ export function createControls(ctx: {
     applyAdvanced(v);
     savePrefs(prefs);
   });
-  tip(advCtrl, 'Reveal the deeper tuning (Look, Animation, Bloom, Quality, Movie, Replay). Remembered for next time.');
+  tip(advCtrl, 'Reveal GPU physics, Display FPS, Pause/Step, and the deeper tuning folders. Remembered for next time.');
 
   // Version chip pinned above the folders; start collapsed.
   gui.$children.prepend(createVersionBadge(VERSION));
