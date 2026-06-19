@@ -16,7 +16,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate-geodesic.mjs"
+    "validate": "node scripts/validate-geodesic.mjs && node scripts/validate-disk.mjs"
   },
   "dependencies": {
     "lil-gui": "^0.21.0",

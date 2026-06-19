@@ -24,7 +24,7 @@ export class RaymarchPass {
 
     this.material = new MeshBasicNodeMaterial();
     this.material.colorNode = colorNode;
-    this.material.toneMapped = false; // tone mapping arrives with the disk (Phase 4)
+    this.material.toneMapped = true; // HDR disk → renderer ACES tone mapping
     this.material.depthTest = false;
     this.material.depthWrite = false;
     this.material.side = DoubleSide;
