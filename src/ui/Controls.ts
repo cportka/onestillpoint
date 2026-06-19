@@ -1,9 +1,12 @@
 import GUI from 'lil-gui';
+import type BloomNode from 'three/addons/tsl/display/BloomNode.js';
 import type { WebGPURenderer } from 'three/webgpu';
+import { VERSION } from '../version';
 import type { Loop } from '../core/Loop';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
 import type { BlackHole } from '../scene/BlackHole';
 import { PRESETS } from './presets';
+import { createVersionBadge } from './versionBadge';
 
 /**
  * The lil-gui control panel. Controllers bind straight to the uniform `.value`
@@ -15,8 +18,9 @@ export function createControls(ctx: {
   loop: Loop;
   renderer: WebGPURenderer;
   scaler: ResolutionScaler;
+  bloom: BloomNode;
 }): GUI {
-  const { blackHole: bh, loop, renderer, scaler } = ctx;
+  const { blackHole: bh, loop, renderer, scaler, bloom } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
 
   const proxy = { preset: 'Physical' };
@@ -57,10 +61,19 @@ export function createControls(ctx: {
   anim.add(bh.infallRate, 'value', 0, 1, 0.01).name('Infall');
   anim.add(bh.churnRate, 'value', 0, 1, 0.01).name('Churn');
 
+  const post = gui.addFolder('Bloom');
+  post.add(bloom.strength, 'value', 0, 2, 0.02).name('Strength');
+  post.add(bloom.radius, 'value', 0, 1, 0.02).name('Radius');
+  post.add(bloom.threshold, 'value', 0, 2, 0.02).name('Threshold');
+
   const quality = gui.addFolder('Quality');
   quality.add(scaler, 'enabled').name('Auto resolution');
   quality.add(scaler, 'minScale', 0.3, 1, 0.05).name('Min resolution');
   quality.add(bh.volumeStep, 'value', 0.1, 0.6, 0.01).name('Volume step (perf)');
+
+  // Version chip pinned above the folders; start collapsed.
+  gui.$children.prepend(createVersionBadge(VERSION));
+  gui.close();
 
   return gui;
 }
