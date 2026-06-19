@@ -14,16 +14,18 @@ N-body simulator.
 
 ## Status
 
-**Phase 0 — Scaffold (current).** The full rendering pipeline is in place and
-demoable: a WebGPU renderer with WebGL2 fallback, a fullscreen TSL pass painting
-a procedural test grid, an orbit camera whose position/orientation feed the
-shader as uniforms, a time uniform threaded through the loop, and a GitHub Pages
-deploy. The physics arrives in later phases.
+**Phase 1 — Schwarzschild geometry (current).** Per-pixel photon geodesics are
+integrated by RK4 through the curved spacetime: rays that cross the horizon form
+the black shadow, rays that escape sample a gravitationally lensed procedural
+star field, and rays grazing the photon sphere brighten into the photon ring.
+The physics is validated on the CPU (`npm run validate`): the critical impact
+parameter comes out at 3√3·M and the apparent shadow radius matches the textbook
+static-observer formula to machine precision.
 
 | Phase | What | State |
 | ----- | ---- | ----- |
-| 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ in progress |
-| 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ⏳ |
+| 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ done |
+| 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ in progress |
 | 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ⏳ |
 | 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ⏳ |
 | 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ⏳ |
@@ -66,16 +68,22 @@ uniforms each frame.
 
 ```
 src/
-  main.ts            bootstrap: wire uniforms → camera/loop/pass → render loop
+  main.ts              bootstrap: wire uniforms → camera/loop/pass → render loop
   core/
-    Renderer.ts      WebGPURenderer + automatic WebGL2 fallback
-    CameraRig.ts     PerspectiveCamera + OrbitControls → camera uniforms
-    Loop.ts          frame driver + simulation clock → time uniform
+    Renderer.ts        WebGPURenderer + automatic WebGL2 fallback
+    CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms
+    Loop.ts            frame driver + simulation clock → time uniform
+  scene/
+    BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
   render/
-    uniforms.ts      the shared uniform "bus" (camera, time, resolution)
-    RaymarchPass.ts  fullscreen quad + node material (the shader lives here)
+    uniforms.ts        the shared uniform "bus" (camera, time, resolution)
+    RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
     tsl/
-      gradient.ts    Phase 0 test pattern (Phase 1 replaces with the geodesic raymarch)
+      raymarch.ts      per-pixel geodesic integration loop → shadow / ring / lensing
+      schwarzschild.ts photon acceleration + static-observer ray (the metric)
+      starfield.ts     procedural lensed background
+scripts/
+  validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M (run via npm run validate)
 ```
 
 A guiding constraint: the infalling dust is a **volumetric participating

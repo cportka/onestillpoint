@@ -27,7 +27,7 @@ export class CameraRig {
     this.controls.dampingFactor = 0.08;
     this.controls.rotateSpeed = 0.6;
     this.controls.zoomSpeed = 0.8;
-    this.controls.minDistance = 3; // stay outside the 2M horizon
+    this.controls.minDistance = 4; // stay outside the 3M photon sphere
     this.controls.maxDistance = 120;
     this.controls.target.set(0, 0, 0);
     this.controls.update();
