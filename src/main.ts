@@ -1,4 +1,6 @@
 import { CameraRig } from './core/CameraRig';
+import { prefersReducedMotion } from './core/device';
+import { FormationSequence } from './core/FormationSequence';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { ResolutionScaler } from './core/ResolutionScaler';
@@ -39,9 +41,19 @@ async function main(): Promise<void> {
   const loop = new Loop(renderer);
   const time = new TimeController();
   const physics = new PhysicsController(scene, new GPUPhysicsEngine(renderer));
+  // Auto-run the N-body sim on the GPU where WebGPU compute exists; the WebGL2
+  // fallback has no compute, so it stays on the (exact) CPU integrator.
+  physics.setGPU(backend === 'webgpu');
   const scaler = new ResolutionScaler();
   scaler.scale = 0.85; // start a touch soft; the scaler ramps to native if there's headroom
   const hud = createHud(backend, () => scaler.scale);
+
+  // The art-directed intro: dolly in from far while the disk ignites.
+  const formation = new FormationSequence(rig, uniforms.formation, {
+    reducedMotion: prefersReducedMotion(),
+  });
+  // Tap / click anywhere on the scene to skip straight to the formed view.
+  renderer.domElement.addEventListener('pointerdown', () => formation.skip(), { once: true });
 
   // Drawing-buffer size = CSS size × capped DPR × adaptive scale. The canvas is
   // forced to fill the viewport in CSS, so a smaller buffer simply upscales.
@@ -59,7 +71,7 @@ async function main(): Promise<void> {
   window.addEventListener('resize', applySize);
   applySize();
 
-  createControls({ blackHole, scene, physics, time, renderer, scaler, bloom: post.bloom });
+  createControls({ blackHole, scene, physics, time, formation, backend, renderer, scaler, bloom: post.bloom });
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
@@ -71,7 +83,9 @@ async function main(): Promise<void> {
     if (t.fd > 0) physics.step(t.fd);
 
     updateBodyUniforms(bodyUniforms, scene);
-    rig.update();
+    // The intro drives the camera (controls disabled) until it settles home.
+    if (formation.done) rig.update();
+    else formation.update(frameDelta);
     post.render();
     hud.update(frameDelta);
   };
@@ -79,7 +93,7 @@ async function main(): Promise<void> {
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, time, uniforms, blackHole, scene, physics, bodyUniforms, scaler },
+    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler },
   });
 }
 

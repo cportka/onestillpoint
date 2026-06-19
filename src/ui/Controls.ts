@@ -2,6 +2,8 @@ import GUI, { type Controller } from 'lil-gui';
 import type BloomNode from 'three/addons/tsl/display/BloomNode.js';
 import type { WebGPURenderer } from 'three/webgpu';
 import { VERSION } from '../version';
+import type { FormationSequence } from '../core/FormationSequence';
+import type { RendererBundle } from '../core/Renderer';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
 import type { TimeController } from '../core/TimeController';
 import type { PhysicsController } from '../physics/PhysicsController';
@@ -9,6 +11,7 @@ import { MAX_BODIES } from '../render/bodyUniforms';
 import type { BlackHole } from '../scene/BlackHole';
 import type { Scene } from '../scene/Scene';
 import { PRESETS } from './presets';
+import { attachTouchTooltips } from './touchTooltips';
 import { createVersionBadge } from './versionBadge';
 
 /** Attach a native hover tooltip to a controller's row. */
@@ -27,11 +30,13 @@ export function createControls(ctx: {
   scene: Scene;
   physics: PhysicsController;
   time: TimeController;
+  formation: FormationSequence;
+  backend: RendererBundle['backend'];
   renderer: WebGPURenderer;
   scaler: ResolutionScaler;
   bloom: BloomNode;
 }): GUI {
-  const { blackHole: bh, scene, physics, time, renderer, scaler, bloom } = ctx;
+  const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
 
   const timeFolder = gui.addFolder('Time');
@@ -39,22 +44,29 @@ export function createControls(ctx: {
   const fmtScale = (s: number): string => {
     if (s >= 1e6) return `${(s / 1e6).toFixed(1)}M`;
     if (s >= 1e3) return `${(s / 1e3).toFixed(1)}k`;
-    return `${Math.round(s)}`;
+    if (s >= 1) return `${Math.round(s)}`;
+    return `1/${Math.round(1 / s)}`; // slow-motion: ×1/10 … ×1/1000
   };
-  const speedCtrl = timeFolder.add(timeProxy, 'exp', 0, 6, 0.05).name('Speed ×1');
+  // exp is log10(timeScale): −3 → ×1/1000 (slow-mo) up to 6 → ×1,000,000.
+  const speedCtrl = timeFolder.add(timeProxy, 'exp', -3, 6, 0.05).name('Speed ×1');
   speedCtrl.onChange((v: number) => {
     time.timeScale = Math.pow(10, v);
     speedCtrl.name(`Speed ×${fmtScale(time.timeScale)}`);
   });
   tip(
     speedCtrl,
-    'How fast time runs — ×1 (real-time) up to ×1,000,000. As you speed up, the fine ' +
-      'turbulence smoothly averages into a steady disk instead of strobing, and the orbits accelerate.',
+    'How fast time runs — from ×1/1000 (slow-motion) through ×1 (real-time) up to ' +
+      '×1,000,000. Speeding up accelerates the orbits and smoothly averages the fine ' +
+      'turbulence into a steady disk instead of strobing; slowing down resolves every detail.',
   );
   tip(timeFolder.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
   tip(
     timeFolder.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
     'Advance a single frame while paused.',
+  );
+  tip(
+    timeFolder.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
+    'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
   );
 
   const proxy = { preset: 'Physical' };
@@ -77,9 +89,10 @@ export function createControls(ctx: {
         renderer.toneMappingExposure = p.exposure;
         gui.controllersRecursive().forEach((c) => c.updateDisplay());
       }),
-    'A named look. Physical = accurate (full beaming + redshift). EHT = cooler ' +
-      'orange photon-ring look. Interstellar = symmetric, beaming OFF (stylised). ' +
-      'Stylized = hot, punchy, turbulent. Presets toggle real physics on/off.',
+    'A named look. Physical = accurate (full beaming + redshift). EHT (Event Horizon ' +
+      'Telescope) = the real imaged look of M87*/Sgr A*: a cooler, smoother orange photon ' +
+      'ring. Interstellar = symmetric, beaming OFF (stylised). Stylized = hot, punchy, ' +
+      'turbulent. Presets toggle real physics on/off.',
   );
 
   const look = gui.addFolder('Look');
@@ -182,22 +195,29 @@ export function createControls(ctx: {
       scene.clearCompanions();
       physics.syncBodies();
     },
-    gpu: false,
+    gpu: backend === 'webgpu', // auto-on where WebGPU compute exists (see main.ts)
   };
   tip(bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`), 'Drop a bright star onto a circular orbit around the hole. It is lensed and occluded by the shadow as it passes behind.');
   tip(bodies.add(actions, 'addPlanet').name('Add planet'), 'Drop a small dim body onto an orbit.');
   tip(
     bodies.add(actions, 'addBlackHole').name('Add black hole'),
-    'Drop in a massive dark companion that bends light around it (weak-field lensing) ' +
-      'and gravitationally slings the other bodies. Costs extra GPU time while present.',
+    'Drop in a second black hole — a dark core ringed by a luminous lensed photon ring — ' +
+      'that bends light around it and gravitationally slings the other bodies. Costs extra ' +
+      'GPU time while present.',
   );
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
+  const gpuAvailable = backend === 'webgpu';
+  const gpuCtrl = bodies.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
+    physics.setGPU(v);
+  });
+  if (!gpuAvailable) gpuCtrl.disable();
   tip(
-    bodies.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
-      physics.setGPU(v);
-    }),
-    'Run the N-body simulation on the GPU (WebGPU compute) instead of the CPU. No ' +
-      'visible change for a few bodies — it is the scaling path for many. CPU is the default.',
+    gpuCtrl,
+    gpuAvailable
+      ? 'Run the N-body simulation on the GPU (WebGPU compute). Auto-enabled here because this ' +
+          'browser has WebGPU — the scaling path for many bodies (no visible change for a few).'
+      : 'Requires WebGPU. This browser is on the WebGL2 fallback, so the N-body sim runs on the ' +
+          'CPU (exact, and fine for a handful of bodies).',
   );
 
   const quality = gui.addFolder('Quality');
@@ -220,6 +240,9 @@ export function createControls(ctx: {
   // Version chip pinned above the folders; start collapsed.
   gui.$children.prepend(createVersionBadge(VERSION));
   gui.close();
+
+  // Long-press on a row shows its tooltip on touch devices (no native hover).
+  attachTouchTooltips(gui.domElement);
 
   return gui;
 }

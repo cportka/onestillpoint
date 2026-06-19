@@ -134,7 +134,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
       If(inSlab, () => {
         volSamples.assign(volSamples.add(1));
         const midPos = mix(pos, newPos, 0.5);
-        const density = mediumDensity(midPos, u.time, u.timeBlur, bh);
+        const density = mediumDensity(midPos, u.time, u.timeBlur, bh).mul(u.formation);
         If(density.greaterThan(0.001), () => {
           const source = mediumSource(midPos, vel, density, bh);
           radiance.assign(radiance.add(transmittance.mul(source).mul(dl)));
@@ -150,6 +150,17 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
           bodyColor.assign(slot.color);
           bodyHit.assign(1);
         });
+
+        // A secondary black hole (lensMass > 0) gets a luminous lensed photon-ring
+        // halo so it reads as a black hole, not an unlit sphere. The glow is
+        // integrated ∝ dl (step-size independent) and gated, so ordinary
+        // stars/planets — and the default scene — cost nothing here.
+        If(slot.lensMass.greaterThan(0), () => {
+          const dC = length(mix(pos, newPos, 0.5).sub(center));
+          const shell = dC.sub(radius.mul(1.25)).div(radius.mul(0.5));
+          const glow = exp(shell.mul(shell).mul(-1)).mul(dl).mul(u.formation);
+          radiance.assign(radiance.add(transmittance.mul(vec3(1.0, 0.7, 0.45)).mul(glow.mul(3))));
+        });
       });
 
       If(transmittance.lessThan(0.02).or(volSamples.greaterThan(64)).or(bodyHit.greaterThan(0.5)), () => {
@@ -163,7 +174,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
     // Background behind the dust: a hit body, else the lensed star field (escaped)
     // or the black horizon. Composite by the surviving transmittance.
     const stars = starfield(normalize(vel), float(1.2)).mul(escaped);
-    const background = select(bodyHit.greaterThan(0.5), bodyColor, stars);
+    const background = select(bodyHit.greaterThan(0.5), bodyColor.mul(u.formation), stars);
     return radiance.add(transmittance.mul(background));
   })();
 }
