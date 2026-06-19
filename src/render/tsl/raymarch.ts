@@ -121,7 +121,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole) {
 
       // Stop once the dust has absorbed what's behind it, or a grazing ray has
       // taken enough volume samples (bounds worst-case cost).
-      If(transmittance.lessThan(0.02).or(volSamples.greaterThan(120)), () => {
+      If(transmittance.lessThan(0.02).or(volSamples.greaterThan(64)), () => {
         Break();
       });
 

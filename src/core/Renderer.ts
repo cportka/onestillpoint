@@ -26,8 +26,11 @@ export async function createRenderer(): Promise<RendererBundle> {
     powerPreference: 'high-performance',
   });
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  // Pixel ratio is folded into the drawing-buffer size we set each frame (see
+  // ResolutionScaler), so keep the renderer's own ratio at 1 to avoid double
+  // scaling.
+  renderer.setPixelRatio(1);
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.setClearColor(0x000000, 1);
 
   // The accretion disk is HDR (relativistic beaming spans a huge dynamic

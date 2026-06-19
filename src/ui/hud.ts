@@ -11,7 +11,10 @@ export interface Hud {
  * forced WebGL2 fallback renders) and to keep an eye on perf. It folds into the
  * lil-gui panel in Phase 4.
  */
-export function createHud(backend: RendererBundle['backend']): Hud {
+export function createHud(
+  backend: RendererBundle['backend'],
+  getScale?: () => number,
+): Hud {
   const el = document.createElement('div');
   el.className = 'hud';
   document.body.appendChild(el);
@@ -22,7 +25,8 @@ export function createHud(backend: RendererBundle['backend']): Hud {
   let fps = 0;
 
   const render = () => {
-    el.textContent = `One Still Point · ${label} · ${fps} fps`;
+    const res = getScale ? ` · ${Math.round(getScale() * 100)}%` : '';
+    el.textContent = `One Still Point · ${label} · ${fps} fps${res}`;
   };
   render();
 

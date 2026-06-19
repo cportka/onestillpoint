@@ -25,12 +25,12 @@ export function createBlackHole() {
     doppler: uniform(1), // relativistic beaming toggle (0 or 1)
     redshift: uniform(1), // gravitational redshift toggle (0 or 1)
 
-    // Volumetric dust (Phase 3)
+    // Volumetric dust (Phase 3, retuned in Phase 4)
     diskDensity: uniform(1.0), // overall density scale
-    emissiveStrength: uniform(140), // HDR heat-emission scale
-    scatterStrength: uniform(6), // cheap single-scatter of inner light
-    extinction: uniform(0.5), // Beer–Lambert opacity coefficient
-    volumeStep: uniform(0.15), // affine step inside the disk slab (M)
+    emissiveStrength: uniform(2.5), // HDR heat-emission scale
+    scatterStrength: uniform(0.2), // cheap single-scatter of inner light
+    extinction: uniform(0.25), // Beer–Lambert opacity (lower = more transparent)
+    volumeStep: uniform(0.25), // affine step inside the disk slab (M)
 
     // Turbulence & flow (Phase 3 animation)
     turbAmount: uniform(0.9), // turbulence depth (filament contrast)
