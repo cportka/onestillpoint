@@ -2,8 +2,8 @@ import GUI, { type Controller } from 'lil-gui';
 import type BloomNode from 'three/addons/tsl/display/BloomNode.js';
 import type { WebGPURenderer } from 'three/webgpu';
 import { VERSION } from '../version';
-import type { Loop } from '../core/Loop';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
+import type { TimeController } from '../core/TimeController';
 import type { PhysicsController } from '../physics/PhysicsController';
 import { MAX_BODIES } from '../render/bodyUniforms';
 import type { BlackHole } from '../scene/BlackHole';
@@ -26,13 +26,36 @@ export function createControls(ctx: {
   blackHole: BlackHole;
   scene: Scene;
   physics: PhysicsController;
-  loop: Loop;
+  time: TimeController;
   renderer: WebGPURenderer;
   scaler: ResolutionScaler;
   bloom: BloomNode;
 }): GUI {
-  const { blackHole: bh, scene, physics, loop, renderer, scaler, bloom } = ctx;
+  const { blackHole: bh, scene, physics, time, renderer, scaler, bloom } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
+
+  const timeFolder = gui.addFolder('Time');
+  const timeProxy = { exp: 0 };
+  const fmtScale = (s: number): string => {
+    if (s >= 1e6) return `${(s / 1e6).toFixed(1)}M`;
+    if (s >= 1e3) return `${(s / 1e3).toFixed(1)}k`;
+    return `${Math.round(s)}`;
+  };
+  const speedCtrl = timeFolder.add(timeProxy, 'exp', 0, 6, 0.05).name('Speed ×1');
+  speedCtrl.onChange((v: number) => {
+    time.timeScale = Math.pow(10, v);
+    speedCtrl.name(`Speed ×${fmtScale(time.timeScale)}`);
+  });
+  tip(
+    speedCtrl,
+    'How fast time runs — ×1 (real-time) up to ×1,000,000. As you speed up, the fine ' +
+      'turbulence smoothly averages into a steady disk instead of strobing, and the orbits accelerate.',
+  );
+  tip(timeFolder.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+  tip(
+    timeFolder.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
+    'Advance a single frame while paused.',
+  );
 
   const proxy = { preset: 'Physical' };
   tip(
@@ -102,7 +125,6 @@ export function createControls(ctx: {
   );
 
   const anim = gui.addFolder('Animation');
-  tip(anim.add(loop, 'paused').name('Pause'), 'Freeze the animation — useful for inspecting the lensing geometry on a still frame.');
   tip(
     anim.add(bh.rotationSpeed, 'value', 0, 20, 0.5).name('Rotation speed'),
     'How fast the disk visibly churns (multiplies the Keplerian rate). Higher = faster ' +
@@ -160,7 +182,6 @@ export function createControls(ctx: {
       scene.clearCompanions();
       physics.syncBodies();
     },
-    timeScale: physics.timeScale,
     gpu: false,
   };
   tip(bodies.add(actions, 'addStar').name(`Add star (max ${MAX_BODIES})`), 'Drop a bright star onto a circular orbit around the hole. It is lensed and occluded by the shadow as it passes behind.');
@@ -171,12 +192,6 @@ export function createControls(ctx: {
       'and gravitationally slings the other bodies. Costs extra GPU time while present.',
   );
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
-  tip(
-    bodies.add(actions, 'timeScale', 0, 300, 1).name('Orbit speed').onChange((v: number) => {
-      physics.timeScale = v;
-    }),
-    'How fast the bodies orbit (simulation time per real second). Higher = faster orbits.',
-  );
   tip(
     bodies.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
       physics.setGPU(v);

@@ -134,7 +134,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
       If(inSlab, () => {
         volSamples.assign(volSamples.add(1));
         const midPos = mix(pos, newPos, 0.5);
-        const density = mediumDensity(midPos, u.time, bh);
+        const density = mediumDensity(midPos, u.time, u.timeBlur, bh);
         If(density.greaterThan(0.001), () => {
           const source = mediumSource(midPos, vel, density, bh);
           radiance.assign(radiance.add(transmittance.mul(source).mul(dl)));

@@ -2,6 +2,7 @@ import { CameraRig } from './core/CameraRig';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { ResolutionScaler } from './core/ResolutionScaler';
+import { TimeController } from './core/TimeController';
 import { GPUPhysicsEngine } from './physics/GPUPhysicsEngine';
 import { PhysicsController } from './physics/PhysicsController';
 import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
@@ -35,7 +36,8 @@ async function main(): Promise<void> {
   const rig = new CameraRig(uniforms, renderer.domElement);
   const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole, bodyUniforms));
   const post = createPostPipeline(renderer, pass.scene, pass.camera);
-  const loop = new Loop(renderer, uniforms);
+  const loop = new Loop(renderer);
+  const time = new TimeController();
   const physics = new PhysicsController(scene, new GPUPhysicsEngine(renderer));
   const scaler = new ResolutionScaler();
   scaler.scale = 0.85; // start a touch soft; the scaler ramps to native if there's headroom
@@ -57,11 +59,17 @@ async function main(): Promise<void> {
   window.addEventListener('resize', applySize);
   applySize();
 
-  createControls({ blackHole, scene, physics, loop, renderer, scaler, bloom: post.bloom });
+  createControls({ blackHole, scene, physics, time, renderer, scaler, bloom: post.bloom });
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
-    if (!loop.paused) physics.step(frameDelta);
+
+    const t = time.tick(frameDelta);
+    uniforms.time.value += t.animDelta; // bounded dust clock
+    uniforms.timeBlur.value = t.timeBlur;
+    physics.timeScale = t.orbitMul;
+    if (t.fd > 0) physics.step(t.fd);
+
     updateBodyUniforms(bodyUniforms, scene);
     rig.update();
     post.render();
@@ -71,7 +79,7 @@ async function main(): Promise<void> {
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, uniforms, blackHole, scene, physics, bodyUniforms, scaler },
+    osp: { renderer, rig, pass, post, loop, time, uniforms, blackHole, scene, physics, bodyUniforms, scaler },
   });
 }
 
