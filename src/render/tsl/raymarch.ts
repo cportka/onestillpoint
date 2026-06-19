@@ -48,7 +48,10 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
     // --- camera-local pinhole ray ---
     const ndc = screenUV.sub(0.5).mul(2);
     const px = ndc.x.mul(u.tanHalfFov).mul(u.aspect);
-    const py = ndc.y.mul(u.tanHalfFov);
+    // Flip vertical: the post-pipeline pass renders to an offscreen target whose
+    // y is inverted vs the canvas, so without this a camera above the disk plane
+    // renders as if seen from below. (Camera basis itself is unaffected.)
+    const py = ndc.y.mul(u.tanHalfFov).mul(-1);
     const localDir = normalize(u.camForward.add(u.camRight.mul(px)).add(u.camUp.mul(py)));
 
     // --- initial geodesic state ---

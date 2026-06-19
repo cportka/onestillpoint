@@ -20,8 +20,15 @@ single hole: a `Scene` of gravitating `Body` objects is advanced by an N-body
 `scripts/validate-orbit.mjs`). Companion stars orbit the primary and are
 raymarched as emissive spheres **inside the hole's curved spacetime**, so they
 lens and are occluded by the shadow for free. Add/remove bodies from the panel's
-**Bodies** folder. Next within v0.5.x: moving the integrator to a WebGPU compute
-kernel and adding weak-field lensing for the secondaries themselves.
+**Bodies** folder.
+
+_v0.5.1_ adds unit tests (Vitest) + CI (lint/typecheck/test/validate), fixes a
+vertical render-flip so camera elevation is correct, and frees the full vertical
+orbit sweep. Still deferred (both currently invisible at this scale, so held back
+to avoid risking the working orbits): moving the N-body integrator to a **WebGPU
+compute kernel** (a perf path for *many* bodies) and **weak-field lensing of the
+secondaries themselves** (only visible with a massive companion, e.g. a second
+black hole).
 
 | Phase | What | State |
 | ----- | ---- | ----- |
@@ -52,10 +59,16 @@ npm run dev        # http://localhost:5173 (a secure context, so WebGPU works)
 ```
 
 ```bash
+npm run lint       # eslint
 npm run typecheck  # tsc --noEmit
+npm test           # vitest (unit tests for the physics)
+npm run validate   # CPU physics checks (geodesic / disk / orbit)
 npm run build      # typecheck + vite build → dist/
 npm run preview    # serve the production build locally
 ```
+
+Lint, typecheck, tests, and the validation scripts run in CI
+(`.github/workflows/ci.yml`) on every push to `main` and every pull request.
 
 Append **`?webgl`** to the URL to force the WebGL2 fallback path for testing
 (e.g. `http://localhost:5173/?webgl`). The on-screen HUD reports the active
