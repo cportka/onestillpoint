@@ -6,23 +6,38 @@ import { uniform } from 'three/tsl';
  * the origin, but the shader reads its parameters as uniforms so the data
  * already flows the way a multi-body scene will.
  *
- * `mass` (M) is the length scale in geometric units (G = c = 1): the horizon is
- * at 2M, the photon sphere at 3M, the ISCO at 6M. Disk radii are in units of M.
+ * `mass` (M) is the length scale in geometric units (G = c = 1): horizon 2M,
+ * photon sphere 3M, ISCO 6M. Disk radii are in units of M.
  *
- * The disk values are live-tunable from the console before the Phase 4 GUI
- * exists, e.g. `osp.blackHole.diskBrightness.value = 80`.
+ * Everything here is live-tunable from the console before the Phase 4 GUI, e.g.
+ * `osp.blackHole.emissiveStrength.value = 90`, `osp.blackHole.doppler.value = 0`,
+ * and `osp.loop.paused = true` freezes the animation to inspect the lensing.
  */
 export function createBlackHole() {
   return {
     mass: uniform(1),
 
-    // Accretion disk (Phase 2, static)
+    // Disk geometry & thermodynamics
     diskInner: uniform(6), // inner edge = ISCO = 6M
     diskOuter: uniform(20), // outer edge (M)
     diskTemp: uniform(15000), // peak temperature scale (K)
-    diskBrightness: uniform(120), // HDR radiance scale (tone-mapped on output)
+    diskThickness: uniform(0.8), // vertical Gaussian scale height (M)
     doppler: uniform(1), // relativistic beaming toggle (0 or 1)
     redshift: uniform(1), // gravitational redshift toggle (0 or 1)
+
+    // Volumetric dust (Phase 3)
+    diskDensity: uniform(1.0), // overall density scale
+    emissiveStrength: uniform(140), // HDR heat-emission scale
+    scatterStrength: uniform(6), // cheap single-scatter of inner light
+    extinction: uniform(0.5), // Beer–Lambert opacity coefficient
+    volumeStep: uniform(0.15), // affine step inside the disk slab (M)
+
+    // Turbulence & flow (Phase 3 animation)
+    turbAmount: uniform(0.9), // turbulence depth (filament contrast)
+    turbScale: uniform(0.3), // turbulence frequency (1/M)
+    rotationSpeed: uniform(6), // visual multiplier on Keplerian Ω·t
+    infallRate: uniform(0.15), // inward radial drift
+    churnRate: uniform(0.25), // turbulence evolution rate (anti-boil)
   };
 }
 
