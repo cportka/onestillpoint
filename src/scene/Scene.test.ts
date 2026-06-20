@@ -86,12 +86,20 @@ describe('Scene', () => {
     expect(scene.prune(1)).toBe(false); // nothing left to prune
   });
 
-  it('removeOne takes one companion of a type (or reports none)', () => {
+  it('removeOne sends a companion plunging in, freed once the animation completes', () => {
     const scene = new Scene();
     const stars = () => scene.companions.filter((b) => b.type === 'star').length;
     const before = stars();
+
     expect(scene.removeOne('star')).toBe(true);
+    expect(scene.removing).toBe(true); // a removal is animating
+    expect(stars()).toBe(before); // still present — plunging into the centre, not deleted
+
+    // A second removal is blocked until the first lands (one at a time).
+    for (let i = 0; i < 6; i++) scene.prune(0.5); // > PLUNGE_DURATION (1.5s)
     expect(stars()).toBe(before - 1);
+    expect(scene.removing).toBe(false);
+
     expect(scene.removeOne('hole')).toBe(false); // no orbiting holes to remove
     expect(scene.bodies[0]!.fixed).toBe(true); // the primary is untouched
   });

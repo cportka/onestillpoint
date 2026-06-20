@@ -49,6 +49,20 @@ reads as background against the disk. And the **About** tagline now frames the
 dialog — its four parts run along the top, down the right, across the bottom, and
 up the left.
 
+_v0.14.5_ — **add/remove polish + a blackout fix**. Adding bodies is **rate-limited
+to one per second**; **removing** one (− stepper) now sends it **plunging into the
+centre over ~1.5 s** with the absorption fade, and the next removal waits for it to
+land. A nasty **all-black-screen bug** — a non-finite body position (a
+close-encounter blow-up) poisoning the lensing uniforms and never being pruned
+(`NaN ≥ 300` is `false`) — is fixed with finite-guards in the uniform upload and
+prune; the recording analysis that root-caused it is in
+[`docs/video-findings-v0.14.4.md`](docs/video-findings-v0.14.4.md) (black-screen
+RCA + collision-animation and camera/gravity notes). The Bodies **✓ / ✗
+confirmation flash lasts longer** (and stays bright when a button greys). And
+**Nebula** is reverted to its punchy v0.14.1 orange — ember shadows, rare blue
+pockets, black dust pillars — with a *faint* dark blue-green floor lifting the
+blackest gaps.
+
 _v0.14.4_ — **orbits & absorption**: a **4th black hole** is now only allowed when
 nothing else orbits (no stars or planets), else three; added bodies **last longer
 in orbit** — they are placed exactly on their requested radius (the tilt no longer

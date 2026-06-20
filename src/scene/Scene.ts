@@ -29,6 +29,9 @@ const MERGE_RADIUS = 3;
 // redshifting in the shader) before it is finally freed — so it eases out of the
 // scene rather than popping out of existence the instant it reaches the centre.
 const ABSORB_DURATION = 0.6;
+// Seconds a user-removed (− stepper) body spends plunging into the centre before
+// it is absorbed and freed. The UI blocks another removal until this completes.
+const PLUNGE_DURATION = 1.5;
 
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
@@ -169,15 +172,22 @@ export class Scene {
     this.physics.reset();
   }
 
-  /** Remove the most recently added companion of a type (the − stepper button).
-   *  Returns whether one was removed. */
+  /** Whether a user-initiated removal (plunge) is currently animating. The UI
+   *  blocks another removal until it lands, so removals queue one at a time. */
+  get removing(): boolean {
+    return this.bodies.some((b) => b.plunging !== undefined);
+  }
+
+  /** Remove the most recently added companion of a type (the − stepper button) by
+   *  sending it *plunging into the centre* over ~1.5 s (then absorbed) rather than
+   *  deleting it instantly. It is freed when the plunge completes (see prune).
+   *  Returns whether a body was sent plunging. */
   removeOne(type: BodyType): boolean {
     for (let i = this.bodies.length - 1; i >= 0; i--) {
       const b = this.bodies[i]!;
-      if (!b.fixed && b.type === type) {
-        this.bodies.splice(i, 1);
-        this.physics.bodies = this.bodies;
-        this.physics.reset();
+      if (!b.fixed && b.type === type && b.plunging === undefined && b.absorbing === undefined) {
+        b.plunging = 0;
+        b.plungeFrom = b.position.clone();
         return true;
       }
     }
@@ -195,6 +205,19 @@ export class Scene {
   prune(frameDelta = 0): boolean {
     for (const b of this.bodies) {
       if (b.fixed) continue;
+      // User-initiated removal: animate the body plunging into the centre
+      // (accelerating inward, like a fall), then hand off to the absorption fade
+      // over its inner half. Wall-clock driven, so it's a steady ~1.5 s at any
+      // Speed; the body is held on this path so the physics can't move it.
+      if (b.plunging !== undefined && b.plungeFrom) {
+        b.plunging = Math.min(1, b.plunging + frameDelta / PLUNGE_DURATION);
+        const ease = b.plunging * b.plunging; // ease-in: accelerate toward the centre
+        b.position.copy(b.plungeFrom).multiplyScalar(1 - ease);
+        b.absorbing = Math.max(0, (b.plunging - 0.5) * 2); // shrink + redshift over the inner half
+        continue;
+      }
+      // Natural merge: a body the physics has carried to the centre begins the
+      // in-place absorption fade rather than vanishing the instant it arrives.
       if (b.absorbing === undefined && b.position.length() <= MERGE_RADIUS) {
         b.absorbing = 0; // just reached the centre — begin the absorption fade
         b.absorbAnchor = b.position.clone();
@@ -207,6 +230,10 @@ export class Scene {
 
     const gone = (b: Body): boolean => {
       if (b.fixed) return false; // never the primary
+      // A non-finite position (a rare close-encounter integration blow-up) would
+      // poison every ray's geodesic and black out the whole render, and it never
+      // escapes (NaN ≥ R is false) — so drop it at once.
+      if (!Number.isFinite(b.position.x + b.position.y + b.position.z)) return true;
       if (b.absorbing !== undefined) return b.absorbing >= 1; // freed once fully absorbed
       return b.position.length() >= ESCAPE_RADIUS; // flung clear of the scene
     };

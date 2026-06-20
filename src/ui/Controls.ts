@@ -121,20 +121,32 @@ export function createControls(ctx: {
   const capFor = (type: BodyType): number => bodyCap(type, countOf('hole'), countOf('star') + countOf('planet'));
   const steppers: Stepper[] = [];
   const refreshAll = (): void => steppers.forEach((s) => s.refresh());
+  // De-bounce adds to at most one per second (rapid-fire adds are what crowd the
+  // scene into the close encounters that misbehave). The + buttons grey out for
+  // the cooldown, then a scheduled refresh re-enables them.
+  const ADD_COOLDOWN_MS = 1000;
+  let addReadyAt = 0;
   const addStepper = (type: BodyType, label: string, add: () => void): void => {
     const noun = label.toLowerCase().replace(/s$/, '');
     const stepper = createStepper({
       label,
       count: () => countOf(type),
-      canInc: () => countOf(type) < capFor(type) && scene.companions.length < MAX_BODIES,
+      canInc: () =>
+        performance.now() >= addReadyAt && countOf(type) < capFor(type) && scene.companions.length < MAX_BODIES,
+      // − is blocked while a removal is still plunging in, so removals queue one
+      // at a time (each plays its full collision animation before the next).
+      canDec: () => countOf(type) > 0 && !scene.removing,
       onInc: () => {
         add();
         physics.syncBodies();
-        refreshAll(); // a new hole can lower the star/planet caps
+        addReadyAt = performance.now() + ADD_COOLDOWN_MS;
+        refreshAll(); // a new hole can lower the star/planet caps; also greys + for the cooldown
+        window.setTimeout(refreshAll, ADD_COOLDOWN_MS); // re-enable + when the second is up
       },
       onDec: () => {
+        // Begins the plunge animation; the body (and the GPU buffers) are freed
+        // when it lands, via prune → onChange → refreshAll.
         scene.removeOne(type);
-        physics.syncBodies();
         refreshAll();
       },
       incTip: `Add a ${noun}`,
