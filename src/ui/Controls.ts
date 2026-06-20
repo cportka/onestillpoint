@@ -144,6 +144,7 @@ export function createControls(ctx: {
   addStepper('star', 'Stars', () => scene.addStar());
   addStepper('planet', 'Planets', () => scene.addPlanet());
   addStepper('hole', 'Black holes', () => scene.addBlackHole());
+  scene.onChange = refreshAll; // keep the counts live when bodies escape / merge
 
   const actions = {
     clear: () => {

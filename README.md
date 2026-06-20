@@ -24,6 +24,14 @@ transcribed from the v0.13 recording to sit beside the *ideal*
 [`docs/intro-script.md`](docs/intro-script.md); the intro-shaping code carries
 `⟳` reminders to keep it current.
 
+_v0.14.1_ — a patch round: the **Nebula** background is re-tuned for punch
+(orange-dominant, high contrast, deep voids); the **About** modal gains a **BTC**
+donation and the shared **tagline** (single source in `src/tagline.ts`,
+sync-checked against this README); and companions that **escape or merge into the
+centre are pruned** — freed from the body list, the render slots, and the count —
+with the GPU storage buffers disposed on every rebuild to stop the add/remove
+memory creep.
+
 **Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
 **Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
 **Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or

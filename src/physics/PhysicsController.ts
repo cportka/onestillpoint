@@ -18,6 +18,9 @@ export class PhysicsController {
   step(frameDelta: number): void {
     if (this.useGPU) this.gpu.step(frameDelta);
     else this.scene.step(frameDelta);
+    // Free any companion that escaped or merged into the centre; rebuild the GPU
+    // buffers for the smaller set (a no-op on the CPU path).
+    if (this.scene.prune()) this.syncBodies();
   }
 
   setGPU(on: boolean): void {
