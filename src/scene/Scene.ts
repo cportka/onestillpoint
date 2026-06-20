@@ -52,18 +52,27 @@ export class Scene {
       color: new Vector3(),
     });
     this.physics = new PhysicsEngine(this.bodies);
+    this.seed(3, 3, 0);
+  }
 
-    // Outer prograde stars (the load-in swoosh) and inner retrograde planets
-    // (the reverse-direction swoosh that follows them). A few of each so the
-    // intro has visible company from early on, not just the lone disk.
-    // ⟳ Intro look: the count/radii here shape the load intro — changing them
-    // substantially → refresh docs/intro-description.md (note the version).
-    this.addStar(28);
-    this.addStar(36);
-    this.addStar(46);
-    this.addPlanet(22);
-    this.addPlanet(26);
-    this.addPlanet(32);
+  /** Seed a fresh set of companions on well-separated orbits: outer prograde
+   *  stars (the load-in swoosh) + inner retrograde planets (the reverse swoosh).
+   *  Used both for the default load and by `reseed` (Replay intro).
+   *  ⟳ Intro look: the counts/radii here shape the load intro — changing them
+   *  substantially → refresh docs/intro-description.md (note the version). */
+  private seed(stars: number, planets: number, holes: number): void {
+    for (let i = 0; i < stars; i++) this.addStar(28 + i * 9);
+    for (let i = 0; i < planets; i++) this.addPlanet(22 + i * 5);
+    for (let i = 0; i < holes; i++) this.addBlackHole();
+  }
+
+  /** Re-seed the *current* composition on fresh orbits, so Replay intro shows
+   *  the same kind of intro as a page load (identical for the default 3 + 3). */
+  reseed(): void {
+    const n = { star: 0, planet: 0, hole: 0 };
+    for (const b of this.companions) n[b.type] += 1;
+    this.clearCompanions();
+    this.seed(n.star, n.planet, n.hole);
   }
 
   /** Everything orbiting the primary — stars, planets, and any added black hole.
@@ -71,6 +80,11 @@ export class Scene {
    *  (a secondary hole is type 'hole' too, but it orbits and must render). */
   get companions(): Body[] {
     return this.bodies.filter((b) => !b.fixed);
+  }
+
+  /** Count of orbiting (non-primary) black holes. */
+  private holeCount(): number {
+    return this.bodies.filter((b) => !b.fixed && b.type === 'hole').length;
   }
 
   addStar(orbitRadius = 26 + Math.random() * 22): Body {
@@ -86,8 +100,10 @@ export class Scene {
   }
 
   /** A secondary black hole: massive enough to perturb orbits and to lens light
-   *  (lensMass = mass), rendered as a dark core ringed by a lensed photon ring. */
-  addBlackHole(orbitRadius = 32 + Math.random() * 14): Body {
+   *  (lensMass = mass), rendered as a dark core ringed by a lensed photon ring.
+   *  New holes are placed on well-separated radii (34, 39, 44, 49) so up to four
+   *  stay clear of each other and the centre rather than quickly merging out. */
+  addBlackHole(orbitRadius = 34 + this.holeCount() * 5): Body {
     return this.addBody('hole', orbitRadius, 1.5, new Vector3(0.02, 0.01, 0.0), 0.3, 0.3);
   }
 

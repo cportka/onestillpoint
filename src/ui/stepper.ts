@@ -51,6 +51,8 @@ export function createStepper(opts: StepperOptions): Stepper {
 
   const refresh = (): void => {
     countEl.textContent = String(opts.count());
+    inc.disabled = !opts.canInc(); // can't increase past a cap
+    dec.disabled = opts.count() <= 0; // nothing to remove
   };
 
   inc.addEventListener('click', () => {

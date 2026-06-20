@@ -407,6 +407,13 @@ canvas {
 .osp-step:active {
   transform: translateY(1px);
 }
+.osp-step:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.osp-step:disabled:hover {
+  background: var(--widget-color, rgba(58, 58, 66, 0.7));
+}
 .osp-step.osp-flash-ok::after,
 .osp-step.osp-flash-max::after {
   position: absolute;

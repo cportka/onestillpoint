@@ -156,10 +156,23 @@ export function createControls(ctx: {
   };
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
 
-  // --- Replay intro ---
+  // --- Replay intro (re-seed the current line-up on fresh orbits, then replay) ---
   tip(
-    gui.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
-    'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
+    gui
+      .add(
+        {
+          replay: () => {
+            scene.reseed(); // fresh orbits for the current composition
+            physics.syncBodies(); // rebuild GPU buffers for the new bodies
+            refreshAll(); // update counts + ± limits
+            formation.restart();
+          },
+        },
+        'replay',
+      )
+      .name('Replay intro'),
+    'Replay the formation intro with the current bodies — re-seeded onto fresh orbits, so it ' +
+      'looks like a clean page-load for the same line-up (identical for the default 3 + 3).',
   );
 
   // --- Pause + Step (last basic controls, right before the Advanced toggle) ---

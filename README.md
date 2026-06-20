@@ -32,6 +32,13 @@ centre are pruned** — freed from the body list, the render slots, and the coun
 with the GPU storage buffers disposed on every rebuild to stop the add/remove
 memory creep.
 
+_v0.14.2_ — more background contrast: **Nebula** gains blue-green coloured darks
+behind its dominant orange; **Filaments** is sparser and sharper; **Lattice** is a
+touch less blue. The body **± buttons disable at their caps**, added black holes
+spread onto well-separated orbits (so four hold rather than merging back to
+three), and **Replay intro** re-seeds the current line-up on fresh orbits — a
+clean page-load look for the same bodies.
+
 **Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
 **Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
 **Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or
