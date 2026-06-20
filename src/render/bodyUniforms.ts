@@ -3,10 +3,10 @@ import { uniform } from 'three/tsl';
 import type { BodyType } from '../scene/Body';
 import type { Scene } from '../scene/Scene';
 
-/** Fixed render slots for orbiting bodies (the raymarch unrolls these). The
- *  default scene fills four (2 stars + 2 planets); the rest are headroom for
- *  user-added companions. */
-export const MAX_BODIES = 6;
+/** Fixed render slots for orbiting bodies (the raymarch unrolls these). Sized
+ *  for the body caps (up to 4 holes, or 1 hole + 5 stars + 5 planets); empty
+ *  slots short-circuit in the shader, so the headroom is cheap when unused. */
+export const MAX_BODIES = 14;
 
 export function createBodyUniforms() {
   return {

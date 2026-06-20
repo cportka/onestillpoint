@@ -14,6 +14,18 @@ N-body simulator.
 
 ## Status
 
+**Phase 12 — body steppers, caps & About (v0.12).** The Bodies folder is now
+**− N + steppers** (add/remove per type, count between, ✓/✗ flash) governed by a
+budget: **at most 4 orbiting black holes**, and the more holes there are the
+fewer stars/planets are allowed (≤1 → 5 each, 2 → 4, 3 → 3, 4 → nothing else;
+`bodyCap`). Panel housekeeping: the single-child **Time** folder is gone (Speed
+stands alone), **Pause** moves out to the last basic row, the advanced tuning
+folders **start collapsed**, and an **About** button (left of the version chip)
+credits the author with the project link and Venmo / click-to-copy ETH donations.
+Queued for the next pass: the **video-bug-analyzer** plugin (Portka Tools) for
+frame-accurate intro tuning, and reworking the intro into a **collision→formation**
+of two objects.
+
 **Phase 11 — the secondary black hole's accretion disk (v0.11).** "Add black
 hole" now drops in a *full* second system: a dark core wrapped in its **own
 compact volumetric accretion disk** (`secondaryDisk.ts`) — radial envelope × thin
@@ -109,6 +121,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 9 | Performance auto-tuning (quality tiers) + cheaper companion lensing + panel polish | ✅ done |
 | 10 | UX polish (panel reorder / flush-right, opaque tooltip) + reduced-motion intro fix | ✅ done |
 | 11 | Secondary black hole's own accretion disk + frame-rate-targeted auto-resolution + panel polish | ✅ done |
+| 12 | Body ± steppers + black-hole-budget caps + About modal + panel reorg | ✅ done |
 
 ## Stack
 
@@ -174,6 +187,8 @@ src/
     Controls.ts        lil-gui panel: Filter / Time / Bodies up front, deep tuning behind Advanced
     presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
     prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
+    stepper.ts         the Bodies "− N +" add/remove rows (✓/✗ flash)
+    about.ts           the About modal (author, project link, donations)
     touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
     hud.ts             corner readout (backend / fps / % res), toggled by "Display FPS"

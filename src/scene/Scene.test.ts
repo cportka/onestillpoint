@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Scene } from './Scene';
+import { bodyCap, Scene } from './Scene';
 
 describe('Scene', () => {
   it('starts with a fixed primary hole, two stars and two retrograde planets', () => {
@@ -49,5 +49,30 @@ describe('Scene', () => {
     scene.step(1);
     expect(star.position.distanceTo(start)).toBeGreaterThan(0);
     expect(scene.bodies[0]!.position.length()).toBe(0);
+  });
+
+  it('removeOne takes one companion of a type (or reports none)', () => {
+    const scene = new Scene();
+    expect(scene.companions.filter((b) => b.type === 'star').length).toBe(2);
+    expect(scene.removeOne('star')).toBe(true);
+    expect(scene.companions.filter((b) => b.type === 'star').length).toBe(1);
+    expect(scene.removeOne('hole')).toBe(false); // no orbiting holes to remove
+    expect(scene.bodies[0]!.fixed).toBe(true); // the primary is untouched
+  });
+});
+
+describe('bodyCap', () => {
+  it('caps black holes at 4 regardless', () => {
+    for (const holes of [0, 1, 2, 3, 4]) expect(bodyCap('hole', holes)).toBe(4);
+  });
+
+  it('shrinks the star/planet allowance as black holes are added', () => {
+    for (const type of ['star', 'planet'] as const) {
+      expect(bodyCap(type, 0)).toBe(5);
+      expect(bodyCap(type, 1)).toBe(5);
+      expect(bodyCap(type, 2)).toBe(4);
+      expect(bodyCap(type, 3)).toBe(3);
+      expect(bodyCap(type, 4)).toBe(0); // 4 holes → nothing else
+    }
   });
 });
