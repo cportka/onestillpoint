@@ -48,6 +48,8 @@ export class Scene {
     // Outer prograde stars (the load-in swoosh) and inner retrograde planets
     // (the reverse-direction swoosh that follows them). A few of each so the
     // intro has visible company from early on, not just the lone disk.
+    // ⟳ Intro look: the count/radii here shape the load intro — changing them
+    // substantially → refresh docs/intro-description.md (note the version).
     this.addStar(28);
     this.addStar(36);
     this.addStar(46);

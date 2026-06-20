@@ -81,15 +81,15 @@ export function createControls(ctx: {
   );
 
   // --- Background (the sky behind everything; it lenses around the holes too) ---
-  const BACKGROUNDS = ['Stars', 'Nebula', 'Aurora', 'Lattice'];
+  const BACKGROUNDS = ['Stars', 'Nebula', 'Filaments', 'Lattice'];
   const bgProxy = { sky: BACKGROUNDS[background.value] ?? 'Stars' };
   tip(
     gui.add(bgProxy, 'sky', BACKGROUNDS).name('Background').onChange((v: string) => {
       background.value = Math.max(0, BACKGROUNDS.indexOf(v));
     }),
     'The sky behind the hole — it lenses around the shadow either way. Stars = the default ' +
-      'star field; Nebula = colourful gas clouds; Aurora = flowing colour bands; Lattice = a ' +
-      'spacetime grid that visibly warps near the holes.',
+      'star field; Nebula = a glowing Eagle-palette gas cloud; Filaments = a monochrome cosmic ' +
+      'web; Lattice = a spacetime grid that visibly warps near the holes.',
   );
 
   // --- Speed (its own line — no longer wrapped in a single-child Time folder) ---
