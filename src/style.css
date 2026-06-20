@@ -293,6 +293,17 @@ canvas {
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
 }
+.osp-about__logo {
+  --osp-glow: #ffe8cc; /* warm photon-ring white, tying into the disk palette */
+  width: 104px;
+  height: 104px;
+  margin: 0 auto 12px;
+}
+.osp-about__logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .osp-about__title {
   font: 600 16px/1.2 ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0.02em;
