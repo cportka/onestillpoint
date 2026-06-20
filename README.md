@@ -14,6 +14,22 @@ N-body simulator.
 
 ## Status
 
+**Phase 15 — performance, an instant load splash & control polish (v0.15).** A
+real smoothness pass. The biggest lever: the **N-body sim runs on the CPU by
+default** again — for this app's body counts (≤14) the exact velocity-Verlet is
+trivially cheap, while the GPU compute path forced a per-frame CPU↔GPU read-back
+that stalled the pipeline (it stays a one-click *Advanced* option, the scaling
+foundation for many bodies). A per-frame array allocation in the render loop
+(`scene.companions`) is gone too. A new **load splash** — a JS-free black-and-white "formation"
+of bodies spiralling inward to form the hole — paints *before* the WebGPU shader
+compiles and crossfades into the live scene, which now **ignites fast** (the hole
+reads as formed by ~0.6 s, then the camera settles); see the reworked
+[`docs/intro-script.md`](docs/intro-script.md) and the
+[`docs/perf-audit-v0.15.md`](docs/perf-audit-v0.15.md) write-up. Controls: **Step**
+now also works while running (a ~1-second jump, ≥20 frames, at the current Speed);
+the add **de-bounce** is 0.5 s for stars/planets, 1 s for black holes; and the
+**About** modal's animated logo goes full-width.
+
 **Phase 14 — background revamp & intro reality doc (v0.14).** The backgrounds
 get a glow-up: **Nebula** is reborn in the Hubble/Eagle palette (glowing teal &
 gold gas carved by dark dust pillars), a new **Filaments** sky draws the

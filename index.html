@@ -18,6 +18,23 @@
     <noscript>
       One Still Point requires JavaScript and a WebGPU- or WebGL2-capable browser.
     </noscript>
+    <!-- Load splash: a JS-free black-and-white "formation" (a cluster of bodies
+         spiralling inward to form the hole) that paints on first paint — before
+         the bundle parses or the WebGPU shader compiles — then crossfades to the
+         live scene once the first real frame is ready (see main.ts). -->
+    <div id="osp-splash" aria-hidden="true">
+      <div class="osp-splash__stage">
+        <span class="osp-splash__ring"></span>
+        <span class="osp-splash__core"></span>
+        <span class="osp-splash__b" style="--a: 8deg; --d: 0s"></span>
+        <span class="osp-splash__b" style="--a: 62deg; --d: -0.05s"></span>
+        <span class="osp-splash__b" style="--a: 118deg; --d: -0.12s"></span>
+        <span class="osp-splash__b" style="--a: 170deg; --d: -0.03s"></span>
+        <span class="osp-splash__b" style="--a: 214deg; --d: -0.09s"></span>
+        <span class="osp-splash__b" style="--a: 268deg; --d: -0.14s"></span>
+        <span class="osp-splash__b" style="--a: 322deg; --d: -0.06s"></span>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

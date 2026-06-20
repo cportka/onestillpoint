@@ -33,6 +33,134 @@ canvas {
   touch-action: none;
 }
 
+/* --- Load splash (Phase 15): an instant, JS-free black-and-white "formation"
+   that paints before the WebGPU shader compiles, then crossfades to the live
+   scene. A cluster of bodies spirals inward (accretion) and merges into the
+   forming event horizon + photon ring. main.ts adds .osp-splash--hide once the
+   first real frame is on screen, and removes the node after the fade. --- */
+#osp-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000; /* above the canvas and the (collapsed) panel during load */
+  background: #05060a;
+  display: grid;
+  place-items: center;
+  opacity: 1;
+  transition: opacity 0.45s ease;
+}
+#osp-splash.osp-splash--hide {
+  opacity: 0;
+  pointer-events: none;
+}
+.osp-splash__stage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  filter: grayscale(1); /* keep it abstract black-and-white */
+}
+/* The forming event horizon: a dark core that grows a bright photon ring. */
+.osp-splash__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #05060a;
+  animation: osp-splash-core 0.6s ease-out forwards;
+}
+@keyframes osp-splash-core {
+  0% {
+    width: 0;
+    height: 0;
+    box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0);
+  }
+  55% {
+    box-shadow: 0 0 16px 5px rgba(255, 255, 255, 0.4);
+  }
+  100% {
+    width: 84px;
+    height: 84px;
+    box-shadow:
+      0 0 28px 7px rgba(255, 255, 255, 0.85),
+      inset 0 0 16px 5px #000;
+  }
+}
+/* A faint rotating dust ring. */
+.osp-splash__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 188px;
+  height: 188px;
+  margin: -94px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    rgba(255, 255, 255, 0.16),
+    transparent 38%,
+    rgba(255, 255, 255, 0.1),
+    transparent 72%,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+  filter: blur(7px);
+  opacity: 0;
+  animation:
+    osp-splash-spin 1.1s linear infinite,
+    osp-splash-ring 0.6s ease forwards;
+}
+@keyframes osp-splash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes osp-splash-ring {
+  to {
+    opacity: 0.6;
+  }
+}
+/* Infalling bodies: spiral inward from the rim and shrink as they merge. */
+.osp-splash__b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.6);
+  transform: rotate(var(--a)) translateX(110px);
+  animation: osp-splash-fall 0.62s cubic-bezier(0.45, 0, 0.75, 1) var(--d, 0s) forwards;
+}
+@keyframes osp-splash-fall {
+  0% {
+    transform: rotate(var(--a)) translateX(112px) scale(0.7);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(calc(var(--a) + 150deg)) translateX(3px) scale(0.25);
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Settle straight to the formed state rather than spiralling. */
+  .osp-splash__b,
+  .osp-splash__core,
+  .osp-splash__ring {
+    animation-duration: 0.01s;
+  }
+  .osp-splash__ring {
+    animation-iteration-count: 1;
+  }
+}
+
 /* Phase 0 heads-up display: active backend + frame rate. Folds into the
    lil-gui panel in Phase 4. */
 .hud {
@@ -295,9 +423,9 @@ canvas {
 }
 .osp-about__logo {
   --osp-glow: #ffe8cc; /* warm photon-ring white, tying into the disk palette */
-  width: 104px;
-  height: 104px;
-  margin: 0 auto 12px;
+  width: 100%; /* full width of the card; the square viewBox keeps it 1:1 */
+  aspect-ratio: 1 / 1;
+  margin: 0 auto 14px;
 }
 .osp-about__logo svg {
   display: block;
