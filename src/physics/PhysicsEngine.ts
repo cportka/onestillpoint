@@ -15,6 +15,12 @@ import { computeAccelerations, velocityVerletStep } from './integrators';
 export class PhysicsEngine {
   timeScale = 80;
   substeps = 4;
+  /** Cap on a single integration substep (geometric time units). Fast orbits
+   *  (high Speed) are sub-divided so a substep never advances far enough for a
+   *  close encounter to inject energy and fling a body out of the scene; capped
+   *  by `maxSubsteps` so the cost stays bounded. */
+  maxDt = 0.35;
+  maxSubsteps = 64;
 
   private acc: Vector3[] = [];
 
@@ -29,8 +35,10 @@ export class PhysicsEngine {
   }
 
   step(frameDelta: number): void {
-    const dt = (frameDelta * this.timeScale) / this.substeps;
-    for (let s = 0; s < this.substeps; s++) {
+    const total = frameDelta * this.timeScale;
+    const substeps = Math.max(this.substeps, Math.min(this.maxSubsteps, Math.ceil(total / this.maxDt)));
+    const dt = total / substeps;
+    for (let s = 0; s < substeps; s++) {
       velocityVerletStep(this.bodies, this.acc, dt);
     }
   }

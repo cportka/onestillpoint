@@ -112,6 +112,10 @@ function createGPUKernels(renderer: WebGPURenderer, init: InitialState) {
       const buffer = await renderer.getArrayBufferAsync(pos.value);
       return new Float32Array(buffer);
     },
+    async readVelocities(): Promise<Float32Array> {
+      const buffer = await renderer.getArrayBufferAsync(vel.value);
+      return new Float32Array(buffer);
+    },
     /** Free this set's GPU storage buffers (called before a rebuild so adding /
      *  removing bodies doesn't leak a buffer set each time). */
     dispose(): void {
@@ -133,6 +137,10 @@ function createGPUKernels(renderer: WebGPURenderer, init: InitialState) {
 export class GPUPhysicsEngine {
   timeScale = 80;
   substeps = 2;
+  /** Sub-divide a frame so a single substep never advances too far (see the CPU
+   *  PhysicsEngine). Capped lower here because each substep is two GPU dispatches. */
+  maxDt = 0.35;
+  maxSubsteps = 16;
 
   private kernels: ReturnType<typeof createGPUKernels> | null = null;
   private bodies: Body[] = [];
@@ -148,21 +156,46 @@ export class GPUPhysicsEngine {
 
   step(frameDelta: number): void {
     if (!this.kernels) return;
-    const h = (frameDelta * this.timeScale) / this.substeps;
-    for (let s = 0; s < this.substeps; s++) this.kernels.substep(h);
+    const total = frameDelta * this.timeScale;
+    const substeps = Math.max(this.substeps, Math.min(this.maxSubsteps, Math.ceil(total / this.maxDt)));
+    const h = total / substeps;
+    for (let s = 0; s < substeps; s++) this.kernels.substep(h);
     void this.applyReadback();
   }
 
-  /** Pull the latest positions back to the CPU bodies (one read in flight). */
+  /** Pull the latest positions *and velocities* back to the CPU bodies (one read
+   *  cycle in flight). Velocities matter because adding/removing a body rebuilds
+   *  the GPU buffers from the CPU bodies (buildInitialState) — if `body.velocity`
+   *  were never synced it would re-seed every body with its *original* launch
+   *  velocity at its *current* position, kicking them all onto wrong orbits (the
+   *  "adding makes the count drop" bug). */
   private async applyReadback(): Promise<void> {
     if (this.reading || !this.kernels) return;
+    const kernels = this.kernels; // capture: setBodies() may swap/dispose it during the await
     this.reading = true;
     try {
-      const data = await this.kernels.readPositions();
-      const tmp = new Vector3();
-      for (let i = 0; i < this.bodies.length && i < this.kernels.count; i++) {
-        this.bodies[i]!.position.copy(tmp.set(data[i * 4]!, data[i * 4 + 1]!, data[i * 4 + 2]!));
+      const pos = await kernels.readPositions();
+      if (this.kernels !== kernels) return; // body set changed mid-flight — stale data, discard
+      const vel = await kernels.readVelocities();
+      if (this.kernels !== kernels) return;
+      const n = Math.min(this.bodies.length, kernels.count, Math.floor(pos.length / 4), Math.floor(vel.length / 4));
+      const tp = new Vector3();
+      const tv = new Vector3();
+      for (let i = 0; i < n; i++) {
+        const b = this.bodies[i]!;
+        if (b.fixed) continue; // the primary stays at the origin
+        const px = pos[i * 4]!;
+        const py = pos[i * 4 + 1]!;
+        const pz = pos[i * 4 + 2]!;
+        const vx = vel[i * 4]!;
+        const vy = vel[i * 4 + 1]!;
+        const vz = vel[i * 4 + 2]!;
+        // Skip non-finite samples so a transient blow-up can't poison the CPU state.
+        if (Number.isFinite(px) && Number.isFinite(py) && Number.isFinite(pz)) b.position.copy(tp.set(px, py, pz));
+        if (Number.isFinite(vx) && Number.isFinite(vy) && Number.isFinite(vz)) b.velocity.copy(tv.set(vx, vy, vz));
       }
+    } catch {
+      // A readback can reject if its buffers were disposed mid-flight (add/remove); ignore.
     } finally {
       this.reading = false;
     }

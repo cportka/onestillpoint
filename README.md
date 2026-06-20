@@ -49,6 +49,20 @@ reads as background against the disk. And the **About** tagline now frames the
 dialog — its four parts run along the top, down the right, across the bottom, and
 up the left.
 
+_v0.14.6_ — **adding is solid again + an animated logo + deeper-orange Nebula**.
+The headline fix: on the **GPU physics path (the default on WebGPU)** the
+integrator only ever read **positions** back to the CPU — never velocities — so
+every add re-seeded each body with its *original launch velocity* at its *current*
+position, kicking them onto wrong orbits that escaped or merged (the count
+dropping with no visible disappearance). Velocities now sync each frame, a
+**readback↔rebuild race** that could NaN a body on add is closed, and both
+integrators **bound their substep size** so very high Speed can't blow a close
+encounter up. (Crowded multi-hole *ejection* is real physics, not a bug — see
+[`docs/video-findings-v0.14.5.md`](docs/video-findings-v0.14.5.md).) The **About**
+modal gains an **animated One Still Point logo** (a tilted accretion ring + stardust
+spiralling inward), and **Nebula**'s washed-out cream is pushed to **deeper, richer,
+more saturated orange** (so bloom/tone-map no longer bleach the cores).
+
 _v0.14.5_ — **add/remove polish + a blackout fix**. Adding bodies is **rate-limited
 to one per second**; **removing** one (− stepper) now sends it **plunging into the
 centre over ~1.5 s** with the absorption fade, and the next removal waits for it to

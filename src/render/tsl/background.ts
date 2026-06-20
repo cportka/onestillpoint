@@ -29,15 +29,18 @@ function nebula(dir: Node<'vec3'>) {
   const orangeMask = pow(smoothstep(float(0.45), float(0.85), base), float(1.5)); // dominant
   const blueMask = pow(smoothstep(float(0.62), float(0.92), detail), float(2)).mul(0.6); // accent
 
-  const orange = vec3(1.0, 0.42, 0.06);
-  const ember = vec3(0.6, 0.12, 0.02); // dark rust mid-shadow
-  const blue = vec3(0.1, 0.45, 0.7);
+  // Deep, saturated tones: ACES tone-mapping + bloom desaturate bright values
+  // toward white, so the orange is kept rich (low green, ~no blue) and not too
+  // hot — that is what stops the cores washing out to pale cream.
+  const orange = vec3(0.95, 0.3, 0.04); // rich, red-leaning orange (saturated)
+  const ember = vec3(0.5, 0.1, 0.014); // deep rust mid-shadow
+  const blue = vec3(0.1, 0.42, 0.62);
 
   const warm = mix(ember, orange, orangeMask).mul(orangeMask);
   const gas = warm.add(blue.mul(blueMask));
 
   const dustMask = smoothstep(float(0.45), float(0.7), dust); // pillars carve to black
-  const carved = gas.mul(float(1).sub(dustMask)).mul(1.8);
+  const carved = gas.mul(float(1).sub(dustMask)).mul(1.45); // dimmer → less bloom-to-white, deeper orange
 
   // The "little dark blue/green near the blacker areas": a dim cool floor where
   // the orange gas is absent, mostly (not fully) carved by the dust so the
@@ -45,7 +48,9 @@ function nebula(dir: Node<'vec3'>) {
   const darkBlueGreen = vec3(0.02, 0.07, 0.06);
   const floor = darkBlueGreen.mul(float(1).sub(orangeMask)).mul(float(1).sub(dustMask.mul(0.6)));
 
-  const tips = vec3(1.0, 0.85, 0.6).mul(pow(detail, float(10)).mul(2)); // bright knots
+  // Knots: deep-orange (not cream) and rarer, so the hot spots glow amber rather
+  // than blowing out to white.
+  const tips = vec3(1.0, 0.5, 0.12).mul(pow(detail, float(11)).mul(1.4));
   return carved.add(floor).add(tips).add(starfield(dir, float(0.5)));
 }
 
