@@ -14,6 +14,18 @@ N-body simulator.
 
 ## Status
 
+**Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
+**Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
+**Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or
+**Lattice** (a spacetime grid that visibly warps near the holes) — all sampled
+along the bent escape direction, so each one lenses. The formation intro gets
+its first video-driven tuning (see `docs/intro-script.md`): the default scene now
+seeds 3 stars + 3 planets and they enter earlier, so the intro has company from
+the start. Small panel tweaks: the About/version row is split 50/50, **Step**
+sits right after **Pause**, and the Bodies labels are a fixed half-width. The
+Portka Tools `video-bug-analyzer` marketplace is wired in (`.claude/settings.json`)
+for frame-accurate intro work.
+
 **Phase 12 — body steppers, caps & About (v0.12).** The Bodies folder is now
 **− N + steppers** (add/remove per type, count between, ✓/✗ flash) governed by a
 budget: **at most 4 orbiting black holes**, and the more holes there are the
@@ -122,6 +134,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 10 | UX polish (panel reorder / flush-right, opaque tooltip) + reduced-motion intro fix | ✅ done |
 | 11 | Secondary black hole's own accretion disk + frame-rate-targeted auto-resolution + panel polish | ✅ done |
 | 12 | Body ± steppers + black-hole-budget caps + About modal + panel reorg | ✅ done |
+| 13 | Selectable backgrounds (Stars / Nebula / Aurora / Lattice) + video-driven intro tuning | ✅ done |
 
 ## Stack
 
@@ -207,7 +220,8 @@ src/
       turbulence.ts    fractal (FBM) noise
       blackbody.ts     temperature (K) → linear RGB
       bodies.ts        segment–sphere test for companions
-      starfield.ts     procedural lensed background
+      starfield.ts     procedural lensed star field
+      background.ts    selectable sky (Stars / Nebula / Aurora / Lattice), all lensed
 scripts/
   validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M
   validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming

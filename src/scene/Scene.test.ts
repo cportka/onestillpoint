@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bodyCap, Scene } from './Scene';
 
 describe('Scene', () => {
-  it('starts with a fixed primary hole, two stars and two retrograde planets', () => {
+  it('starts with a fixed primary hole, prograde stars and retrograde planets', () => {
     const scene = new Scene();
     const primary = scene.bodies[0]!;
     expect(primary.type).toBe('hole');
@@ -10,9 +10,9 @@ describe('Scene', () => {
 
     const stars = scene.companions.filter((b) => b.type === 'star');
     const planets = scene.companions.filter((b) => b.type === 'planet');
-    expect(scene.companions.length).toBe(4);
-    expect(stars.length).toBe(2);
-    expect(planets.length).toBe(2);
+    expect(scene.companions.length).toBe(6);
+    expect(stars.length).toBe(3);
+    expect(planets.length).toBe(3);
 
     // Planets orbit the opposite way to the stars (the reverse-direction swoosh):
     // their vertical angular momentum L_y = (r × v)_y has the opposite sign.
@@ -53,9 +53,10 @@ describe('Scene', () => {
 
   it('removeOne takes one companion of a type (or reports none)', () => {
     const scene = new Scene();
-    expect(scene.companions.filter((b) => b.type === 'star').length).toBe(2);
+    const stars = () => scene.companions.filter((b) => b.type === 'star').length;
+    const before = stars();
     expect(scene.removeOne('star')).toBe(true);
-    expect(scene.companions.filter((b) => b.type === 'star').length).toBe(1);
+    expect(stars()).toBe(before - 1);
     expect(scene.removeOne('hole')).toBe(false); // no orbiting holes to remove
     expect(scene.bodies[0]!.fixed).toBe(true); // the primary is untouched
   });

@@ -40,7 +40,7 @@ const smoothstep = (a: number, b: number, x: number): number => {
  * later just appear immediately).
  */
 export function appearFor(type: BodyType, progress: number): number {
-  return type === 'star' ? smoothstep(0.04, 0.3, progress) : smoothstep(0.42, 0.78, progress);
+  return type === 'star' ? smoothstep(0.03, 0.2, progress) : smoothstep(0.2, 0.52, progress);
 }
 
 export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, progress = 1): void {

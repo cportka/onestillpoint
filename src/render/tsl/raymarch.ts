@@ -25,10 +25,10 @@ import type { BodyUniforms } from '../bodyUniforms';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
 import { segmentHitsSphere } from './bodies';
+import { background } from './background';
 import { mediumDensity, mediumSource } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
 import { secondaryDisk } from './secondaryDisk';
-import { starfield } from './starfield';
 
 const MAX_STEPS = 512;
 
@@ -205,8 +205,8 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
 
     // Background behind the dust: a hit body, else the lensed star field (escaped)
     // or the black horizon. Composite by the surviving transmittance.
-    const stars = starfield(normalize(vel), float(1.2)).mul(escaped);
-    const background = select(bodyHit.greaterThan(0.5), bodyColor, stars); // bodyColor already faded by appear
-    return radiance.add(transmittance.mul(background));
+    const sky = background(normalize(vel), u.background).mul(escaped);
+    const backdrop = select(bodyHit.greaterThan(0.5), bodyColor, sky); // bodyColor already faded by appear
+    return radiance.add(transmittance.mul(backdrop));
   })();
 }

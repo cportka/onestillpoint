@@ -12,8 +12,8 @@ describe('appearFor (staggered formation entrance)', () => {
   it('brings the stars in before the planets', () => {
     // Partway through, the stars have swooshed in but the planets have not yet.
     expect(appearFor('star', 0.3)).toBeGreaterThan(appearFor('planet', 0.3));
-    expect(appearFor('star', 0.3)).toBeCloseTo(1, 5); // stars fully in by ~0.3
-    expect(appearFor('planet', 0.3)).toBe(0); // planets still off-stage
+    expect(appearFor('star', 0.25)).toBeCloseTo(1, 5); // stars fully in early
+    expect(appearFor('planet', 0.15)).toBe(0); // planets still off-stage early on
   });
 
   it('is monotonic in progress', () => {

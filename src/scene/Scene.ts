@@ -46,11 +46,14 @@ export class Scene {
     this.physics = new PhysicsEngine(this.bodies);
 
     // Outer prograde stars (the load-in swoosh) and inner retrograde planets
-    // (the reverse-direction swoosh that follows them in the formation intro).
-    this.addStar(30);
-    this.addStar(42);
-    this.addPlanet(24);
-    this.addPlanet(28);
+    // (the reverse-direction swoosh that follows them). A few of each so the
+    // intro has visible company from early on, not just the lone disk.
+    this.addStar(28);
+    this.addStar(36);
+    this.addStar(46);
+    this.addPlanet(22);
+    this.addPlanet(26);
+    this.addPlanet(32);
   }
 
   /** Everything orbiting the primary — stars, planets, and any added black hole.
