@@ -11,10 +11,12 @@ import type { PhysicsController } from '../physics/PhysicsController';
 import { MAX_BODIES } from '../render/bodyUniforms';
 import type { BodyType } from '../scene/Body';
 import type { BlackHole } from '../scene/BlackHole';
-import type { Scene } from '../scene/Scene';
+import { bodyCap, type Scene } from '../scene/Scene';
 import type { Hud } from './hud';
+import { createAboutButton } from './about';
 import { loadPrefs, savePrefs } from './prefs';
 import { PRESETS } from './presets';
+import { createStepper, type Stepper } from './stepper';
 import { attachTouchTooltips } from './touchTooltips';
 import { createVersionBadge } from './versionBadge';
 
@@ -24,23 +26,12 @@ function tip<T extends Controller>(controller: T, text: string): T {
   return controller;
 }
 
-/** Briefly flash a controller's row to confirm an action: green ✓ on success,
- *  red ✗ when it was blocked (e.g. the body limit was reached). */
-function flash(controller: Controller, ok: boolean): void {
-  const el = controller.domElement;
-  const cls = ok ? 'osp-flash-ok' : 'osp-flash-max';
-  el.classList.remove('osp-flash-ok', 'osp-flash-max');
-  void el.offsetWidth; // reflow so the animation restarts on a repeat click
-  el.classList.add(cls);
-  window.setTimeout(() => el.classList.remove(cls), 750);
-}
-
 /**
- * The lil-gui control panel. Expanded, it shows just the essentials —
- * version · Filter (presets) · Time · Bodies · an Advanced-settings toggle — and
- * the deep tuning (Look / Animation / Bloom / Quality / Movie / Replay) is folded
- * away behind that toggle, whose state is remembered across sessions. Every row
- * carries a hover tooltip (and a long-press tooltip on touch).
+ * The lil-gui control panel. Expanded, it leads with the essentials —
+ * About/version · Filter · Speed · Bodies (± steppers) · Replay · Pause · an
+ * Advanced-settings toggle — and folds the deep tuning (GPU, FPS, Step, and the
+ * Look / Animation / Bloom / Quality folders, each starting collapsed) behind that
+ * toggle, whose state is remembered. Every row has a hover tooltip (long-press on touch).
  */
 export function createControls(ctx: {
   blackHole: BlackHole;
@@ -88,9 +79,8 @@ export function createControls(ctx: {
       'turbulent. Filters toggle real physics on/off.',
   );
 
-  // --- Time ---
-  const timeFolder = gui.addFolder('Time');
-  const timeProxy = { exp: 0 };
+  // --- Speed (its own line — no longer wrapped in a single-child Time folder) ---
+  const speedProxy = { exp: 0 };
   const fmtScale = (s: number): string => {
     if (s >= 1e6) return `${(s / 1e6).toFixed(1)}M`;
     if (s >= 1e3) return `${(s / 1e3).toFixed(1)}k`;
@@ -98,7 +88,7 @@ export function createControls(ctx: {
     return `1/${Math.round(1 / s)}`; // slow-motion: ×1/10 … ×1/1000
   };
   // exp is log10(timeScale): −3 → ×1/1000 (slow-mo) up to 6 → ×1,000,000.
-  const speedCtrl = timeFolder.add(timeProxy, 'exp', -3, 6, 0.05).name('Speed ×1');
+  const speedCtrl = gui.add(speedProxy, 'exp', -3, 6, 0.05).name('Speed ×1');
   speedCtrl.onChange((v: number) => {
     time.timeScale = Math.pow(10, v);
     speedCtrl.name(`Speed ×${fmtScale(time.timeScale)}`);
@@ -110,66 +100,62 @@ export function createControls(ctx: {
       'turbulence into a steady disk instead of strobing; slowing down resolves every detail.',
   );
 
-  // --- Bodies ---
+  // --- Bodies (− N + steppers; how many black holes orbit caps the rest) ---
   const bodies = gui.addFolder('Bodies');
   const countOf = (type: BodyType): number => scene.companions.filter((b) => b.type === type).length;
-  const addCtrls: Partial<Record<BodyType, Controller>> = {};
-  // Subtle live count on each button ("Add star · 2").
-  const refreshCounts = (): void => {
-    addCtrls.star?.name(`Add star · ${countOf('star')}`);
-    addCtrls.planet?.name(`Add planet · ${countOf('planet')}`);
-    addCtrls.hole?.name(`Add black hole · ${countOf('hole')}`);
+  const capFor = (type: BodyType): number => bodyCap(type, countOf('hole'));
+  const steppers: Stepper[] = [];
+  const refreshAll = (): void => steppers.forEach((s) => s.refresh());
+  const addStepper = (type: BodyType, label: string, add: () => void): void => {
+    const noun = label.toLowerCase().replace(/s$/, '');
+    const stepper = createStepper({
+      label,
+      count: () => countOf(type),
+      canInc: () => countOf(type) < capFor(type) && scene.companions.length < MAX_BODIES,
+      onInc: () => {
+        add();
+        physics.syncBodies();
+        refreshAll(); // a new hole can lower the star/planet caps
+      },
+      onDec: () => {
+        scene.removeOne(type);
+        physics.syncBodies();
+        refreshAll();
+      },
+      incTip: `Add a ${noun}`,
+      decTip: `Remove a ${noun}`,
+    });
+    steppers.push(stepper);
+    bodies.$children.appendChild(stepper.row);
   };
-  // Add if there's room (shared limit of MAX_BODIES); flash ✓ added / ✗ at max.
-  const tryAdd = (type: BodyType, add: () => void) => () => {
-    const ok = scene.companions.length < MAX_BODIES;
-    if (ok) {
-      add();
-      physics.syncBodies();
-      refreshCounts();
-    }
-    const ctrl = addCtrls[type];
-    if (ctrl) flash(ctrl, ok);
-  };
+  addStepper('star', 'Stars', () => scene.addStar());
+  addStepper('planet', 'Planets', () => scene.addPlanet());
+  addStepper('hole', 'Black holes', () => scene.addBlackHole());
+
   const actions = {
-    addStar: tryAdd('star', () => scene.addStar()),
-    addPlanet: tryAdd('planet', () => scene.addPlanet()),
-    addBlackHole: tryAdd('hole', () => scene.addBlackHole()),
     clear: () => {
       scene.clearCompanions();
       physics.syncBodies();
-      refreshCounts();
+      refreshAll();
     },
     gpu: backend === 'webgpu', // auto-on where WebGPU compute exists (see main.ts)
   };
-  addCtrls.star = tip(
-    bodies.add(actions, 'addStar'),
-    `Drop a bright star onto a prograde circular orbit (up to ${MAX_BODIES} bodies total). It is lensed and occluded by the shadow as it passes behind.`,
-  );
-  addCtrls.planet = tip(
-    bodies.add(actions, 'addPlanet'),
-    'Drop a small dim body onto a retrograde orbit (it circles the opposite way to the stars).',
-  );
-  addCtrls.hole = tip(
-    bodies.add(actions, 'addBlackHole'),
-    'Drop in a second black hole — a dark core wrapped in its own glowing, rotating accretion ' +
-      'disk — that bends light around it and slings the other bodies. The heaviest thing to ' +
-      'add; auto-resolution trades sharpness to keep it smooth.',
-  );
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
-  refreshCounts(); // set the initial counts ("Add star · 2", …)
 
-  // --- Replay intro (basic; the last item before the Advanced toggle) ---
+  // --- Replay intro ---
   tip(
     gui.add({ replay: () => formation.restart() }, 'replay').name('Replay intro'),
     'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
   );
 
+  // --- Pause (last basic control, right before the Advanced toggle) ---
+  tip(gui.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+
   // --- Advanced settings toggle (remembered across sessions) ---
   const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
   advCtrl.domElement.classList.add('osp-section'); // bold label + a stronger divider
 
-  // --- Advanced, in order: GPU physics, Display FPS, Pause, Step, then tuning ---
+  // --- Advanced, in order: GPU physics, Display FPS, Step, Click-outside, then tuning ---
   const gpuAvailable = backend === 'webgpu';
   const gpuCtrl = gui.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
     physics.setGPU(v);
@@ -195,7 +181,6 @@ export function createControls(ctx: {
     savePrefs(prefs);
   });
 
-  const pauseCtrl = tip(gui.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
   const stepCtrl = tip(
     gui.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
     'Advance a single frame while paused.',
@@ -329,12 +314,14 @@ export function createControls(ctx: {
       'volume but slower.',
   );
 
-  // Everything revealed by the Advanced toggle: GPU/FPS/Pause/Step/Click-outside
-  // first, then the deeper tuning folders.
+  // Each tuning folder starts collapsed when Advanced is first shown.
+  [look, anim, post, quality].forEach((f) => f.close());
+
+  // Everything revealed by the Advanced toggle: GPU/FPS/Step/Click-outside first,
+  // then the deeper tuning folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
     gpuCtrl,
     fpsCtrl,
-    pauseCtrl,
     stepCtrl,
     tapOutsideCtrl,
     look,
@@ -350,10 +337,14 @@ export function createControls(ctx: {
     applyAdvanced(v);
     savePrefs(prefs);
   });
-  tip(advCtrl, 'Reveal GPU physics, Display FPS, Pause/Step, and the deeper tuning folders. Remembered for next time.');
+  tip(advCtrl, 'Reveal GPU physics, Display FPS, Step, and the deeper tuning folders. Remembered for next time.');
 
-  // Version chip pinned above the folders; start collapsed.
-  gui.$children.prepend(createVersionBadge(VERSION));
+  // Top row — About button + click-to-copy version chip — pinned above the
+  // folders; the panel starts collapsed.
+  const topRow = document.createElement('div');
+  topRow.className = 'osp-toprow';
+  topRow.append(createAboutButton(), createVersionBadge(VERSION));
+  gui.$children.prepend(topRow);
   gui.close();
 
   // Long-press on a row shows its tooltip on touch devices (no native hover).

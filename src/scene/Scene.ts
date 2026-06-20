@@ -6,6 +6,19 @@ import { createBlackHole, type BlackHole } from './BlackHole';
 const PRIMARY_MASS = 1; // gravitational mass of the hole (geometric units, = M)
 
 /**
+ * How many of a body type may be added, given how many black holes already orbit.
+ * Black holes are the budget (at most 4); the more there are, the fewer
+ * stars/planets are allowed — and at 4 holes, nothing else can be added.
+ */
+export function bodyCap(type: BodyType, holeCount: number): number {
+  if (type === 'hole') return 4;
+  if (holeCount >= 4) return 0;
+  if (holeCount === 3) return 3;
+  if (holeCount === 2) return 4;
+  return 5; // 0–1 holes
+}
+
+/**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
  * orbiting companions, all driven by the N-body PhysicsEngine. Companions are
  * placed on circular orbits beyond the disk; `addStar` / `addPlanet` is the
@@ -106,6 +119,21 @@ export class Scene {
     this.bodies = this.bodies.filter((b) => b.fixed); // keep only the primary hole
     this.physics.bodies = this.bodies;
     this.physics.reset();
+  }
+
+  /** Remove the most recently added companion of a type (the − stepper button).
+   *  Returns whether one was removed. */
+  removeOne(type: BodyType): boolean {
+    for (let i = this.bodies.length - 1; i >= 0; i--) {
+      const b = this.bodies[i]!;
+      if (!b.fixed && b.type === type) {
+        this.bodies.splice(i, 1);
+        this.physics.bodies = this.bodies;
+        this.physics.reset();
+        return true;
+      }
+    }
+    return false;
   }
 
   step(frameDelta: number): void {
