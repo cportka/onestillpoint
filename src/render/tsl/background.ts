@@ -13,30 +13,40 @@ function gridLines(coord: Node<'float'>, count: number) {
 }
 
 /**
- * Mode 1 — a high-contrast emission nebula. A single brightness field drives a
- * colour ramp: the DARKS are dim blue-green, the LIGHTS are saturated orange (so
- * colour tracks luminance — orange where it's bright, blue-green in the shadow).
- * Most of the field is dark; bright orange cores are rare and bloom.
+ * Mode 1 — a high-contrast emission nebula: orange-dominant glowing gas with dark
+ * ember shadows and rare cool-blue pockets, carved hard by black dust pillars.
+ * This is the v0.14.1 look (tuned for punch — deep voids, bright cores), which
+ * the later "blue-green darks" ramps had drifted away from; the only addition is
+ * a *faint* dark blue-green floor that lifts the blackest gaps just enough to
+ * read as deep space rather than pure void.
  */
 function nebula(dir: Node<'vec3'>) {
-  const a = fbm(dir.mul(1.7)).mul(0.5).add(0.5);
-  const b = fbm(dir.mul(3.8).add(vec3(19, 7, 13))).mul(0.5).add(0.5);
+  const base = fbm(dir.mul(1.8)).mul(0.5).add(0.5); // large-scale structure
+  const detail = fbm(dir.mul(4.0).add(vec3(19, 7, 13))).mul(0.5).add(0.5);
   const dust = fbm(dir.mul(2.6).add(vec3(40, 5, 30))).mul(0.5).add(0.5);
 
-  const g = pow(smoothstep(float(0.52), float(0.9), a.mul(0.6).add(b.mul(0.5))), float(1.8));
-  // A three-stop brightness ramp so the mid-tones stay a rich, dark rust-orange
-  // instead of washing straight from the cool darks to the bright cores — that
-  // mid stop is the "darker orange" the two-stop ramp had lost.
-  const darkBlueGreen = vec3(0.02, 0.08, 0.07); // the darkness has colour, dim (kept)
-  const rust = vec3(0.55, 0.15, 0.012); // deep, saturated rust-orange — the rich mid
-  const orange = vec3(1.55, 0.45, 0.025); // bright, saturated orange cores
-  const lo = mix(darkBlueGreen, rust, smoothstep(float(0.0), float(0.55), g));
-  const color = mix(lo, orange, smoothstep(float(0.55), float(1.0), g));
+  // Narrow, powered masks → dark voids and bright cores (the contrast/punch).
+  const orangeMask = pow(smoothstep(float(0.45), float(0.85), base), float(1.5)); // dominant
+  const blueMask = pow(smoothstep(float(0.62), float(0.92), detail), float(2)).mul(0.6); // accent
 
-  const dustMask = smoothstep(float(0.46), float(0.72), dust);
-  const carved = mix(color, darkBlueGreen.mul(0.3), dustMask); // pillars → deeper dark
-  const tips = vec3(1.5, 0.55, 0.1).mul(pow(b, float(12)).mul(1.6)); // hot orange knots (less cream)
-  return carved.add(tips).add(starfield(dir, float(0.35)));
+  const orange = vec3(1.0, 0.42, 0.06);
+  const ember = vec3(0.6, 0.12, 0.02); // dark rust mid-shadow
+  const blue = vec3(0.1, 0.45, 0.7);
+
+  const warm = mix(ember, orange, orangeMask).mul(orangeMask);
+  const gas = warm.add(blue.mul(blueMask));
+
+  const dustMask = smoothstep(float(0.45), float(0.7), dust); // pillars carve to black
+  const carved = gas.mul(float(1).sub(dustMask)).mul(1.8);
+
+  // The "little dark blue/green near the blacker areas": a dim cool floor where
+  // the orange gas is absent, mostly (not fully) carved by the dust so the
+  // pillars stay near-black and the punch survives.
+  const darkBlueGreen = vec3(0.02, 0.07, 0.06);
+  const floor = darkBlueGreen.mul(float(1).sub(orangeMask)).mul(float(1).sub(dustMask.mul(0.6)));
+
+  const tips = vec3(1.0, 0.85, 0.6).mul(pow(detail, float(10)).mul(2)); // bright knots
+  return carved.add(floor).add(tips).add(starfield(dir, float(0.5)));
 }
 
 /**

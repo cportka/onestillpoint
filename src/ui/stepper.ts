@@ -7,6 +7,9 @@ export interface StepperOptions {
   label: string;
   count: () => number;
   canInc: () => boolean;
+  /** Whether − is allowed right now. Defaults to "there is one to remove"; the
+   *  Bodies panel also blocks it while a removal (plunge) is still animating. */
+  canDec?: () => boolean;
   onInc: () => void;
   onDec: () => void;
   incTip?: string;
@@ -18,12 +21,16 @@ export interface Stepper {
   refresh: () => void;
 }
 
+// Matches the osp-flash-pop CSS animation length (kept a touch longer so the ✓/✗
+// lingers — see src/style.css). Bump both together.
+const FLASH_MS = 1500;
+
 function flashEl(el: HTMLElement, ok: boolean): void {
   const cls = ok ? 'osp-flash-ok' : 'osp-flash-max';
   el.classList.remove('osp-flash-ok', 'osp-flash-max');
   void el.offsetWidth; // reflow so the animation restarts on a repeat click
   el.classList.add(cls);
-  window.setTimeout(() => el.classList.remove(cls), 700);
+  window.setTimeout(() => el.classList.remove(cls), FLASH_MS);
 }
 
 export function createStepper(opts: StepperOptions): Stepper {
@@ -49,10 +56,12 @@ export function createStepper(opts: StepperOptions): Stepper {
   inc.textContent = '+';
   if (opts.incTip) inc.title = opts.incTip;
 
+  const canDec = (): boolean => (opts.canDec ? opts.canDec() : opts.count() > 0);
+
   const refresh = (): void => {
     countEl.textContent = String(opts.count());
-    inc.disabled = !opts.canInc(); // can't increase past a cap
-    dec.disabled = opts.count() <= 0; // nothing to remove
+    inc.disabled = !opts.canInc(); // can't increase past a cap (or during the add cooldown)
+    dec.disabled = !canDec(); // nothing to remove, or a removal is still animating
   };
 
   inc.addEventListener('click', () => {
@@ -65,7 +74,7 @@ export function createStepper(opts: StepperOptions): Stepper {
     }
   });
   dec.addEventListener('click', () => {
-    if (opts.count() > 0) {
+    if (canDec()) {
       opts.onDec();
       refresh();
       flashEl(dec, true);

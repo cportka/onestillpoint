@@ -54,8 +54,12 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
   for (let i = 0; i < MAX_BODIES; i++) {
     const slot = bodyUniforms.slots[i]!;
     const body = companions[i];
-    if (body) {
-      const p = body.position;
+    const p = body?.position;
+    // Guard against a non-finite body (a rare close-encounter blow-up): writing a
+    // NaN/Inf position into a uniform poisons every ray's geodesic (via the shared
+    // secondary-deflection term) and blacks out the whole render until that body
+    // is pruned — so treat it as an empty slot this frame.
+    if (body && p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && Number.isFinite(body.radius)) {
       slot.posRadius.value.set(p.x, p.y, p.z, body.radius);
       slot.color.value.copy(body.color);
       slot.lensMass.value = body.lensMass;
