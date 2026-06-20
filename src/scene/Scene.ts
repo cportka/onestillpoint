@@ -18,6 +18,11 @@ export function bodyCap(type: BodyType, holeCount: number): number {
   return 5; // 0–1 holes
 }
 
+// A companion is gone once it is flung far past the scene (escaped) or has fallen
+// in to the centre (merged) — at which point its memory and slot are freed.
+const ESCAPE_RADIUS = 300;
+const MERGE_RADIUS = 3;
+
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
  * orbiting companions, all driven by the N-body PhysicsEngine. Companions are
@@ -29,6 +34,9 @@ export class Scene {
   readonly physics: PhysicsEngine;
   bodies: Body[] = [];
   private nextId = 1;
+  /** Fired when the body set changes during simulation (pruning), so the UI
+   *  count can refresh. */
+  onChange?: () => void;
 
   constructor() {
     this.blackHole = createBlackHole();
@@ -139,6 +147,24 @@ export class Scene {
       }
     }
     return false;
+  }
+
+  /** Free companions that have escaped far past the scene or fallen/merged into
+   *  the centre — drop them from the body list (and so the render slots and the
+   *  count). Returns whether anything was removed, so the GPU buffers can rebuild. */
+  prune(): boolean {
+    const gone = (b: Body): boolean => {
+      if (b.fixed) return false; // never the primary
+      const r = b.position.length();
+      return r <= MERGE_RADIUS || r >= ESCAPE_RADIUS;
+    };
+    // Scan first (no allocation) — only rebuild the list when something is out.
+    if (!this.bodies.some(gone)) return false;
+    this.bodies = this.bodies.filter((b) => !gone(b));
+    this.physics.bodies = this.bodies;
+    this.physics.reset();
+    this.onChange?.();
+    return true;
   }
 
   step(frameDelta: number): void {

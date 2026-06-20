@@ -112,6 +112,13 @@ function createGPUKernels(renderer: WebGPURenderer, init: InitialState) {
       const buffer = await renderer.getArrayBufferAsync(pos.value);
       return new Float32Array(buffer);
     },
+    /** Free this set's GPU storage buffers (called before a rebuild so adding /
+     *  removing bodies doesn't leak a buffer set each time). */
+    dispose(): void {
+      for (const buf of [pos, vel, acc, mass, movable]) {
+        (buf.value as { dispose?: () => void }).dispose?.();
+      }
+    },
   };
 }
 
@@ -134,6 +141,7 @@ export class GPUPhysicsEngine {
   constructor(private readonly renderer: WebGPURenderer) {}
 
   setBodies(bodies: Body[]): void {
+    this.kernels?.dispose(); // free the previous run's GPU buffers before rebuilding
     this.bodies = bodies;
     this.kernels = createGPUKernels(this.renderer, buildInitialState(bodies));
   }

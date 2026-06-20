@@ -1,4 +1,4 @@
-import { abs, asin, atan, clamp, float, fract, If, max, pow, smoothstep, vec3 } from 'three/tsl';
+import { abs, asin, atan, clamp, float, fract, If, max, mix, pow, smoothstep, vec3 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { starfield } from './starfield';
 import { fbm } from './turbulence';
@@ -13,26 +13,31 @@ function gridLines(coord: Node<'float'>, count: number) {
 }
 
 /**
- * Mode 1 — a spectacular emission nebula in the Hubble/Eagle palette: glowing
- * teal and gold gas carved by dark dust pillars, with bright cyan-white tips.
+ * Mode 1 — a high-contrast emission nebula: orange-dominant glowing gas with
+ * dark ember shadows and rare cool-blue pockets, carved hard by black dust
+ * pillars. Tuned for punch (deep voids, bright cores), not a wash.
  */
 function nebula(dir: Node<'vec3'>) {
-  const n1 = fbm(dir.mul(2.0)).mul(0.5).add(0.5);
-  const n2 = fbm(dir.mul(3.5).add(vec3(19, 7, 13))).mul(0.5).add(0.5);
-  const dust = fbm(dir.mul(2.4).add(vec3(40, 5, 30))).mul(0.5).add(0.5);
+  const base = fbm(dir.mul(1.8)).mul(0.5).add(0.5); // large-scale structure
+  const detail = fbm(dir.mul(4.0).add(vec3(19, 7, 13))).mul(0.5).add(0.5);
+  const dust = fbm(dir.mul(2.6).add(vec3(40, 5, 30))).mul(0.5).add(0.5);
 
-  const tealGlow = smoothstep(float(0.4), float(0.95), n1);
-  const goldGlow = smoothstep(float(0.45), float(0.9), n2);
-  const teal = vec3(0.05, 0.5, 0.55);
-  const gold = vec3(0.7, 0.55, 0.12);
-  const rust = vec3(0.45, 0.13, 0.04);
+  // Narrow, powered masks → dark voids and bright cores (the missing contrast).
+  const orangeMask = pow(smoothstep(float(0.45), float(0.85), base), float(1.5)); // dominant
+  const blueMask = pow(smoothstep(float(0.62), float(0.92), detail), float(2)).mul(0.6); // accent
 
-  const gas = teal.mul(tealGlow).add(gold.mul(goldGlow)).add(rust.mul(goldGlow.mul(tealGlow)));
-  const dustMask = smoothstep(float(0.5), float(0.8), dust); // dark pillars carve the gas
-  const carved = gas.mul(float(1).sub(dustMask.mul(0.9))).mul(1.6);
+  const orange = vec3(1.0, 0.42, 0.06);
+  const ember = vec3(0.6, 0.12, 0.02); // dark rust mid-shadow
+  const blue = vec3(0.1, 0.45, 0.7);
 
-  const tips = vec3(0.8, 0.95, 1.0).mul(pow(n2, float(8)).mul(1.4)); // bright cyan-white knots
-  return carved.add(tips).add(starfield(dir, float(0.6)));
+  const warm = mix(ember, orange, orangeMask).mul(orangeMask);
+  const gas = warm.add(blue.mul(blueMask));
+
+  const dustMask = smoothstep(float(0.45), float(0.7), dust); // pillars carve to black
+  const carved = gas.mul(float(1).sub(dustMask)).mul(1.8);
+
+  const tips = vec3(1.0, 0.85, 0.6).mul(pow(detail, float(10)).mul(2)); // bright knots
+  return carved.add(tips).add(starfield(dir, float(0.5)));
 }
 
 /**

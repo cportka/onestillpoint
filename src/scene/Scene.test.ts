@@ -51,6 +51,23 @@ describe('Scene', () => {
     expect(scene.bodies[0]!.position.length()).toBe(0);
   });
 
+  it('prunes companions that escape or merge into the centre', () => {
+    const scene = new Scene();
+    const before = scene.companions.length;
+    scene.companions[0]!.position.set(0, 9999, 0); // flung away
+    scene.companions[1]!.position.set(0.5, 0, 0); // fallen into the centre
+    let changed = 0;
+    scene.onChange = () => {
+      changed += 1;
+    };
+
+    expect(scene.prune()).toBe(true);
+    expect(scene.companions.length).toBe(before - 2);
+    expect(changed).toBe(1);
+    expect(scene.bodies[0]!.fixed).toBe(true); // the primary is kept
+    expect(scene.prune()).toBe(false); // nothing left to prune
+  });
+
   it('removeOne takes one companion of a type (or reports none)', () => {
     const scene = new Scene();
     const stars = () => scene.companions.filter((b) => b.type === 'star').length;
