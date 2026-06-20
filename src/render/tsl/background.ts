@@ -13,47 +13,41 @@ function gridLines(coord: Node<'float'>, count: number) {
 }
 
 /**
- * Mode 1 — a high-contrast emission nebula: dominant saturated-orange gas over
- * deep blue-green darks (so the shadows carry colour, not just black), carved by
- * black dust pillars. Tuned to read even past the disk's washing halo.
+ * Mode 1 — a high-contrast emission nebula. A single brightness field drives a
+ * colour ramp: the DARKS are dim blue-green, the LIGHTS are saturated orange (so
+ * colour tracks luminance — orange where it's bright, blue-green in the shadow).
+ * Most of the field is dark; bright orange cores are rare and bloom.
  */
 function nebula(dir: Node<'vec3'>) {
-  const base = fbm(dir.mul(1.8)).mul(0.5).add(0.5); // large-scale structure
-  const detail = fbm(dir.mul(4.0).add(vec3(19, 7, 13))).mul(0.5).add(0.5);
+  const a = fbm(dir.mul(1.7)).mul(0.5).add(0.5);
+  const b = fbm(dir.mul(3.8).add(vec3(19, 7, 13))).mul(0.5).add(0.5);
   const dust = fbm(dir.mul(2.6).add(vec3(40, 5, 30))).mul(0.5).add(0.5);
 
-  // Orange emission, dominant and saturated, with a hard-contrast mask.
-  const orangeMask = pow(smoothstep(float(0.4), float(0.82), base), float(1.6));
-  const orange = vec3(1.3, 0.5, 0.06);
-  const ember = vec3(0.5, 0.12, 0.02);
-  const emission = mix(ember, orange, smoothstep(float(0.45), float(1), orangeMask)).mul(orangeMask);
+  const g = pow(smoothstep(float(0.52), float(0.9), a.mul(0.6).add(b.mul(0.5))), float(1.8));
+  const darkBlueGreen = vec3(0.02, 0.08, 0.07); // the darkness has colour, dim
+  const orange = vec3(1.5, 0.5, 0.04); // the light is saturated orange
+  const color = mix(darkBlueGreen, orange, g);
 
-  // Coloured darks: deep blue-green where the orange isn't, instead of black.
-  const coolMask = smoothstep(float(0.3), float(0.8), detail).mul(float(1).sub(orangeMask));
-  const darks = mix(vec3(0.02, 0.05, 0.06), vec3(0.03, 0.18, 0.15), coolMask);
-
-  const gas = darks.add(emission);
-  const dustMask = smoothstep(float(0.45), float(0.72), dust); // pillars carve down
-  const carved = gas.mul(float(1).sub(dustMask.mul(0.85))).mul(1.7);
-
-  const tips = vec3(1.2, 0.9, 0.6).mul(pow(detail, float(9)).mul(2.2)); // bright knots
-  return carved.add(tips).add(starfield(dir, float(0.45)));
+  const dustMask = smoothstep(float(0.46), float(0.72), dust);
+  const carved = mix(color, darkBlueGreen.mul(0.3), dustMask); // pillars → deeper dark
+  const tips = vec3(1.6, 0.95, 0.5).mul(pow(b, float(10)).mul(2.5)); // hot orange-white knots
+  return carved.add(tips).add(starfield(dir, float(0.35)));
 }
 
 /**
- * Mode 2 — Filaments: a high-contrast monochrome cosmic web. Ridged noise
- * (1 − |noise|) makes sharp silver threads over near-black gaps, with brighter
- * knots at the intersections. The "lots of light" sky, but with real contrast.
+ * Mode 2 — Filaments: a high-contrast cosmic web. Ridged noise (1 − |noise|)
+ * makes sharp threads over big dark gaps, with brighter knots at the
+ * intersections. Tinted cool blue-silver so it always reads as *background*
+ * against the warm-white central disk rather than washing into it.
  */
 function filaments(dir: Node<'vec3'>) {
   const r1 = float(1).sub(abs(fbm(dir.mul(2.2))));
   const r2 = float(1).sub(abs(fbm(dir.mul(5.0).add(vec3(13, 9, 21)))));
-  // Higher threshold → more dark space; steeper power → sharper, brighter threads.
-  const web = max(float(0), r1.mul(0.55).add(r2.mul(0.55)).sub(0.42));
-  const webGlow = pow(web, float(3.5)).mul(7);
-  const nodes = pow(max(float(0), r1.mul(r2)), float(9)).mul(5); // bright cluster knots
-  const intensity = clamp(webGlow.add(nodes), float(0), float(4));
-  return vec3(0.85, 0.88, 1.0).mul(intensity).add(starfield(dir, float(0.3)));
+  const web = max(float(0), r1.mul(0.55).add(r2.mul(0.55)).sub(0.52)); // high threshold → dark gaps
+  const webGlow = pow(web, float(3)).mul(6);
+  const nodes = pow(max(float(0), r1.mul(r2)), float(10)).mul(4); // bright cluster knots
+  const intensity = clamp(webGlow.add(nodes), float(0), float(2.6)); // lower cap → less blowout
+  return vec3(0.5, 0.68, 1.0).mul(intensity).add(starfield(dir, float(0.22)));
 }
 
 /**

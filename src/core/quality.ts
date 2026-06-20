@@ -13,11 +13,13 @@ export interface QualitySettings {
   dprCap: number;
 }
 
-/** Three cost tiers. Higher = sharper and finer, but heavier per pixel. */
+/** Three cost tiers. Higher = sharper and finer, but heavier per pixel. The DPR
+ *  cap is deliberately ≤ 1.5: rendering this shader at full retina (×2) is the
+ *  main reason a fullscreen laptop crawls, and the soft disk + bloom hide it. */
 export const QUALITY_TIERS: Record<QualityTier, QualitySettings> = {
-  low: { scale: 0.6, minScale: 0.33, volumeStep: 0.38, dprCap: 1.5 },
-  medium: { scale: 0.75, minScale: 0.45, volumeStep: 0.3, dprCap: 1.75 },
-  high: { scale: 0.9, minScale: 0.5, volumeStep: 0.25, dprCap: 2 },
+  low: { scale: 0.55, minScale: 0.3, volumeStep: 0.42, dprCap: 1.3 },
+  medium: { scale: 0.7, minScale: 0.36, volumeStep: 0.32, dprCap: 1.4 },
+  high: { scale: 0.85, minScale: 0.4, volumeStep: 0.28, dprCap: 1.5 },
 };
 
 /**

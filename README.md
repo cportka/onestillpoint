@@ -39,6 +39,16 @@ spread onto well-separated orbits (so four hold rather than merging back to
 three), and **Replay intro** re-seeds the current line-up on fresh orbits — a
 clean page-load look for the same bodies.
 
+_v0.14.3_ — **intro performance**: the geodesic now escapes at the scene radius
+rather than the camera radius (sparing the far intro camera a long outbound leg),
+the quality tiers cap device-pixel-ratio at ≤ 1.5 (full-retina rendering was the
+main reason a fullscreen laptop crawled) and give the auto-scaler a lower floor.
+Backgrounds again: **Nebula** is a clean dark-blue-green → orange brightness ramp
+(colour tracks luminance), **Filaments** gets big dark gaps + a cool tint so it
+reads as background against the disk. And the **About** tagline now frames the
+dialog — its four parts run along the top, down the right, across the bottom, and
+up the left.
+
 **Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
 **Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
 **Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or

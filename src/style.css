@@ -263,8 +263,8 @@ canvas {
 .osp-about__card {
   position: relative;
   width: 100%;
-  max-width: 340px;
-  padding: 22px 22px 18px;
+  max-width: 350px;
+  padding: 32px 36px;
   border-radius: 14px;
   background: #15151a;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -346,16 +346,49 @@ canvas {
 .osp-about__copy.is-copied .osp-about__copied {
   opacity: 1;
 }
-.osp-about__tagline {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 11px;
-  line-height: 1.75;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.42);
-  text-align: center;
+/* The tagline framing the dialog — top / right (down) / bottom / left (up). */
+.osp-about__edge {
+  position: absolute;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.34);
   font-style: italic;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.osp-about__edge--top {
+  top: 11px;
+  left: 36px;
+  right: 36px;
+  text-align: center;
+}
+.osp-about__edge--bottom {
+  bottom: 11px;
+  left: 36px;
+  right: 36px;
+  text-align: center;
+}
+.osp-about__edge--right,
+.osp-about__edge--left {
+  top: 32px;
+  bottom: 32px;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.osp-about__edge--right {
+  right: 9px;
+}
+.osp-about__edge--left {
+  left: 9px;
+}
+.osp-about__edge--right span {
+  transform: rotate(90deg); /* read down the right side */
+}
+.osp-about__edge--left span {
+  transform: rotate(-90deg); /* read up the left side */
 }
 
 /* Bodies ± steppers (custom rows inside the lil-gui Bodies folder). */

@@ -63,10 +63,11 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
     const pos = ro.toVar();
     const vel = rd.toVar();
 
-    const r0 = length(ro);
-    // Integrate out far enough to reach the outermost companion (or just to the
-    // camera radius when there are none).
-    const escapeR = max(r0, bodies.sceneRadius);
+    // Integrate out past the disk / outermost companion, then let escaping rays
+    // sample the background by direction. Capping at the scene radius (not the
+    // camera radius) spares the FAR intro camera a long outbound leg it doesn't
+    // need — the bending out there is negligible and it's the dominant intro cost.
+    const escapeR = max(bodies.sceneRadius, float(34));
     const h2 = dot(cross(pos, vel), cross(pos, vel)).toVar();
     const rHorizon = M.mul(2);
 
