@@ -49,6 +49,17 @@ reads as background against the disk. And the **About** tagline now frames the
 dialog — its four parts run along the top, down the right, across the bottom, and
 up the left.
 
+_v0.14.4_ — **orbits & absorption**: a **4th black hole** is now only allowed when
+nothing else orbits (no stars or planets), else three; added bodies **last longer
+in orbit** — they are placed exactly on their requested radius (the tilt no longer
+inflates it) with the true circular speed for the *softened* field, and an added
+hole is a touch lighter (0.2) so it scatters the lighter companions less. A body
+absorbed at the centre no longer **pops** out of existence: it begins an
+*absorption fade* — held in place, shrinking and redshifting over ~0.6 s before it
+is freed (groundwork for richer collision animations). And **Nebula** regains its
+rich, dark orange: a three-stop ramp adds a deep rust mid-tone and the hot knots
+read as orange rather than cream.
+
 **Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
 **Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
 **Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or
