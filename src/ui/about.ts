@@ -19,35 +19,44 @@ export function createAboutButton(): HTMLElement {
   button.textContent = 'About';
   button.title = 'About One Still Point';
 
+  // The tagline frames the dialog: its four parts run along the top, down the
+  // right, across the bottom, and up the left.
+  const [t0 = '', t1 = '', t2 = '', t3 = ''] = TAGLINE.split(' · ');
+
   const overlay = document.createElement('div');
   overlay.className = 'osp-about';
   overlay.hidden = true;
   overlay.innerHTML = `
     <div class="osp-about__card" role="dialog" aria-modal="true" aria-label="About One Still Point">
       <button class="osp-about__close" type="button" aria-label="Close">×</button>
-      <div class="osp-about__title">One Still Point</div>
-      <div class="osp-about__by">Created by Chris Portka</div>
-      <a class="osp-about__row" href="${GITHUB}" target="_blank" rel="noopener noreferrer">
-        <span>Github</span><span class="osp-about__val">cportka/onestillpoint&nbsp;↗</span>
-      </a>
-      <button class="osp-about__row osp-about__copy" type="button" data-addr="${ETH}" title="Copy full ETH address">
-        <span>Donate ETH</span>
-        <span class="osp-about__val">
-          <span class="osp-about__addr">${abbreviate(ETH)}</span>
-          <span class="osp-about__copied">✓ copied</span>
-        </span>
-      </button>
-      <button class="osp-about__row osp-about__copy" type="button" data-addr="${BTC}" title="Copy full BTC address">
-        <span>Donate BTC</span>
-        <span class="osp-about__val">
-          <span class="osp-about__addr">${abbreviate(BTC)}</span>
-          <span class="osp-about__copied">✓ copied</span>
-        </span>
-      </button>
-      <a class="osp-about__row" href="${VENMO}" target="_blank" rel="noopener noreferrer">
-        <span>Donate Venmo</span><span class="osp-about__val">@portka&nbsp;↗</span>
-      </a>
-      <div class="osp-about__tagline">${TAGLINE}</div>
+      <div class="osp-about__edge osp-about__edge--top">${t0}</div>
+      <div class="osp-about__edge osp-about__edge--right"><span>${t1}</span></div>
+      <div class="osp-about__edge osp-about__edge--bottom">${t2}</div>
+      <div class="osp-about__edge osp-about__edge--left"><span>${t3}</span></div>
+      <div class="osp-about__inner">
+        <div class="osp-about__title">One Still Point</div>
+        <div class="osp-about__by">Created by Chris Portka</div>
+        <a class="osp-about__row" href="${GITHUB}" target="_blank" rel="noopener noreferrer">
+          <span>Github</span><span class="osp-about__val">cportka/onestillpoint&nbsp;↗</span>
+        </a>
+        <button class="osp-about__row osp-about__copy" type="button" data-addr="${ETH}" title="Copy full ETH address">
+          <span>Donate ETH</span>
+          <span class="osp-about__val">
+            <span class="osp-about__addr">${abbreviate(ETH)}</span>
+            <span class="osp-about__copied">✓ copied</span>
+          </span>
+        </button>
+        <button class="osp-about__row osp-about__copy" type="button" data-addr="${BTC}" title="Copy full BTC address">
+          <span>Donate BTC</span>
+          <span class="osp-about__val">
+            <span class="osp-about__addr">${abbreviate(BTC)}</span>
+            <span class="osp-about__copied">✓ copied</span>
+          </span>
+        </button>
+        <a class="osp-about__row" href="${VENMO}" target="_blank" rel="noopener noreferrer">
+          <span>Donate Venmo</span><span class="osp-about__val">@portka&nbsp;↗</span>
+        </a>
+      </div>
     </div>`;
   document.body.appendChild(overlay);
 
