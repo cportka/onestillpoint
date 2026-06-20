@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 
   createControls({
     blackHole, scene, physics, time, formation, backend, renderer, scaler,
-    bloom: post.bloom, hud, autoTier, applyQuality,
+    bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
   });
 
   loop.onTick = (frameDelta) => {

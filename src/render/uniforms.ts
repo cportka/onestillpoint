@@ -28,6 +28,9 @@ export function createUniforms() {
      *  (FormationSequence) and multiplied into the dust; 1 in steady state. */
     formation: uniform(1),
 
+    /** Background sky mode: 0 = Stars (default), 1 = Nebula, 2 = Aurora, 3 = Lattice. */
+    background: uniform(0),
+
     /** Orbit-camera world position — the ray origin for every pixel. */
     camPos: uniform(new Vector3(0, 6, 22)),
     /** Orthonormal camera basis in world space (right / up / forward). */

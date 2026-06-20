@@ -46,9 +46,10 @@ export function createControls(ctx: {
   hud: Hud;
   autoTier: QualityTier;
   applyQuality: (tier: QualityTier) => void;
+  background: { value: number };
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality } = ctx;
+  const { hud, autoTier, applyQuality, background } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   const prefs = loadPrefs();
 
@@ -77,6 +78,18 @@ export function createControls(ctx: {
       'Telescope) = the real imaged look of M87*/Sgr A*: a cooler, smoother orange photon ' +
       'ring. Interstellar = symmetric, beaming OFF (stylised). Stylized = hot, punchy, ' +
       'turbulent. Filters toggle real physics on/off.',
+  );
+
+  // --- Background (the sky behind everything; it lenses around the holes too) ---
+  const BACKGROUNDS = ['Stars', 'Nebula', 'Aurora', 'Lattice'];
+  const bgProxy = { sky: BACKGROUNDS[background.value] ?? 'Stars' };
+  tip(
+    gui.add(bgProxy, 'sky', BACKGROUNDS).name('Background').onChange((v: string) => {
+      background.value = Math.max(0, BACKGROUNDS.indexOf(v));
+    }),
+    'The sky behind the hole — it lenses around the shadow either way. Stars = the default ' +
+      'star field; Nebula = colourful gas clouds; Aurora = flowing colour bands; Lattice = a ' +
+      'spacetime grid that visibly warps near the holes.',
   );
 
   // --- Speed (its own line — no longer wrapped in a single-child Time folder) ---
@@ -148,8 +161,12 @@ export function createControls(ctx: {
     'Play the formation sequence again — the camera pulls back and the disk re-ignites.',
   );
 
-  // --- Pause (last basic control, right before the Advanced toggle) ---
+  // --- Pause + Step (last basic controls, right before the Advanced toggle) ---
   tip(gui.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+  tip(
+    gui.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
+    'Advance a single frame while paused.',
+  );
 
   // --- Advanced settings toggle (remembered across sessions) ---
   const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
@@ -180,11 +197,6 @@ export function createControls(ctx: {
     hud.setVisible(v);
     savePrefs(prefs);
   });
-
-  const stepCtrl = tip(
-    gui.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
-    'Advance a single frame while paused.',
-  );
 
   // Last of the first batch of Advanced toggles: click/tap outside to collapse.
   const tapOutsideCtrl = tip(
@@ -317,12 +329,11 @@ export function createControls(ctx: {
   // Each tuning folder starts collapsed when Advanced is first shown.
   [look, anim, post, quality].forEach((f) => f.close());
 
-  // Everything revealed by the Advanced toggle: GPU/FPS/Step/Click-outside first,
+  // Everything revealed by the Advanced toggle: GPU / FPS / Click-outside first,
   // then the deeper tuning folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
     gpuCtrl,
     fpsCtrl,
-    stepCtrl,
     tapOutsideCtrl,
     look,
     anim,
@@ -337,7 +348,7 @@ export function createControls(ctx: {
     applyAdvanced(v);
     savePrefs(prefs);
   });
-  tip(advCtrl, 'Reveal GPU physics, Display FPS, Step, and the deeper tuning folders. Remembered for next time.');
+  tip(advCtrl, 'Reveal GPU physics, Display FPS, and the deeper tuning folders. Remembered for next time.');
 
   // Top row — About button + click-to-copy version chip — pinned above the
   // folders; the panel starts collapsed.
