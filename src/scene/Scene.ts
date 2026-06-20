@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import { SOFTENING2 } from '../physics/integrators';
 import { PhysicsEngine } from '../physics/PhysicsEngine';
 import type { Body, BodyType } from './Body';
 import { createBlackHole, type BlackHole } from './BlackHole';
@@ -6,12 +7,14 @@ import { createBlackHole, type BlackHole } from './BlackHole';
 const PRIMARY_MASS = 1; // gravitational mass of the hole (geometric units, = M)
 
 /**
- * How many of a body type may be added, given how many black holes already orbit.
- * Black holes are the budget (at most 4); the more there are, the fewer
- * stars/planets are allowed — and at 4 holes, nothing else can be added.
+ * How many of a body type may be added, given how many black holes already orbit
+ * (and, for holes, how many stars/planets are present). Black holes are the
+ * budget — at most 4, but the fourth only when nothing else orbits (no stars or
+ * planets), otherwise 3 — and the more holes there are the fewer stars/planets
+ * are allowed (at 4 holes, nothing else).
  */
-export function bodyCap(type: BodyType, holeCount: number): number {
-  if (type === 'hole') return 4;
+export function bodyCap(type: BodyType, holeCount: number, otherCount = 0): number {
+  if (type === 'hole') return otherCount === 0 ? 4 : 3;
   if (holeCount >= 4) return 0;
   if (holeCount === 3) return 3;
   if (holeCount === 2) return 4;
@@ -22,6 +25,10 @@ export function bodyCap(type: BodyType, holeCount: number): number {
 // in to the centre (merged) — at which point its memory and slot are freed.
 const ESCAPE_RADIUS = 300;
 const MERGE_RADIUS = 3;
+// Seconds a merged companion spends being absorbed (held still, shrinking and
+// redshifting in the shader) before it is finally freed — so it eases out of the
+// scene rather than popping out of existence the instant it reaches the centre.
+const ABSORB_DURATION = 0.6;
 
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
@@ -99,12 +106,14 @@ export class Scene {
     return this.addBody('planet', orbitRadius, 0.6, new Vector3(0.5, 0.6, 0.8).multiplyScalar(1.2), 1e-5, 0, true);
   }
 
-  /** A secondary black hole: massive enough to perturb orbits and to lens light
+  /** A secondary black hole: heavy enough to perturb orbits and to lens light
    *  (lensMass = mass), rendered as a dark core ringed by a lensed photon ring.
    *  New holes are placed on well-separated radii (34, 39, 44, 49) so up to four
-   *  stay clear of each other and the centre rather than quickly merging out. */
+   *  stay clear of each other and the centre rather than quickly merging out. The
+   *  mass is 0.2 (was 0.3) so an added hole scatters the lighter stars/planets
+   *  less violently — they hold their orbits longer — while still clearly lensing. */
   addBlackHole(orbitRadius = 34 + this.holeCount() * 5): Body {
-    return this.addBody('hole', orbitRadius, 1.5, new Vector3(0.02, 0.01, 0.0), 0.3, 0.3);
+    return this.addBody('hole', orbitRadius, 1.5, new Vector3(0.02, 0.01, 0.0), 0.2, 0.2);
   }
 
   addBody(
@@ -118,12 +127,22 @@ export class Scene {
   ): Body {
     const azimuth = Math.random() * Math.PI * 2;
     const inclination = (Math.random() - 0.5) * 0.6; // modest orbital tilt
+    // Place the body *exactly* on the requested orbit radius: folding cos(incl)
+    // into the horizontal components keeps |pos| === orbitRadius. The old form
+    // (a bare sin(incl) on y) inflated the radius by √(1+sin²incl) — up to ~4% —
+    // which scrambled the careful separations between added bodies.
+    const ci = Math.cos(inclination);
     const pos = new Vector3(
-      Math.cos(azimuth) * orbitRadius,
+      Math.cos(azimuth) * ci * orbitRadius,
       Math.sin(inclination) * orbitRadius,
-      Math.sin(azimuth) * orbitRadius,
+      Math.sin(azimuth) * ci * orbitRadius,
     );
-    const speed = Math.sqrt(PRIMARY_MASS / pos.length()); // circular orbit speed
+    // Circular-orbit speed in the primary's *softened* field (matching the
+    // integrator's SOFTENING2): v = √(M·r² / (r² + ε²)^{3/2}). The bare √(M/r)
+    // left a slight excess that opened the orbit into a slowly drifting ellipse —
+    // part of why freshly added bodies wandered inward toward a merge.
+    const r = pos.length();
+    const speed = Math.sqrt((PRIMARY_MASS * r * r) / Math.pow(r * r + SOFTENING2, 1.5));
     const radial = pos.clone().normalize();
     const tangent = new Vector3().crossVectors(new Vector3(0, 1, 0), radial).normalize();
 
@@ -165,14 +184,31 @@ export class Scene {
     return false;
   }
 
-  /** Free companions that have escaped far past the scene or fallen/merged into
-   *  the centre — drop them from the body list (and so the render slots and the
-   *  count). Returns whether anything was removed, so the GPU buffers can rebuild. */
-  prune(): boolean {
+  /** Free companions that have escaped far past the scene or finished being
+   *  absorbed at the centre — drop them from the body list (and so the render
+   *  slots and the count). A companion that reaches the merge radius is *not*
+   *  removed at once: it begins an `absorbing` 0→1 fade (held still at its anchor,
+   *  shrinking and redshifting in the shader) and is freed only when that
+   *  completes. `frameDelta` is wall-clock seconds, so the fade runs at a steady
+   *  rate at any Speed. Returns whether anything was freed, so the GPU buffers can
+   *  rebuild. */
+  prune(frameDelta = 0): boolean {
+    for (const b of this.bodies) {
+      if (b.fixed) continue;
+      if (b.absorbing === undefined && b.position.length() <= MERGE_RADIUS) {
+        b.absorbing = 0; // just reached the centre — begin the absorption fade
+        b.absorbAnchor = b.position.clone();
+      }
+      if (b.absorbing !== undefined) {
+        b.absorbing = Math.min(1, b.absorbing + frameDelta / ABSORB_DURATION);
+        if (b.absorbAnchor) b.position.copy(b.absorbAnchor); // hold still while absorbing
+      }
+    }
+
     const gone = (b: Body): boolean => {
       if (b.fixed) return false; // never the primary
-      const r = b.position.length();
-      return r <= MERGE_RADIUS || r >= ESCAPE_RADIUS;
+      if (b.absorbing !== undefined) return b.absorbing >= 1; // freed once fully absorbed
+      return b.position.length() >= ESCAPE_RADIUS; // flung clear of the scene
     };
     // Scan first (no allocation) — only rebuild the list when something is out.
     if (!this.bodies.some(gone)) return false;

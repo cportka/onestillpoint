@@ -24,13 +24,18 @@ function nebula(dir: Node<'vec3'>) {
   const dust = fbm(dir.mul(2.6).add(vec3(40, 5, 30))).mul(0.5).add(0.5);
 
   const g = pow(smoothstep(float(0.52), float(0.9), a.mul(0.6).add(b.mul(0.5))), float(1.8));
-  const darkBlueGreen = vec3(0.02, 0.08, 0.07); // the darkness has colour, dim
-  const orange = vec3(1.5, 0.5, 0.04); // the light is saturated orange
-  const color = mix(darkBlueGreen, orange, g);
+  // A three-stop brightness ramp so the mid-tones stay a rich, dark rust-orange
+  // instead of washing straight from the cool darks to the bright cores — that
+  // mid stop is the "darker orange" the two-stop ramp had lost.
+  const darkBlueGreen = vec3(0.02, 0.08, 0.07); // the darkness has colour, dim (kept)
+  const rust = vec3(0.55, 0.15, 0.012); // deep, saturated rust-orange — the rich mid
+  const orange = vec3(1.55, 0.45, 0.025); // bright, saturated orange cores
+  const lo = mix(darkBlueGreen, rust, smoothstep(float(0.0), float(0.55), g));
+  const color = mix(lo, orange, smoothstep(float(0.55), float(1.0), g));
 
   const dustMask = smoothstep(float(0.46), float(0.72), dust);
   const carved = mix(color, darkBlueGreen.mul(0.3), dustMask); // pillars → deeper dark
-  const tips = vec3(1.6, 0.95, 0.5).mul(pow(b, float(10)).mul(2.5)); // hot orange-white knots
+  const tips = vec3(1.5, 0.55, 0.1).mul(pow(b, float(12)).mul(1.6)); // hot orange knots (less cream)
   return carved.add(tips).add(starfield(dir, float(0.35)));
 }
 

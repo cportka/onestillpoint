@@ -164,11 +164,19 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         If(radius.greaterThan(0), () => {
           const center = slot.posRadius.xyz;
           const appear = slot.appear;
+          // Absorption fade: as a body is taken in by the primary (absorb 0 → 1)
+          // it shrinks toward a point and its light redshifts (blue, then green,
+          // fade before red) and dims — a brief, plausible stand-in for the tidal
+          // plunge across the horizon. `shrink` is 1 for every live body, so the
+          // normal render is untouched.
+          const shrink = max(float(0), float(1).sub(slot.absorb));
+          const drawR = radius.mul(shrink);
           // Opaque emissive sphere (lensed + occluded by the curved-space march),
           // gated on `appear` so a body still swooshing in during the intro
           // neither occludes as a black disc nor flashes at full brightness.
-          If(appear.greaterThan(0.02).and(segmentHitsSphere(pos, newPos, center, radius)), () => {
-            bodyColor.assign(slot.color.mul(appear));
+          If(appear.greaterThan(0.02).and(segmentHitsSphere(pos, newPos, center, drawR)), () => {
+            const redshift = vec3(float(1), shrink, shrink.mul(shrink)); // lose blue, then green
+            bodyColor.assign(slot.color.mul(redshift).mul(appear).mul(shrink));
             bodyHit.assign(1);
           });
 
@@ -186,9 +194,9 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
               .and(abs(pl.y).lessThan(radius.mul(0.7)));
             If(inSecSlab.and(appear.greaterThan(0.02)), () => {
               const disk = secondaryDisk(mid, center, radius, slot.lensMass, u.time, u.timeBlur, bh);
-              const density = disk.density.mul(appear);
+              const density = disk.density.mul(appear).mul(shrink); // fades with the core as it is absorbed
               If(density.greaterThan(0.001), () => {
-                radiance.assign(radiance.add(transmittance.mul(disk.emission).mul(appear).mul(dl)));
+                radiance.assign(radiance.add(transmittance.mul(disk.emission).mul(appear).mul(shrink).mul(dl)));
                 transmittance.assign(transmittance.mul(exp(density.mul(bh.extinction).mul(dl).mul(-1))));
               });
             });

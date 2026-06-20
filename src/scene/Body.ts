@@ -22,4 +22,12 @@ export interface Body {
   velocity: Vector3;
   radius: number;
   color: Vector3; // HDR emissive colour
+  /** Absorption animation progress, 0 → 1, set once a companion reaches the
+   *  central merge radius: rather than vanishing at once it is held in place and
+   *  the shader shrinks + redshifts + fades it over a brief window, then it is
+   *  freed. Undefined for a live, orbiting body. */
+  absorbing?: number;
+  /** Position captured when absorption began, used to hold the body still during
+   *  the fade so it doesn't drift on either integrator. */
+  absorbAnchor?: Vector3;
 }

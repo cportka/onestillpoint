@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SOFTENING2 } from '../physics/integrators';
 import { bodyCap, Scene } from './Scene';
 
 describe('Scene', () => {
@@ -22,14 +23,21 @@ describe('Scene', () => {
     expect(Math.sign(ly(planets[0]!))).toBe(-Math.sign(ly(stars[0]!))); // planets opposed
   });
 
-  it('addStar adds a companion on a (near-)circular bound orbit', () => {
+  it('addStar adds a companion on a circular bound orbit at the requested radius', () => {
     const scene = new Scene();
     const before = scene.companions.length;
     const star = scene.addStar(35);
 
     expect(scene.companions.length).toBe(before + 1);
-    // velocity is the circular-orbit speed √(M/r) for the primary mass M = 1.
-    expect(star.velocity.length()).toBeCloseTo(Math.sqrt(1 / star.position.length()), 5);
+    // Placed exactly on the requested orbit radius — the inclination no longer
+    // inflates it, so added bodies keep their intended separations.
+    expect(star.position.length()).toBeCloseTo(35, 5);
+    // Velocity is the circular-orbit speed in the *softened* central field,
+    // v = √(M·r² / (r² + ε²)^{3/2}) with M = 1 — a closed circle, not a drifting
+    // ellipse.
+    const r = star.position.length();
+    const v = Math.sqrt((r * r) / Math.pow(r * r + SOFTENING2, 1.5));
+    expect(star.velocity.length()).toBeCloseTo(v, 6);
     // and perpendicular to the radius (a circular orbit).
     expect(star.position.dot(star.velocity)).toBeCloseTo(0, 5);
   });
@@ -51,21 +59,31 @@ describe('Scene', () => {
     expect(scene.bodies[0]!.position.length()).toBe(0);
   });
 
-  it('prunes companions that escape or merge into the centre', () => {
+  it('frees escaped companions at once but absorbs merged ones over a brief window', () => {
     const scene = new Scene();
     const before = scene.companions.length;
-    scene.companions[0]!.position.set(0, 9999, 0); // flung away
-    scene.companions[1]!.position.set(0.5, 0, 0); // fallen into the centre
+    const escaped = scene.companions[0]!;
+    const merging = scene.companions[1]!;
+    escaped.position.set(0, 9999, 0); // flung away → freed immediately
+    merging.position.set(0.5, 0, 0); // fallen to the centre → absorbed, not instant
     let changed = 0;
     scene.onChange = () => {
       changed += 1;
     };
 
-    expect(scene.prune()).toBe(true);
-    expect(scene.companions.length).toBe(before - 2);
+    // First pass frees the escaped body and *starts* absorbing the merged one.
+    expect(scene.prune(0)).toBe(true);
+    expect(scene.companions.length).toBe(before - 1);
     expect(changed).toBe(1);
+    expect(merging.absorbing).toBe(0);
+    expect(scene.companions).toContain(merging); // still present, fading out
+
+    // Advancing past the absorption window frees it (held at its anchor meanwhile).
+    expect(scene.prune(10)).toBe(true);
+    expect(scene.companions.length).toBe(before - 2);
+    expect(changed).toBe(2);
     expect(scene.bodies[0]!.fixed).toBe(true); // the primary is kept
-    expect(scene.prune()).toBe(false); // nothing left to prune
+    expect(scene.prune(1)).toBe(false); // nothing left to prune
   });
 
   it('removeOne takes one companion of a type (or reports none)', () => {
@@ -80,8 +98,9 @@ describe('Scene', () => {
 });
 
 describe('bodyCap', () => {
-  it('caps black holes at 4 regardless', () => {
-    for (const holes of [0, 1, 2, 3, 4]) expect(bodyCap('hole', holes)).toBe(4);
+  it('allows a 4th black hole only when no stars or planets are present', () => {
+    for (const holes of [0, 1, 2, 3, 4]) expect(bodyCap('hole', holes, 0)).toBe(4); // nothing else orbits
+    for (const holes of [0, 1, 2, 3]) expect(bodyCap('hole', holes, 1)).toBe(3); // a star/planet present → 3
   });
 
   it('shrinks the star/planet allowance as black holes are added', () => {

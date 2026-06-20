@@ -2,7 +2,9 @@ import { Vector3 } from 'three';
 import type { Body } from '../scene/Body';
 
 const G = 1; // geometric units
-const SOFTENING2 = 0.25; // softened gravity to avoid singular accelerations
+/** Softened gravity to avoid singular accelerations. Exported so a freshly added
+ *  body can be given the matching circular-orbit speed (see Scene.addBody). */
+export const SOFTENING2 = 0.25;
 
 const diff = new Vector3();
 

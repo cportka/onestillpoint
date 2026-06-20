@@ -18,9 +18,10 @@ export class PhysicsController {
   step(frameDelta: number): void {
     if (this.useGPU) this.gpu.step(frameDelta);
     else this.scene.step(frameDelta);
-    // Free any companion that escaped or merged into the centre; rebuild the GPU
-    // buffers for the smaller set (a no-op on the CPU path).
-    if (this.scene.prune()) this.syncBodies();
+    // Advance absorption fades and free any companion that escaped or finished
+    // merging into the centre; rebuild the GPU buffers for the smaller set. The
+    // wall-clock `frameDelta` keeps the fade a steady ~0.6s at any Speed.
+    if (this.scene.prune(frameDelta)) this.syncBodies();
   }
 
   setGPU(on: boolean): void {

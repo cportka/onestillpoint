@@ -116,7 +116,9 @@ export function createControls(ctx: {
   // --- Bodies (− N + steppers; how many black holes orbit caps the rest) ---
   const bodies = gui.addFolder('Bodies');
   const countOf = (type: BodyType): number => scene.companions.filter((b) => b.type === type).length;
-  const capFor = (type: BodyType): number => bodyCap(type, countOf('hole'));
+  // A 4th black hole is only allowed when nothing else orbits, so the hole cap
+  // also depends on the star + planet count (not just the hole count).
+  const capFor = (type: BodyType): number => bodyCap(type, countOf('hole'), countOf('star') + countOf('planet'));
   const steppers: Stepper[] = [];
   const refreshAll = (): void => steppers.forEach((s) => s.refresh());
   const addStepper = (type: BodyType, label: string, add: () => void): void => {

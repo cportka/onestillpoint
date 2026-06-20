@@ -15,6 +15,7 @@ export function createBodyUniforms() {
       color: uniform(new Vector3(0, 0, 0)), // HDR emissive colour
       lensMass: uniform(0), // weak-field light-deflection mass (0 = no lensing)
       appear: uniform(1), // formation fade-in 0 → 1, staggered by body type
+      absorb: uniform(0), // 0 = live, → 1 as it is absorbed at the centre (shrink + redshift fade)
     })),
     // How far the geodesic must integrate to reach the outermost body. 0 when
     // there are no companions, so rays escape at the camera radius (cheaper).
@@ -59,12 +60,14 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
       slot.color.value.copy(body.color);
       slot.lensMass.value = body.lensMass;
       slot.appear.value = appearFor(body.type, progress);
+      slot.absorb.value = body.absorbing ?? 0;
       maxR = Math.max(maxR, p.length() + body.radius);
       if (body.lensMass > 0) lensing = 1;
     } else {
       slot.posRadius.value.set(0, 0, 0, 0);
       slot.lensMass.value = 0;
       slot.appear.value = 0;
+      slot.absorb.value = 0;
     }
   }
 
