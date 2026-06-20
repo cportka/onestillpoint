@@ -43,6 +43,26 @@ v0.14.6 and also help smoothness at very high Speed.)
   physics storage buffers are allocated at all; Three.js resources are created
   once.
 
+## Should the GPU N-body ever auto-enable? (investigated v0.15.1)
+
+**No — not at any body count this app can reach.** Both paths compute the
+all-pairs force in O(N²). The CPU does it serially but with zero overhead; the GPU
+does it in parallel but pays a *fixed* per-frame cost — two compute dispatches and
+a position+velocity buffer read-back (`getArrayBufferAsync`, a CPU↔GPU sync).
+
+Rough crossover: the CPU step is `N² × substeps × ~15 flops`. At JS speeds that
+stays well under a millisecond until **N ≈ 150–300**, which is roughly where the
+GPU's parallel force sum would finally beat its own dispatch+read-back overhead.
+`MAX_BODIES` is **14** — two orders of magnitude below the crossover — so the CPU
+is the right default at every reachable count, and the GPU compute stays a manual
+toggle (a demonstrable foundation, not a current win).
+
+**When it *would* be appropriate:** only if a future mode (a particle "swarm" /
+galaxy field) raised the cap into the hundreds+. Then auto-enable above ~256
+bodies — and give the auto-selector a `manual` override so it doesn't fight a user
+who toggled it by hand. Numbers are an estimate; confirm with a real bench (the
+GPU side needs WebGPU, so it can't be measured headless) if that mode is built.
+
 ## Levers left alone (look-sensitive — tune deliberately, ideally against a recording)
 
 - **Bloom** (`PostPipeline`): `radius 0.85, threshold 0.0` — the second-biggest GPU

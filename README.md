@@ -14,6 +14,15 @@ N-body simulator.
 
 ## Status
 
+_v0.15.1_ — splash & polish. The **load splash** is sized in `vmin` so its forming
+event horizon roughly **lines up with the real shadow** at the crossfade (was much
+smaller), and its infalling **bodies + dust now vary in size**. The **About** logo
+moves below "Created by Chris Portka". And the **GPU auto-switch** question is
+settled (see [`docs/perf-audit-v0.15.md`](docs/perf-audit-v0.15.md)): for ≤14
+bodies the CPU always wins — the GPU's per-frame read-back overhead only pays off
+around ~150–300 bodies — so it stays a manual toggle (auto-enable would make sense
+only if a future swarm mode raised the cap into the hundreds).
+
 **Phase 15 — performance, an instant load splash & control polish (v0.15).** A
 real smoothness pass. The biggest lever: the **N-body sim runs on the CPU by
 default** again — for this app's body counts (≤14) the exact velocity-Verlet is
