@@ -6,23 +6,46 @@ The intro is driven by `src/core/FormationSequence.ts` (camera dolly + the
 with `u.formation`), and the per-body `appearFor` curve in
 `src/render/bodyUniforms.ts` (the staggered swoosh).
 
-**Defaults today:** duration **6.5 s** (2.6 s under reduced motion), camera
-dollies from **2.6× the home distance → home** on an ease-out-cubic, the disk
-ignites on a slow-build-then-bloom curve, and the default scene seeds **3 stars
-(prograde, outer) + 3 planets (retrograde, inner)**.
+**Defaults today:** a **load splash** (≈0–0.5 s, JS-free CSS — see below) hands
+off to the WebGPU formation, whose duration is **6.5 s** (2.6 s under reduced
+motion): camera dollies from **2.6× the home distance → home** on an
+ease-out-cubic, the disk now **ignites fast** (formed by ~0.6 s, over the first
+~10% — `formationCurve`) and then holds with a gentle late bloom while the camera
+settles, and the default scene seeds **3 stars (prograde, outer) + 3 planets
+(retrograde, inner)**.
 
-## Timeline (progress = elapsed / duration)
+## The opening half-second (Phase 15)
+
+Goal: *something beautiful on screen instantly*, before the heavy raymarch shader
+compiles, smoothly blending into the real scene.
+
+| time (≈) | what you see | how |
+| --- | --- | --- |
+| 0–~0.2 s | A **cluster of white bodies** (+ a faint dust ring) appears over black and begins **spiralling inward** — abstract black-and-white. | Static markup in `index.html` + CSS in `style.css` (`#osp-splash`). Paints on first paint; **no JS / no GPU**, so it can't be late. |
+| ~0.2–0.5 s | The bodies **merge** into a forming **event horizon + photon ring**; meanwhile the real renderer compiles and the formation ignites *underneath*. | The splash is held a short minimum, then `main.ts` adds `.osp-splash--hide` once the **first real frame** is on screen. |
+| ~0.5 s+ | **Crossfade** to the live scene — the hole is lit (fast `formationCurve`) — then the **usual script** (camera dolly + settle) plays out. | 0.45 s opacity crossfade; the formation continues to `t = 1`. |
+
+*Fuzzy by design — to be dialled in against a recording. Levers: splash min time
+(`main.ts`, 550 ms) and crossfade (`style.css`, 0.45 s); ignition speed (`t/0.1`)
+and `FAR_FACTOR` for how "formed" and how close the hole is at the handoff.*
+
+## Timeline — the settle (progress = elapsed / duration)
 
 | time (≈) | progress | what you see |
 | --- | --- | --- |
-| 0.0 s | 0.00 | Black void over the chosen background. Camera far back; the disk is unignited (`formation ≈ 0`). |
+| 0.0 s | 0.00 | (Under the splash.) Camera far back; ignition beginning. |
+| 0.0–0.6 s | 0.00–0.10 | The **disk ignites** to formed (masked by / blending with the splash); the photon ring forms. |
 | 0.0–1.3 s | 0.00–0.20 | Camera rushes inward (fast early). The **outer stars fade + swoosh** in (prograde). The lensed starfield begins to streak. |
 | 1.3–3.4 s | 0.20–0.52 | The **inner planets fade + swoosh the opposite way** (retrograde) — the two-direction choreography. |
-| 2–5 s | 0.30–0.80 | The **disk ignites**: dust density/brightness rise, condensing into a glowing disk; the hot inner edge sharpens and the photon ring forms. |
-| 5–6.5 s | 0.80–1.00 | Camera **eases to rest** at home; the disk is fully formed; the inner edge **sparkles** (Doppler-beamed turbulence rotating counter-clockwise). Control hands back to the user. |
+| 5–6.5 s | 0.80–1.00 | Camera **eases to rest** at home; the disk is fully formed; the inner edge **sparkles** (Doppler-beamed turbulence). Control hands back to the user. |
 
 ## Tuning log & targets
 
+- **[new · v0.15] Instant load splash + fast ignition.** A JS-free CSS splash
+  (bodies spiralling in → forming hole) paints before the shader compiles and
+  crossfades out on the first real frame; the disk now ignites by ~0.6 s so the
+  handoff lands on a lit hole. **Wants a video pass** to tune the blend (splash
+  duration, crossfade, ignition speed, FAR_FACTOR).
 - **[done · v0.13] More early company.** Default scene seeded with 3 stars + 3
   planets (was 2 + 2) and the entrance pulled earlier (stars in by ~1.3 s,
   planets start ~1.3 s) — addressing "the first body only appears ~0:05–0:06."

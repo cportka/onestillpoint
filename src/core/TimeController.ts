@@ -30,21 +30,28 @@ export class TimeController {
   /** Master multiplier; 1 = the baseline real-time view, up to ~1e6. */
   timeScale = 1;
   paused = false;
-  private stepPending = false;
+  private stepFrame = false; // paused: advance a single frame
+  private stepBurst = false; // running: jump forward ~1 second
 
-  /** Advance a single frame while paused. */
+  /** The Step button. Paused → advance one frame at the current Speed; running →
+   *  jump forward ~1 second (at least 20 frames) at the current Speed. */
   step(): void {
-    this.stepPending = true;
+    if (this.paused) this.stepFrame = true;
+    else this.stepBurst = true;
   }
 
   tick(frameDelta: number): TimeStep {
-    let fd = frameDelta;
+    let fd: number;
     if (this.paused) {
-      if (this.stepPending) {
-        fd = 1 / 60; // one deterministic frame
-        this.stepPending = false;
-      } else {
-        fd = 0;
+      fd = this.stepFrame ? 1 / 60 : 0; // one deterministic frame, else frozen
+      this.stepFrame = false;
+    } else {
+      fd = frameDelta;
+      if (this.stepBurst) {
+        // ~1 second, or ≥20 frames at the current rate (whichever is larger), in
+        // one burst — the adaptive substeps keep the big jump stable.
+        fd = Math.max(1, 20 * frameDelta);
+        this.stepBurst = false;
       }
     }
     return {

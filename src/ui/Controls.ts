@@ -121,10 +121,11 @@ export function createControls(ctx: {
   const capFor = (type: BodyType): number => bodyCap(type, countOf('hole'), countOf('star') + countOf('planet'));
   const steppers: Stepper[] = [];
   const refreshAll = (): void => steppers.forEach((s) => s.refresh());
-  // De-bounce adds to at most one per second (rapid-fire adds are what crowd the
-  // scene into the close encounters that misbehave). The + buttons grey out for
-  // the cooldown, then a scheduled refresh re-enables them.
-  const ADD_COOLDOWN_MS = 1000;
+  // De-bounce adds (rapid-fire adds are what crowd the scene into the close
+  // encounters that misbehave): half a second for stars/planets, a full second
+  // for the heavier black holes. The + buttons grey out for the cooldown, then a
+  // scheduled refresh re-enables them.
+  const cooldownMs = (type: BodyType): number => (type === 'hole' ? 1000 : 500);
   let addReadyAt = 0;
   const addStepper = (type: BodyType, label: string, add: () => void): void => {
     const noun = label.toLowerCase().replace(/s$/, '');
@@ -139,9 +140,10 @@ export function createControls(ctx: {
       onInc: () => {
         add();
         physics.syncBodies();
-        addReadyAt = performance.now() + ADD_COOLDOWN_MS;
+        const cd = cooldownMs(type);
+        addReadyAt = performance.now() + cd;
         refreshAll(); // a new hole can lower the star/planet caps; also greys + for the cooldown
-        window.setTimeout(refreshAll, ADD_COOLDOWN_MS); // re-enable + when the second is up
+        window.setTimeout(refreshAll, cd); // re-enable + when the cooldown is up
       },
       onDec: () => {
         // Begins the plunge animation; the body (and the GPU buffers) are freed
@@ -166,7 +168,7 @@ export function createControls(ctx: {
       physics.syncBodies();
       refreshAll();
     },
-    gpu: backend === 'webgpu', // auto-on where WebGPU compute exists (see main.ts)
+    gpu: false, // CPU integrator by default — exact and faster for these counts (see main.ts)
   };
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
 
@@ -192,8 +194,9 @@ export function createControls(ctx: {
   // --- Pause + Step (last basic controls, right before the Advanced toggle) ---
   tip(gui.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
   tip(
-    gui.add({ step: () => time.step() }, 'step').name('Step (when paused)'),
-    'Advance a single frame while paused.',
+    gui.add({ step: () => time.step() }, 'step').name('Step'),
+    'Advance time. Paused: one frame at the current Speed. Running: a ~1-second jump forward ' +
+      '(at least 20 frames) at the current Speed.',
   );
 
   // --- Advanced settings toggle (remembered across sessions) ---
@@ -209,8 +212,9 @@ export function createControls(ctx: {
   tip(
     gpuCtrl,
     gpuAvailable
-      ? 'Run the N-body simulation on the GPU (WebGPU compute). Auto-enabled here because this ' +
-          'browser has WebGPU — the scaling path for many bodies (no visible change for a few).'
+      ? 'Run the N-body simulation on the GPU (WebGPU compute). Off by default — for these body ' +
+          'counts the CPU integrator is exact and actually faster (the GPU path adds a per-frame ' +
+          'read-back). It is the scaling foundation for many bodies, not a win for a handful.'
       : 'Requires WebGPU. This browser is on the WebGL2 fallback, so the N-body sim runs on the ' +
           'CPU (exact, and fine for a handful of bodies).',
   );

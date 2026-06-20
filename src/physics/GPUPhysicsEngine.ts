@@ -145,6 +145,8 @@ export class GPUPhysicsEngine {
   private kernels: ReturnType<typeof createGPUKernels> | null = null;
   private bodies: Body[] = [];
   private reading = false;
+  private readonly tp = new Vector3(); // reused readback temps (no per-frame alloc)
+  private readonly tv = new Vector3();
 
   constructor(private readonly renderer: WebGPURenderer) {}
 
@@ -179,8 +181,6 @@ export class GPUPhysicsEngine {
       const vel = await kernels.readVelocities();
       if (this.kernels !== kernels) return;
       const n = Math.min(this.bodies.length, kernels.count, Math.floor(pos.length / 4), Math.floor(vel.length / 4));
-      const tp = new Vector3();
-      const tv = new Vector3();
       for (let i = 0; i < n; i++) {
         const b = this.bodies[i]!;
         if (b.fixed) continue; // the primary stays at the origin
@@ -191,8 +191,8 @@ export class GPUPhysicsEngine {
         const vy = vel[i * 4 + 1]!;
         const vz = vel[i * 4 + 2]!;
         // Skip non-finite samples so a transient blow-up can't poison the CPU state.
-        if (Number.isFinite(px) && Number.isFinite(py) && Number.isFinite(pz)) b.position.copy(tp.set(px, py, pz));
-        if (Number.isFinite(vx) && Number.isFinite(vy) && Number.isFinite(vz)) b.velocity.copy(tv.set(vx, vy, vz));
+        if (Number.isFinite(px) && Number.isFinite(py) && Number.isFinite(pz)) b.position.copy(this.tp.set(px, py, pz));
+        if (Number.isFinite(vx) && Number.isFinite(vy) && Number.isFinite(vz)) b.velocity.copy(this.tv.set(vx, vy, vz));
       }
     } catch {
       // A readback can reject if its buffers were disposed mid-flight (add/remove); ignore.

@@ -16,11 +16,15 @@ const SKIP_GUARD = 0.5;
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 const smootherstep = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10);
 
-/** Disk "ignition" curve: a slow build (smootherstep) with a gentle late bloom,
- *  landing exactly at 1 so the formed state matches the user's settings. */
+/** Disk "ignition" curve. It now ignites *fast* — the hole reads as formed by
+ *  ~0.6 s (the first ~10% of the intro), right as the load splash crossfades out
+ *  — then holds with a gentle late bloom while the camera dolly settles, landing
+ *  exactly at 1 so the formed state matches the user's settings.
+ *  ⟳ Intro look: changing this → refresh docs/intro-script.md (note the version). */
 function formationCurve(t: number): number {
-  const bump = 0.16 * Math.sin(Math.PI * t) * t; // 0 at both ends, peaks late
-  return Math.min(smootherstep(t) + bump, 1.25);
+  const ignite = smootherstep(Math.min(t / 0.1, 1)); // lit by ~0.6s, masked by the splash
+  const bump = 0.14 * Math.sin(Math.PI * t) * t; // 0 at both ends, gentle late swell
+  return Math.min(ignite + bump, 1.22);
 }
 
 /** What the formation drives on the camera. CameraRig implements this; tests

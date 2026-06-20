@@ -27,6 +27,19 @@ describe('TimeController', () => {
     expect(tc.tick(0.016).fd).toBe(0); // step consumed → frozen again
   });
 
+  it('jumps forward ~1 second per step() while running', () => {
+    const tc = new TimeController();
+    tc.step(); // not paused → a one-burst fast-forward
+    expect(tc.tick(0.016).fd).toBe(1); // ~1 second (20 frames < 1s at 60fps)
+    expect(tc.tick(0.016).fd).toBe(0.016); // burst consumed → normal frame
+  });
+
+  it('steps at least 20 frames when running at a low frame rate', () => {
+    const tc = new TimeController();
+    tc.step();
+    expect(tc.tick(0.1).fd).toBeCloseTo(2, 10); // 20 × 0.1s = 2s, beats the 1s floor
+  });
+
   it('caps the dust clock so fast scales never strobe', () => {
     const tc = new TimeController();
     tc.timeScale = 1e6;

@@ -46,20 +46,32 @@ export function appearFor(type: BodyType, progress: number): number {
   return type === 'star' ? smoothstep(0.03, 0.2, progress) : smoothstep(0.2, 0.52, progress);
 }
 
+const clearSlot = (slot: BodyUniforms['slots'][number]): void => {
+  slot.posRadius.value.set(0, 0, 0, 0);
+  slot.lensMass.value = 0;
+  slot.appear.value = 0;
+  slot.absorb.value = 0;
+};
+
 export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, progress = 1): void {
-  const companions = scene.companions;
+  // Iterate the body list directly and skip the fixed primary, rather than
+  // `scene.companions` — that getter allocates a filtered array, and this runs
+  // every frame. Non-fixed bodies fill the slots in order, exactly as before.
+  const bodies = scene.bodies;
   let maxR = 0;
   let lensing = 0;
+  let n = 0; // active companion slots filled
 
-  for (let i = 0; i < MAX_BODIES; i++) {
-    const slot = bodyUniforms.slots[i]!;
-    const body = companions[i];
-    const p = body?.position;
-    // Guard against a non-finite body (a rare close-encounter blow-up): writing a
-    // NaN/Inf position into a uniform poisons every ray's geodesic (via the shared
-    // secondary-deflection term) and blacks out the whole render until that body
-    // is pruned — so treat it as an empty slot this frame.
-    if (body && p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && Number.isFinite(body.radius)) {
+  for (let i = 0; i < bodies.length && n < MAX_BODIES; i++) {
+    const body = bodies[i]!;
+    if (body.fixed) continue; // the primary isn't a render slot
+    const slot = bodyUniforms.slots[n]!;
+    const p = body.position;
+    // Guard against a non-finite body (a rare close-encounter blow-up): a NaN/Inf
+    // position would poison every ray's geodesic (via the shared secondary-
+    // deflection term) and black out the whole render — so treat it as an empty
+    // slot this frame (it is pruned next frame).
+    if (Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && Number.isFinite(body.radius)) {
       slot.posRadius.value.set(p.x, p.y, p.z, body.radius);
       slot.color.value.copy(body.color);
       slot.lensMass.value = body.lensMass;
@@ -68,13 +80,13 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
       maxR = Math.max(maxR, p.length() + body.radius);
       if (body.lensMass > 0) lensing = 1;
     } else {
-      slot.posRadius.value.set(0, 0, 0, 0);
-      slot.lensMass.value = 0;
-      slot.appear.value = 0;
-      slot.absorb.value = 0;
+      clearSlot(slot);
     }
+    n++;
   }
 
-  bodyUniforms.sceneRadius.value = companions.length > 0 ? maxR + 6 : 0;
+  for (let i = n; i < MAX_BODIES; i++) clearSlot(bodyUniforms.slots[i]!); // bodies removed since last frame
+
+  bodyUniforms.sceneRadius.value = n > 0 ? maxR + 6 : 0;
   bodyUniforms.lensingActive.value = lensing;
 }

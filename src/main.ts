@@ -42,9 +42,11 @@ async function main(): Promise<void> {
   const loop = new Loop(renderer);
   const time = new TimeController();
   const physics = new PhysicsController(scene, new GPUPhysicsEngine(renderer));
-  // Auto-run the N-body sim on the GPU where WebGPU compute exists; the WebGL2
-  // fallback has no compute, so it stays on the (exact) CPU integrator.
-  physics.setGPU(backend === 'webgpu');
+  // Default to the CPU integrator. It is exact and trivially cheap for this app's
+  // body counts (≤14), and — crucially — it avoids the GPU path's per-frame
+  // position+velocity read-back, which forces a CPU↔GPU sync every frame and
+  // stalls the pipeline. The GPU compute kernel stays an opt-in (Advanced → GPU
+  // physics): a scaling foundation for many bodies, not a win for a handful.
   const scaler = new ResolutionScaler();
   const hud = createHud(backend, () => scaler.scale);
 
@@ -90,6 +92,17 @@ async function main(): Promise<void> {
     bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
   });
 
+  // Crossfade the load splash out once the first real frame is on screen (the
+  // heavy shader has compiled), into the formation playing underneath. Keep it up
+  // for a short minimum so its merge animation reads on a fast load.
+  const splash = document.getElementById('osp-splash');
+  const dismissSplash = (): void => {
+    if (!splash || splash.classList.contains('osp-splash--hide')) return;
+    splash.classList.add('osp-splash--hide');
+    window.setTimeout(() => splash.remove(), 700);
+  };
+  let firstFrame = true;
+
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
 
@@ -105,6 +118,13 @@ async function main(): Promise<void> {
     else formation.update(frameDelta);
     post.render();
     hud.update(frameDelta);
+
+    if (firstFrame) {
+      firstFrame = false;
+      // performance.now() ≈ ms since page load, so this also enforces a minimum
+      // on-screen time for the splash on a very fast load.
+      window.setTimeout(dismissSplash, Math.max(0, 550 - performance.now()));
+    }
   };
   loop.start();
 
@@ -116,5 +136,6 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   console.error('[One Still Point] fatal:', error);
+  document.getElementById('osp-splash')?.remove(); // don't hide the error behind the splash
   showFatalError(error);
 });
