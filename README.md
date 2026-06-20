@@ -14,6 +14,16 @@ N-body simulator.
 
 ## Status
 
+**Phase 14 — background revamp & intro reality doc (v0.14).** The backgrounds
+get a glow-up: **Nebula** is reborn in the Hubble/Eagle palette (glowing teal &
+gold gas carved by dark dust pillars), a new **Filaments** sky draws the
+monochrome cosmic web (ridged-noise threads with bright cluster knots), and
+**Lattice** gains fainter in-between grid lines. The intro itself is unchanged —
+but it now has a *reality* doc, [`docs/intro-description.md`](docs/intro-description.md),
+transcribed from the v0.13 recording to sit beside the *ideal*
+[`docs/intro-script.md`](docs/intro-script.md); the intro-shaping code carries
+`⟳` reminders to keep it current.
+
 **Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
 **Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
 **Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or
@@ -135,6 +145,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 11 | Secondary black hole's own accretion disk + frame-rate-targeted auto-resolution + panel polish | ✅ done |
 | 12 | Body ± steppers + black-hole-budget caps + About modal + panel reorg | ✅ done |
 | 13 | Selectable backgrounds (Stars / Nebula / Aurora / Lattice) + video-driven intro tuning | ✅ done |
+| 14 | Background revamp (Eagle Nebula / cosmic-web Filaments / finer Lattice) + intro reality doc | ✅ done |
 
 ## Stack
 
@@ -221,7 +232,7 @@ src/
       blackbody.ts     temperature (K) → linear RGB
       bodies.ts        segment–sphere test for companions
       starfield.ts     procedural lensed star field
-      background.ts    selectable sky (Stars / Nebula / Aurora / Lattice), all lensed
+      background.ts    selectable sky (Stars / Nebula / Filaments / Lattice), all lensed
 scripts/
   validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M
   validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming
