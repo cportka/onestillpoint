@@ -70,9 +70,9 @@ export function createAboutButton(): HTMLElement {
       <div class="osp-about__edge osp-about__edge--bottom">${t2}</div>
       <div class="osp-about__edge osp-about__edge--left"><span>${t3}</span></div>
       <div class="osp-about__inner">
-        <div class="osp-about__logo">${LOGO_SVG}</div>
         <div class="osp-about__title">One Still Point</div>
         <div class="osp-about__by">Created by Chris Portka</div>
+        <div class="osp-about__logo">${LOGO_SVG}</div>
         <a class="osp-about__row" href="${GITHUB}" target="_blank" rel="noopener noreferrer">
           <span>Github</span><span class="osp-about__val">cportka/onestillpoint&nbsp;↗</span>
         </a>

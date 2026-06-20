@@ -52,10 +52,14 @@ canvas {
   opacity: 0;
   pointer-events: none;
 }
+/* Sized in vmin so the forming core lines up with the apparent size of the real
+   black-hole shadow at the crossfade (the render's shadow is ~28–32vmin; tune
+   --core-d against a recording). */
 .osp-splash__stage {
+  --core-d: 28vmin; /* final diameter of the forming event horizon */
   position: relative;
-  width: 240px;
-  height: 240px;
+  width: 80vmin;
+  height: 80vmin;
   filter: grayscale(1); /* keep it abstract black-and-white */
 }
 /* The forming event horizon: a dark core that grows a bright photon ring. */
@@ -74,27 +78,27 @@ canvas {
   0% {
     width: 0;
     height: 0;
-    box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0);
+    box-shadow: 0 0 1vmin 0.2vmin rgba(255, 255, 255, 0);
   }
   55% {
-    box-shadow: 0 0 16px 5px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 3vmin 1vmin rgba(255, 255, 255, 0.4);
   }
   100% {
-    width: 84px;
-    height: 84px;
+    width: var(--core-d);
+    height: var(--core-d);
     box-shadow:
-      0 0 28px 7px rgba(255, 255, 255, 0.85),
-      inset 0 0 16px 5px #000;
+      0 0 4.5vmin 1.2vmin rgba(255, 255, 255, 0.85),
+      inset 0 0 3vmin 1vmin #000;
   }
 }
-/* A faint rotating dust ring. */
+/* A faint rotating dust ring, sized just outside the photon ring. */
 .osp-splash__ring {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 188px;
-  height: 188px;
-  margin: -94px;
+  width: 58vmin;
+  height: 58vmin;
+  margin: -29vmin;
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
@@ -106,7 +110,7 @@ canvas {
     rgba(255, 255, 255, 0.14),
     transparent
   );
-  filter: blur(7px);
+  filter: blur(1.7vmin);
   opacity: 0;
   animation:
     osp-splash-spin 1.1s linear infinite,
@@ -122,30 +126,31 @@ canvas {
     opacity: 0.6;
   }
 }
-/* Infalling bodies: spiral inward from the rim and shrink as they merge. */
+/* Infalling bodies + dust of varied size (--s) and start radius (--r): spiral
+   inward from the rim and shrink as they merge into the forming hole. */
 .osp-splash__b {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 8px;
-  height: 8px;
-  margin: -4px;
+  width: var(--s, 1.4vmin);
+  height: var(--s, 1.4vmin);
+  margin: calc(var(--s, 1.4vmin) / -2);
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.6);
-  transform: rotate(var(--a)) translateX(110px);
+  box-shadow: 0 0 1vmin 0.3vmin rgba(255, 255, 255, 0.6);
+  transform: rotate(var(--a)) translateX(var(--r, 36vmin));
   animation: osp-splash-fall 0.62s cubic-bezier(0.45, 0, 0.75, 1) var(--d, 0s) forwards;
 }
 @keyframes osp-splash-fall {
   0% {
-    transform: rotate(var(--a)) translateX(112px) scale(0.7);
+    transform: rotate(var(--a)) translateX(var(--r, 36vmin)) scale(0.7);
     opacity: 0;
   }
   18% {
     opacity: 1;
   }
   100% {
-    transform: rotate(calc(var(--a) + 150deg)) translateX(3px) scale(0.25);
+    transform: rotate(calc(var(--a) + 150deg)) translateX(2vmin) scale(0.25);
     opacity: 0.5;
   }
 }
@@ -425,7 +430,7 @@ canvas {
   --osp-glow: #ffe8cc; /* warm photon-ring white, tying into the disk palette */
   width: 100%; /* full width of the card; the square viewBox keeps it 1:1 */
   aspect-ratio: 1 / 1;
-  margin: 0 auto 14px;
+  margin: 10px auto 4px; /* sits below the "Created by" line */
 }
 .osp-about__logo svg {
   display: block;
