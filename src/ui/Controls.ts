@@ -48,9 +48,11 @@ export function createControls(ctx: {
   applyQuality: (tier: QualityTier) => void;
   background: { value: number };
   bgLook: { brightness: { value: number }; saturation: { value: number }; tint: { value: number } };
+  /** Rebuild + replay the load splash (the binary-merger formation). */
+  replaySplash: () => void;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background, bgLook } = ctx;
+  const { hud, autoTier, applyQuality, background, bgLook, replaySplash } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   const prefs = loadPrefs();
 
@@ -198,6 +200,7 @@ export function createControls(ctx: {
       .add(
         {
           replay: () => {
+            replaySplash(); // re-show the load splash over the re-forming scene
             scene.reseed(); // fresh orbits for the current composition
             physics.syncBodies(); // rebuild GPU buffers for the new bodies
             refreshAll(); // update counts + ± limits
@@ -230,7 +233,7 @@ export function createControls(ctx: {
   refreshPause();
   tip(pauseCtrl, 'Freeze time to inspect the lensing on a still frame. Click again to resume.');
   tip(
-    gui.add({ step: () => time.step() }, 'step').name('Step'),
+    gui.add({ step: () => time.step() }, 'step').name('Step forward'),
     'Advance time. Paused: one frame at the current Speed. Running: a ~1-second jump forward ' +
       '(at least 20 frames) at the current Speed.',
   );

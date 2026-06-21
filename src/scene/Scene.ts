@@ -32,6 +32,8 @@ const ABSORB_DURATION = 0.6;
 // Seconds a user-removed (− stepper) body spends plunging into the centre before
 // it is absorbed and freed. The UI blocks another removal until this completes.
 const PLUNGE_DURATION = 1.5;
+// How many turns the plunge winds as it spirals in (a less direct, prettier fall).
+const PLUNGE_TURNS = 1.75;
 
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
@@ -205,14 +207,20 @@ export class Scene {
   prune(frameDelta = 0): boolean {
     for (const b of this.bodies) {
       if (b.fixed) continue;
-      // User-initiated removal: animate the body plunging into the centre
-      // (accelerating inward, like a fall), then hand off to the absorption fade
-      // over its inner half. Wall-clock driven, so it's a steady ~1.5 s at any
-      // Speed; the body is held on this path so the physics can't move it.
+      // User-initiated removal: animate the body *spiralling* into the centre
+      // (accelerating inward, winding ~1.75 turns), then hand off to the
+      // absorption fade over its inner half. Wall-clock driven, so it's a steady
+      // ~1.5 s at any Speed; the body is held on this path so the physics can't
+      // move it.
       if (b.plunging !== undefined && b.plungeFrom) {
         b.plunging = Math.min(1, b.plunging + frameDelta / PLUNGE_DURATION);
         const ease = b.plunging * b.plunging; // ease-in: accelerate toward the centre
-        b.position.copy(b.plungeFrom).multiplyScalar(1 - ease);
+        const radial = 1 - ease;
+        const angle = b.plunging * PLUNGE_TURNS * Math.PI * 2; // wind inward
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const f = b.plungeFrom;
+        b.position.set((f.x * c - f.z * s) * radial, f.y * radial, (f.x * s + f.z * c) * radial);
         b.absorbing = Math.max(0, (b.plunging - 0.5) * 2); // shrink + redshift over the inner half
         continue;
       }
