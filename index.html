@@ -29,16 +29,16 @@
          paint (static markup + a tiny synchronous generator), so it can't be late. -->
     <div id="osp-splash" aria-hidden="true">
       <div class="osp-splash__stage">
-        <span class="osp-splash__shock" style="--rc: #ff4fd8; --sd: 0.40s; --rr: 7deg"></span>
-        <span class="osp-splash__shock" style="--rc: #ff9a4c; --sd: 0.50s; --rr: -11deg"></span>
-        <span class="osp-splash__shock" style="--rc: #4fe0ff; --sd: 0.60s; --rr: 3deg"></span>
-        <span class="osp-splash__shock" style="--rc: #ff7aa8; --sd: 0.70s; --rr: -5deg"></span>
-        <span class="osp-splash__plume" style="--a: 18deg; --pc: #ff6ad0"></span>
-        <span class="osp-splash__plume" style="--a: 74deg; --pc: #ffb24f"></span>
-        <span class="osp-splash__plume" style="--a: 138deg; --pc: #7ad0ff"></span>
-        <span class="osp-splash__plume" style="--a: 203deg; --pc: #ff5b8f"></span>
-        <span class="osp-splash__plume" style="--a: 262deg; --pc: #c08aff"></span>
-        <span class="osp-splash__plume" style="--a: 321deg; --pc: #ffd24a"></span>
+        <span class="osp-splash__shock" style="--rc: #ff00e6; --sd: 0.40s; --rr: 7deg"></span>
+        <span class="osp-splash__shock" style="--rc: #ff7a2a; --sd: 0.50s; --rr: -11deg"></span>
+        <span class="osp-splash__shock" style="--rc: #00e8ff; --sd: 0.60s; --rr: 3deg"></span>
+        <span class="osp-splash__shock" style="--rc: #ff5aa0; --sd: 0.70s; --rr: -5deg"></span>
+        <span class="osp-splash__plume" style="--a: 18deg; --pc: #ff00c8"></span>
+        <span class="osp-splash__plume" style="--a: 74deg; --pc: #ffae4f"></span>
+        <span class="osp-splash__plume" style="--a: 138deg; --pc: #00f0ff"></span>
+        <span class="osp-splash__plume" style="--a: 203deg; --pc: #ff2d6e"></span>
+        <span class="osp-splash__plume" style="--a: 262deg; --pc: #9a3cff"></span>
+        <span class="osp-splash__plume" style="--a: 321deg; --pc: #ffd200"></span>
         <span class="osp-splash__orb osp-splash__orb--a"></span>
         <span class="osp-splash__orb osp-splash__orb--b"></span>
         <span class="osp-splash__jet"></span>
@@ -46,28 +46,110 @@
         <span class="osp-splash__core"></span>
       </div>
     </div>
-    <!-- Generate the infalling cluster synchronously (before the module bundle) so
-         the hundreds of dust points paint with everything else: a few much-bigger
-         bodies, some small, and plenty of dust — each randomized (angle --a, size
-         --s, start radius --r, spiral --w, stagger --d). Inserted at the bottom. -->
+    <!-- Synchronous, before the module bundle so it all paints on first paint:
+         (1) a few much-bigger CSS bodies + some small, and (2) a canvas particle
+         field of *tons* of dust that swirls inward then bursts back out as a
+         colourful cloud (some fully-saturated). One canvas layer + sprite
+         drawImage stays cheap where hundreds of DOM nodes would not. -->
     <script>
       (function () {
-        var stage = document.querySelector('#osp-splash .osp-splash__stage');
-        if (!stage) return;
-        var R = function (a, b) { return a + Math.random() * (b - a); };
-        var h = '';
-        function spawn(cls, n, sMin, sMax, rMin, rMax, dSpread) {
-          for (var i = 0; i < n; i++) {
-            h +=
-              '<i class="' + cls + '" style="--a:' + R(0, 360).toFixed(1) +
-              'deg;--s:' + R(sMin, sMax).toFixed(2) + 'vmin;--r:' + R(rMin, rMax).toFixed(1) +
-              'vmin;--w:' + R(120, 240).toFixed(0) + 'deg;--d:' + (-R(0, dSpread)).toFixed(3) + 's"></i>';
+        try {
+          var splash = document.getElementById('osp-splash');
+          var stage = splash && splash.querySelector('.osp-splash__stage');
+          if (!stage) return;
+          var R = function (a, b) { return a + Math.random() * (b - a); };
+
+          // (1) A few much-bigger bodies + some small, as crisp CSS elements.
+          var coreEl = stage.querySelector('.osp-splash__core');
+          var h = '';
+          function spawn(cls, n, sMin, sMax, rMin, rMax, dSpread) {
+            for (var i = 0; i < n; i++)
+              h += '<i class="' + cls + '" style="--a:' + R(0, 360).toFixed(1) +
+                'deg;--s:' + R(sMin, sMax).toFixed(2) + 'vmin;--r:' + R(rMin, rMax).toFixed(1) +
+                'vmin;--w:' + R(120, 240).toFixed(0) + 'deg;--d:' + (-R(0, dSpread)).toFixed(3) + 's"></i>';
           }
+          spawn('osp-splash__b osp-splash__b--big', 3 + ((Math.random() * 2) | 0), 3.4, 5.2, 24, 40, 0.06);
+          spawn('osp-splash__b', 6 + ((Math.random() * 4) | 0), 0.9, 1.8, 22, 46, 0.14);
+          if (coreEl) coreEl.insertAdjacentHTML('beforebegin', h);
+
+          // (2) Canvas dust field.
+          var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          var cv = document.createElement('canvas');
+          cv.className = 'osp-splash__dustcv';
+          splash.insertBefore(cv, splash.firstChild); // behind the stage
+          var ctx = cv.getContext('2d');
+          if (!ctx) return;
+          var dpr = Math.min(window.devicePixelRatio || 1, 2);
+          var W = (cv.width = Math.floor(innerWidth * dpr));
+          var H = (cv.height = Math.floor(innerHeight * dpr));
+          cv.style.width = innerWidth + 'px';
+          cv.style.height = innerHeight + 'px';
+          var cx = W / 2, cy = H / 2, vmin = Math.min(W, H) / 100;
+
+          function sprite(color) {
+            var s = 46, c = document.createElement('canvas');
+            c.width = c.height = s;
+            var g = c.getContext('2d'), rg = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+            rg.addColorStop(0, color);
+            rg.addColorStop(0.4, color);
+            rg.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = rg;
+            g.beginPath();
+            g.arc(s / 2, s / 2, s / 2, 0, 6.2832);
+            g.fill();
+            return c;
+          }
+          var sBase = ['#dff0ff', '#bcd8ff', '#ffffff'].map(sprite);
+          var sHot = ['#ff00d4', '#ff6a00', '#00e0ff', '#ffe000', '#ff0050', '#7a00ff'].map(sprite);
+          var N = reduce ? 80 : 400;
+          var P = new Array(N);
+          for (var i = 0; i < N; i++) {
+            var hot = Math.random() < 0.3;
+            P[i] = {
+              a: R(0, 6.2832), r0: R(26, 54), rb: R(34, 96),
+              sp: R(1.0, 2.6) * (Math.random() < 0.5 ? -1 : 1), bp: R(0.1, 0.5),
+              sz: R(0.45, 1.9) * vmin, dl: R(0, 0.12),
+              spr: hot ? sHot[(Math.random() * sHot.length) | 0] : sBase[(Math.random() * sBase.length) | 0],
+              hot: hot,
+            };
+          }
+          var t0 = performance.now(), MERGE = 0.42, END = 1.2, raf = 0, stop = false;
+          function draw(now) {
+            var t = (now - t0) / 1000;
+            ctx.clearRect(0, 0, W, H);
+            ctx.globalCompositeOperation = 'lighter';
+            for (var j = 0; j < N; j++) {
+              var p = P[j], tt = t - p.dl;
+              if (tt < 0) continue;
+              var r, ang, al, grow = 1;
+              if (tt < MERGE) {
+                var k = tt / MERGE, e = k * k;
+                r = p.r0 * (1 - e);
+                ang = p.a + p.sp * 6.2832 * e;
+                al = Math.min(1, k * 5) * (1 - e * 0.15);
+              } else {
+                var k2 = (tt - MERGE) / (END - MERGE);
+                if (k2 >= 1) continue;
+                var eo = 1 - (1 - k2) * (1 - k2);
+                r = p.rb * eo;
+                ang = p.a + p.sp * 6.2832 + p.bp * 6.2832 * eo;
+                al = (1 - k2) * (p.hot ? 1 : 0.8);
+                grow = 1 + eo * 1.4;
+              }
+              if (al <= 0.02) continue;
+              var s = p.sz * grow;
+              ctx.globalAlpha = al;
+              ctx.drawImage(p.spr, cx + Math.cos(ang) * r * vmin - s, cy + Math.sin(ang) * r * vmin - s, s * 2, s * 2);
+            }
+            ctx.globalAlpha = 1;
+            if (t < END && !stop) raf = requestAnimationFrame(draw);
+            else ctx.clearRect(0, 0, W, H);
+          }
+          raf = requestAnimationFrame(draw);
+          setTimeout(function () { stop = true; if (raf) cancelAnimationFrame(raf); }, 1700);
+        } catch (e) {
+          /* the splash dust is non-essential — never let it break the page */
         }
-        spawn('osp-splash__b osp-splash__b--big', 3 + ((Math.random() * 2) | 0), 3.4, 5.2, 24, 40, 0.06);
-        spawn('osp-splash__b', 6 + ((Math.random() * 5) | 0), 0.9, 1.8, 22, 46, 0.14);
-        spawn('osp-splash__dust', 130, 0.28, 0.7, 16, 54, 0.2);
-        stage.insertAdjacentHTML('afterbegin', h); // behind the burst layers
       })();
     </script>
     <script type="module" src="/src/main.ts"></script>

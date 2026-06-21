@@ -1,5 +1,3 @@
-import type { RendererBundle } from '../core/Renderer';
-
 export interface Hud {
   /** Call once per frame with the real frame delta (seconds). */
   update(frameDelta: number): void;
@@ -8,27 +6,22 @@ export interface Hud {
 }
 
 /**
- * A minimal corner readout: active GPU backend · live frame rate · current
- * render-resolution scale (the "% res" — auto-resolution lowers it under load).
- * Hidden by default; revealed by the panel's "Display FPS" toggle.
+ * A minimal corner readout: just the live frame rate. Hidden by default; revealed
+ * by the panel's "Display FPS" toggle. (The backend and the render-resolution
+ * scale used to show here too, but they're noise next to the FPS.)
  */
-export function createHud(
-  backend: RendererBundle['backend'],
-  getScale?: () => number,
-): Hud {
+export function createHud(): Hud {
   const el = document.createElement('div');
   el.className = 'hud';
   el.style.display = 'none'; // shown only when "Display FPS" is on
   document.body.appendChild(el);
 
-  const label = backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
   let frames = 0;
   let acc = 0;
   let fps = 0;
 
   const render = () => {
-    const res = getScale ? ` · ${Math.round(getScale() * 100)}% res` : '';
-    el.textContent = `${label} · ${fps} fps${res}`;
+    el.textContent = `${fps} fps`;
   };
   render();
 
