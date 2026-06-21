@@ -74,6 +74,7 @@ canvas {
   height: 13vmin;
   margin: -6.5vmin;
   border-radius: 50%;
+  will-change: transform, opacity;
   animation: osp-orb 0.46s cubic-bezier(0.55, 0, 0.78, 1) forwards;
 }
 .osp-splash__orb--a {
@@ -90,24 +91,37 @@ canvas {
     0 0 4vmin 1.2vmin rgba(255, 170, 220, 0.6),
     0 0 10vmin 3vmin rgba(190, 110, 230, 0.3);
 }
+/* Frequent keyframes, each rotating < 180°, so the inspiral interpolates the
+   same way in every browser — WebKit/Safari decomposes big rotate+translate
+   steps to a matrix and takes the short arc, which made the orbs briefly fly
+   apart mid-approach. Monotonic radius (27 → 0), accelerating ~2 turns. */
 @keyframes osp-orb {
   0% {
     transform: rotate(var(--a)) translateX(27vmin) scale(0.85);
     opacity: 0;
   }
-  14% {
+  12% {
+    transform: rotate(calc(var(--a) + 85deg)) translateX(23vmin) scale(1);
     opacity: 1;
   }
-  55% {
-    transform: rotate(calc(var(--a) + 300deg)) translateX(13vmin) scale(1);
+  30% {
+    transform: rotate(calc(var(--a) + 220deg)) translateX(17vmin) scale(1);
     opacity: 1;
   }
-  85% {
-    transform: rotate(calc(var(--a) + 600deg)) translateX(3.5vmin) scale(0.95);
+  48% {
+    transform: rotate(calc(var(--a) + 360deg)) translateX(11.5vmin) scale(1);
+    opacity: 1;
+  }
+  66% {
+    transform: rotate(calc(var(--a) + 500deg)) translateX(6.5vmin) scale(0.98);
+    opacity: 1;
+  }
+  84% {
+    transform: rotate(calc(var(--a) + 630deg)) translateX(2.5vmin) scale(0.9);
     opacity: 1;
   }
   100% {
-    transform: rotate(calc(var(--a) + 740deg)) translateX(0) scale(0.45);
+    transform: rotate(calc(var(--a) + 730deg)) translateX(0) scale(0.4);
     opacity: 0;
   }
 }
@@ -260,11 +274,17 @@ canvas {
       inset 0 0 3vmin 1vmin #000;
   } /* settle */
 }
-/* Infalling cluster (a few much-bigger bodies + small) and dust: spiral inward
-   from the rim and shrink as they merge. Transform/opacity only, so hundreds of
-   dust stay cheap on mobile. */
-.osp-splash__b,
-.osp-splash__dust {
+/* The canvas dust field (tons of particles: swirl in → burst back out). One
+   layer behind the stage; sized/drawn by the inline script. */
+.osp-splash__dustcv {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+/* A few much-bigger bodies + small, as crisp CSS elements: spiral inward from
+   the rim and shrink as they merge. */
+.osp-splash__b {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -272,18 +292,13 @@ canvas {
   height: var(--s, 1vmin);
   margin: calc(var(--s, 1vmin) / -2);
   border-radius: 50%;
+  background: radial-gradient(circle at 42% 40%, #fff 0%, #cfe6ff 70%, #8fb6ee 100%);
+  box-shadow: 0 0 1.2vmin 0.4vmin rgba(150, 200, 255, 0.5);
   transform: rotate(var(--a)) translateX(var(--r, 36vmin));
   animation: osp-splash-fall 0.48s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
 }
-.osp-splash__b {
-  background: radial-gradient(circle at 42% 40%, #fff 0%, #cfe6ff 70%, #8fb6ee 100%);
-  box-shadow: 0 0 1.2vmin 0.4vmin rgba(150, 200, 255, 0.5);
-}
 .osp-splash__b--big {
   box-shadow: 0 0 2.2vmin 0.7vmin rgba(150, 200, 255, 0.55);
-}
-.osp-splash__dust {
-  background: rgba(220, 236, 255, 0.92);
 }
 @keyframes osp-splash-fall {
   0% {
@@ -302,14 +317,14 @@ canvas {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Settle quickly to the formed state rather than the full inspiral/burst. */
+  /* Settle quickly to the formed state rather than the full inspiral/burst.
+     (The canvas dust also drops to a small count under reduced motion.) */
   .osp-splash__orb,
   .osp-splash__flash,
   .osp-splash__jet,
   .osp-splash__shock,
   .osp-splash__plume,
-  .osp-splash__b,
-  .osp-splash__dust {
+  .osp-splash__b {
     animation-duration: 0.01s;
   }
   .osp-splash__core {
@@ -458,8 +473,9 @@ canvas {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* Pause: a real toggle button that shows its own state — green while running,
-   red while stopped, with a coloured accent bar. */
+/* Pause: a real toggle button whose colour matches the action — a red "Pause"
+   button while running (click to stop), a green "Resume" button while stopped
+   (click to go), with a matching accent bar. */
 .lil-controller.osp-pausebtn {
   cursor: pointer;
 }
@@ -467,18 +483,18 @@ canvas {
   font-weight: 600;
 }
 .lil-controller.osp-pausebtn.osp-running {
-  background: rgba(126, 231, 135, 0.13);
-  box-shadow: inset 3px 0 0 #7ee787;
-}
-.lil-controller.osp-pausebtn.osp-running .lil-name {
-  color: #8beca0;
-}
-.lil-controller.osp-pausebtn.osp-paused {
   background: rgba(255, 123, 114, 0.16);
   box-shadow: inset 3px 0 0 #ff7b72;
 }
-.lil-controller.osp-pausebtn.osp-paused .lil-name {
+.lil-controller.osp-pausebtn.osp-running .lil-name {
   color: #ff9a92;
+}
+.lil-controller.osp-pausebtn.osp-paused {
+  background: rgba(126, 231, 135, 0.13);
+  box-shadow: inset 3px 0 0 #7ee787;
+}
+.lil-controller.osp-pausebtn.osp-paused .lil-name {
+  color: #8beca0;
 }
 
 /* Add-body confirmation flash: ✓ added (green) / ✗ at max (red). */

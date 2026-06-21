@@ -14,6 +14,18 @@ N-body simulator.
 
 ## Status
 
+_v0.16.2_ — splash polish + smoothness. The two orbs no longer **briefly fly apart**
+mid-inspiral (a WebKit/Safari transform-interpolation quirk — the keyframes now
+rotate < 180° per step so every browser takes the same arc). The dust is now a
+**canvas particle field** of hundreds that **swirl inward then burst back out** as
+a colourful cloud (some **fully saturated**) — one layer instead of hundreds of DOM
+nodes, so it's *more* dust for *less* cost. The render pipeline is **pre-warmed**
+under the splash to cut the hitch as the live scene is revealed. The **FPS** readout
+is just the number now (dropped "WebGPU" and the render-scale "res"). **Pause** is
+red while running / green while stopped (the colours were backwards). And the
+**Background** presets are retuned — Nebula **0.3 / 1.75 / 0.25**, Lattice & Filaments
+brightness **0.5**.
+
 _v0.16.1_ — a **colourful binary-merger splash** + control polish. The load splash
 is reborn: **two big orbs (a cool + a warm twin) twirl together** while a cluster
 of a few much-bigger bodies, some small, and ~130 dust spirals in; at the **merger**

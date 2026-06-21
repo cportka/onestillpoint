@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   // stalls the pipeline. The GPU compute kernel stays an opt-in (Advanced → GPU
   // physics): a scaling foundation for many bodies, not a win for a handful.
   const scaler = new ResolutionScaler();
-  const hud = createHud(backend, () => scaler.scale);
+  const hud = createHud();
 
   // The art-directed intro: dolly in from far while the disk ignites.
   const formation = new FormationSequence(rig, uniforms.formation, {
@@ -128,6 +128,11 @@ async function main(): Promise<void> {
       window.setTimeout(dismissSplash, Math.max(0, 820 - performance.now()));
     }
   };
+
+  // Pre-warm the render pipeline (compile the heavy WGSL, prime the GPU) while the
+  // splash still covers the screen, so the live scene doesn't hitch the moment it
+  // is revealed — the "choppiness before the physics kicks in".
+  post.render();
   loop.start();
 
   // Expose handles for console poking during development.

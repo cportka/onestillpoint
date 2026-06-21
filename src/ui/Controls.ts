@@ -87,9 +87,9 @@ export function createControls(ctx: {
   // Nebula reads best dim, near-grey and a touch warm; the rest keep neutrals.
   const BG_PRESETS: Record<number, { brightness: number; saturation: number; tint: number }> = {
     0: { brightness: 1, saturation: 1, tint: 0 }, // Stars
-    1: { brightness: 0.15, saturation: 0.18, tint: 0.2 }, // Nebula
-    2: { brightness: 1, saturation: 1, tint: 0 }, // Filaments
-    3: { brightness: 1, saturation: 1, tint: 0 }, // Lattice
+    1: { brightness: 0.3, saturation: 1.75, tint: 0.25 }, // Nebula — dim, punchy, warm
+    2: { brightness: 0.5, saturation: 1, tint: 0 }, // Filaments
+    3: { brightness: 0.5, saturation: 1, tint: 0 }, // Lattice
   };
   const bgCtrls: Controller[] = []; // the Background folder's sliders (filled below)
   const applyBgPreset = (mode: number): void => {
