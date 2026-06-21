@@ -24,19 +24,34 @@
          live scene once the first real frame is ready (see main.ts). -->
     <div id="osp-splash" aria-hidden="true">
       <div class="osp-splash__stage">
-        <span class="osp-splash__ring"></span>
+        <span class="osp-splash__pool"></span>
         <span class="osp-splash__core"></span>
-        <!-- Bodies + dust of varied size (--s), start radius (--r), angle (--a), stagger (--d). -->
-        <span class="osp-splash__b" style="--a: 8deg; --d: 0s; --s: 2.3vmin; --r: 41vmin"></span>
-        <span class="osp-splash__b" style="--a: 58deg; --d: -0.05s; --s: 1.0vmin; --r: 33vmin"></span>
-        <span class="osp-splash__b" style="--a: 112deg; --d: -0.12s; --s: 1.8vmin; --r: 45vmin"></span>
-        <span class="osp-splash__b" style="--a: 156deg; --d: -0.03s; --s: 0.7vmin; --r: 30vmin"></span>
-        <span class="osp-splash__b" style="--a: 202deg; --d: -0.09s; --s: 2.0vmin; --r: 38vmin"></span>
-        <span class="osp-splash__b" style="--a: 248deg; --d: -0.15s; --s: 0.9vmin; --r: 35vmin"></span>
-        <span class="osp-splash__b" style="--a: 294deg; --d: -0.06s; --s: 1.5vmin; --r: 43vmin"></span>
-        <span class="osp-splash__b" style="--a: 336deg; --d: -0.10s; --s: 0.8vmin; --r: 31vmin"></span>
       </div>
     </div>
+    <!-- Generate the infalling cluster synchronously (before the module bundle),
+         so the hundreds of dust points paint on first paint with everything else:
+         2–4 big bodies, 5–10 medium, and many small dust, each with a randomized
+         angle (--a), size (--s), start radius (--r), spiral (--w) and stagger (--d). -->
+    <script>
+      (function () {
+        var core = document.querySelector('#osp-splash .osp-splash__core');
+        if (!core) return;
+        var R = function (a, b) { return a + Math.random() * (b - a); };
+        function spawn(cls, n, sMin, sMax, rMin, rMax, dSpread) {
+          var h = '';
+          for (var i = 0; i < n; i++) {
+            h +=
+              '<i class="' + cls + '" style="--a:' + R(0, 360).toFixed(1) +
+              'deg;--s:' + R(sMin, sMax).toFixed(2) + 'vmin;--r:' + R(rMin, rMax).toFixed(1) +
+              'vmin;--w:' + R(110, 210).toFixed(0) + 'deg;--d:' + (-R(0, dSpread)).toFixed(3) + 's"></i>';
+          }
+          core.insertAdjacentHTML('beforebegin', h); // between the pool and the (top-most) core
+        }
+        spawn('osp-splash__b osp-splash__b--big', 2 + ((Math.random() * 3) | 0), 2.4, 3.8, 26, 42, 0.05);
+        spawn('osp-splash__b', 5 + ((Math.random() * 6) | 0), 1.0, 2.0, 24, 46, 0.12);
+        spawn('osp-splash__dust', 130, 0.28, 0.7, 18, 54, 0.18);
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

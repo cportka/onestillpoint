@@ -90,6 +90,7 @@ async function main(): Promise<void> {
   createControls({
     blackHole, scene, physics, time, formation, backend, renderer, scaler,
     bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
+    bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
   });
 
   // Crossfade the load splash out once the first real frame is on screen (the

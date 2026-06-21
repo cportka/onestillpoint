@@ -14,6 +14,19 @@ N-body simulator.
 
 ## Status
 
+**Phase 16 — spaghettification, background controls & a livelier splash (v0.16).**
+A collision now ends in **tidal spaghettification**: as a body is absorbed it is
+**stretched along the line to the hole and thinned across it** (a true prolate
+ellipsoid in the raymarch — `segmentHitsStretched`), then redshifts and fades. The
+**load splash** is reborn as a proper little formation — **2–4 big bodies, 5–10
+medium, and ~130 dust points** (randomized each load, generated inline so they
+still paint instantly) spiral inward, **pool into a liquid blob**, and the dark
+event horizon then **expands back outward** into the final circle. **Pause** is now
+a real **toggle button** that shows its state (▶ Resume / ⏸ Pause, lit when
+paused). A new **Advanced → Background** folder post-processes whichever sky is
+selected — **Brightness · Saturation · Tint (cool–warm)** — and **Lattice** is
+re-tinted a little greener and less saturated.
+
 _v0.15.1_ — splash & polish. The **load splash** is sized in `vmin` so its forming
 event horizon roughly **lines up with the real shadow** at the crossfade (was much
 smaller), and its infalling **bodies + dust now vary in size**. The **About** logo
@@ -235,6 +248,8 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 | 12 | Body ± steppers + black-hole-budget caps + About modal + panel reorg | ✅ done |
 | 13 | Selectable backgrounds (Stars / Nebula / Aurora / Lattice) + video-driven intro tuning | ✅ done |
 | 14 | Background revamp (Eagle Nebula / cosmic-web Filaments / finer Lattice) + intro reality doc | ✅ done |
+| 15 | Performance pass (CPU physics default) + instant load splash + Step/debounce polish | ✅ done |
+| 16 | Spaghettification + Background look controls + Pause toggle button + livelier splash | ✅ done |
 
 ## Stack
 

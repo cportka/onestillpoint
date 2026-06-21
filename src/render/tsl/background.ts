@@ -1,4 +1,4 @@
-import { abs, asin, atan, clamp, float, fract, If, max, mix, pow, smoothstep, vec3 } from 'three/tsl';
+import { abs, asin, atan, clamp, dot, float, fract, If, max, mix, pow, smoothstep, vec3 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { starfield } from './starfield';
 import { fbm } from './turbulence';
@@ -79,20 +79,34 @@ function lattice(dir: Node<'vec3'>) {
   const lat = asin(clamp(dir.y, float(-0.999), float(0.999))).div(PI).add(0.5);
   const major = max(gridLines(lon, 24), gridLines(lat, 12));
   const minor = max(gridLines(lon, 96), gridLines(lat, 48)).mul(0.3); // in-between lines
-  return vec3(0.35, 0.72, 0.78).mul(max(major, minor)).add(starfield(dir, float(0.35)));
+  // Greener and a touch less saturated than the old cyan (raised red toward the
+  // others, lowered blue so green leads).
+  return vec3(0.4, 0.66, 0.6).mul(max(major, minor)).add(starfield(dir, float(0.35)));
 }
 
 /**
  * The background sky, selected by a mode uniform and sampled along each photon's
  * bent escape direction — so every option lenses around the holes. Mode 0 is the
  * original star field (the default); 1–3 are stylised alternatives. Each mode is
- * gated, so only the selected one runs.
+ * gated, so only the selected one runs. `brightness`, `saturation` and `tint`
+ * (Advanced → Background) post-process whichever one is chosen.
  */
-export function background(dir: Node<'vec3'>, mode: Node<'float'>) {
+export function background(
+  dir: Node<'vec3'>,
+  mode: Node<'float'>,
+  brightness: Node<'float'>,
+  saturation: Node<'float'>,
+  tint: Node<'float'>,
+) {
   const col = vec3(0).toVar();
   If(mode.lessThan(0.5), () => col.assign(starfield(dir, float(1.2))));
   If(mode.greaterThan(0.5).and(mode.lessThan(1.5)), () => col.assign(nebula(dir)));
   If(mode.greaterThan(1.5).and(mode.lessThan(2.5)), () => col.assign(filaments(dir)));
   If(mode.greaterThan(2.5), () => col.assign(lattice(dir)));
-  return col;
+
+  // Universal post: saturation (toward luminance) → warm/cool tint → brightness.
+  const luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  const sat = mix(vec3(luma), col, saturation);
+  const tinted = sat.mul(vec3(float(1).add(tint), float(1), float(1).sub(tint)));
+  return max(vec3(0), tinted).mul(brightness);
 }
