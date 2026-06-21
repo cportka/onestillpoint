@@ -17,6 +17,7 @@ import {
   pow,
   screenUV,
   select,
+  smoothstep,
   vec2,
   vec3,
 } from 'three/tsl';
@@ -24,7 +25,7 @@ import type { Node } from 'three/webgpu';
 import type { BodyUniforms } from '../bodyUniforms';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
-import { segmentHitsSphere } from './bodies';
+import { segmentHitsStretched } from './bodies';
 import { background } from './background';
 import { mediumDensity, mediumSource } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
@@ -164,21 +165,28 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         If(radius.greaterThan(0), () => {
           const center = slot.posRadius.xyz;
           const appear = slot.appear;
-          // Absorption fade: as a body is taken in by the primary (absorb 0 → 1)
-          // it shrinks toward a point and its light redshifts (blue, then green,
-          // fade before red) and dims — a brief, plausible stand-in for the tidal
-          // plunge across the horizon. `shrink` is 1 for every live body, so the
-          // normal render is untouched.
-          const shrink = max(float(0), float(1).sub(slot.absorb));
-          const drawR = radius.mul(shrink);
-          // Opaque emissive sphere (lensed + occluded by the curved-space march),
-          // gated on `appear` so a body still swooshing in during the intro
-          // neither occludes as a black disc nor flashes at full brightness.
-          If(appear.greaterThan(0.02).and(segmentHitsSphere(pos, newPos, center, drawR)), () => {
-            const redshift = vec3(float(1), shrink, shrink.mul(shrink)); // lose blue, then green
-            bodyColor.assign(slot.color.mul(redshift).mul(appear).mul(shrink));
-            bodyHit.assign(1);
-          });
+          // Spaghettification: as a body is taken in (absorb 0 → 1) tidal forces
+          // stretch it along the line to the hole (radial) and thin it across,
+          // then it redshifts (blue, then green, fade before red) and fades out.
+          // At absorb 0 the stretch/squash are 1 and `fade` is 1, so a live body
+          // renders exactly as a plain sphere.
+          const absorb = slot.absorb;
+          const axis = normalize(center); // hole (origin) → body: the stretch direction
+          const stretch = float(1).add(absorb.mul(2.4)); // elongate radially, up to ~3.4×
+          const squash = max(float(0.05), float(1).sub(absorb.mul(0.62))); // thin across
+          const fade = float(1).sub(smoothstep(float(0.5), float(1), absorb)); // hold, then fade
+          // Opaque emissive (lensed + occluded by the curved-space march), gated on
+          // `appear` so a body still swooshing in during the intro neither occludes
+          // as a black disc nor flashes at full brightness.
+          If(
+            appear.greaterThan(0.02).and(segmentHitsStretched(pos, newPos, center, radius, axis, stretch, squash)),
+            () => {
+              const k = float(1).sub(absorb);
+              const redshift = vec3(float(1), k, k.mul(k)); // lose blue, then green
+              bodyColor.assign(slot.color.mul(redshift).mul(appear).mul(fade));
+              bodyHit.assign(1);
+            },
+          );
 
           // A secondary black hole (lensMass > 0) carries its own compact
           // volumetric accretion disk — marched only where the ray crosses its
@@ -194,9 +202,9 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
               .and(abs(pl.y).lessThan(radius.mul(0.7)));
             If(inSecSlab.and(appear.greaterThan(0.02)), () => {
               const disk = secondaryDisk(mid, center, radius, slot.lensMass, u.time, u.timeBlur, bh);
-              const density = disk.density.mul(appear).mul(shrink); // fades with the core as it is absorbed
+              const density = disk.density.mul(appear).mul(fade); // fades with the core as it is absorbed
               If(density.greaterThan(0.001), () => {
-                radiance.assign(radiance.add(transmittance.mul(disk.emission).mul(appear).mul(shrink).mul(dl)));
+                radiance.assign(radiance.add(transmittance.mul(disk.emission).mul(appear).mul(fade).mul(dl)));
                 transmittance.assign(transmittance.mul(exp(density.mul(bh.extinction).mul(dl).mul(-1))));
               });
             });
@@ -214,7 +222,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
 
     // Background behind the dust: a hit body, else the lensed star field (escaped)
     // or the black horizon. Composite by the surviving transmittance.
-    const sky = background(normalize(vel), u.background).mul(escaped);
+    const sky = background(normalize(vel), u.background, u.bgBrightness, u.bgSaturation, u.bgTint).mul(escaped);
     const backdrop = select(bodyHit.greaterThan(0.5), bodyColor, sky); // bodyColor already faded by appear
     return radiance.add(transmittance.mul(backdrop));
   })();

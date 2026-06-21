@@ -28,8 +28,14 @@ export function createUniforms() {
      *  (FormationSequence) and multiplied into the dust; 1 in steady state. */
     formation: uniform(1),
 
-    /** Background sky mode: 0 = Stars (default), 1 = Nebula, 2 = Aurora, 3 = Lattice. */
+    /** Background sky mode: 0 = Stars (default), 1 = Nebula, 2 = Filaments, 3 = Lattice. */
     background: uniform(0),
+    /** Post knobs that apply to whichever background is selected (Advanced →
+     *  Background): overall brightness ×, saturation (1 = unchanged, 0 = grey),
+     *  and a warm↔cool tint (−0.5 cool … 0 neutral … +0.5 warm). */
+    bgBrightness: uniform(1),
+    bgSaturation: uniform(1),
+    bgTint: uniform(0),
 
     /** Orbit-camera world position — the ray origin for every pixel. */
     camPos: uniform(new Vector3(0, 6, 22)),

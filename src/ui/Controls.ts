@@ -47,9 +47,10 @@ export function createControls(ctx: {
   autoTier: QualityTier;
   applyQuality: (tier: QualityTier) => void;
   background: { value: number };
+  bgLook: { brightness: { value: number }; saturation: { value: number }; tint: { value: number } };
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background } = ctx;
+  const { hud, autoTier, applyQuality, background, bgLook } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   const prefs = loadPrefs();
 
@@ -192,7 +193,22 @@ export function createControls(ctx: {
   );
 
   // --- Pause + Step (last basic controls, right before the Advanced toggle) ---
-  tip(gui.add(time, 'paused').name('Pause'), 'Freeze time — inspect the lensing on a still frame.');
+  // Pause is a proper toggle button that shows its own state (label + a lit
+  // "pressed" style when paused), not a checkbox. A lil-gui function controller
+  // calls its function on click, so route it through a mutable callback.
+  let onPauseClick = (): void => {};
+  const pauseCtrl = gui.add({ toggle: () => onPauseClick() }, 'toggle');
+  const refreshPause = (): void => {
+    pauseCtrl.name(time.paused ? '▶  Resume' : '⏸  Pause');
+    pauseCtrl.domElement.classList.toggle('osp-paused', time.paused);
+  };
+  onPauseClick = (): void => {
+    time.paused = !time.paused;
+    refreshPause();
+  };
+  pauseCtrl.domElement.classList.add('osp-pausebtn');
+  refreshPause();
+  tip(pauseCtrl, 'Freeze time to inspect the lensing on a still frame. Click again to resume.');
   tip(
     gui.add({ step: () => time.step() }, 'step').name('Step'),
     'Advance time. Paused: one frame at the current Speed. Running: a ~1-second jump forward ' +
@@ -358,8 +374,23 @@ export function createControls(ctx: {
       'volume but slower.',
   );
 
+  // Background look: a few knobs that post-process whichever sky is selected.
+  const bgFolder = gui.addFolder('Background');
+  tip(
+    bgFolder.add(bgLook.brightness, 'value', 0, 2, 0.01).name('Brightness'),
+    'Overall brightness of the selected background sky.',
+  );
+  tip(
+    bgFolder.add(bgLook.saturation, 'value', 0, 2, 0.01).name('Saturation'),
+    'Colour intensity of the background. 0 = greyscale, 1 = as-authored, higher = punchier.',
+  );
+  tip(
+    bgFolder.add(bgLook.tint, 'value', -0.5, 0.5, 0.01).name('Tint (cool–warm)'),
+    'Shift the background cooler (−, bluer) or warmer (+, redder).',
+  );
+
   // Each tuning folder starts collapsed when Advanced is first shown.
-  [look, anim, post, quality].forEach((f) => f.close());
+  [look, anim, post, quality, bgFolder].forEach((f) => f.close());
 
   // Everything revealed by the Advanced toggle: GPU / FPS / Click-outside first,
   // then the deeper tuning folders.
@@ -371,6 +402,7 @@ export function createControls(ctx: {
     anim,
     post,
     quality,
+    bgFolder,
   ];
   const applyAdvanced = (on: boolean): void => {
     advanced.forEach((x) => (on ? x.show() : x.hide()));

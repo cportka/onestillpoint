@@ -21,13 +21,16 @@ compiles, smoothly blending into the real scene.
 
 | time (≈) | what you see | how |
 | --- | --- | --- |
-| 0–~0.2 s | A **cluster of white bodies** (+ a faint dust ring) appears over black and begins **spiralling inward** — abstract black-and-white. | Static markup in `index.html` + CSS in `style.css` (`#osp-splash`). Paints on first paint; **no JS / no GPU**, so it can't be late. |
-| ~0.2–0.5 s | The bodies **merge** into a forming **event horizon + photon ring**; meanwhile the real renderer compiles and the formation ignites *underneath*. | The splash is held a short minimum, then `main.ts` adds `.osp-splash--hide` once the **first real frame** is on screen. |
-| ~0.5 s+ | **Crossfade** to the live scene — the hole is lit (fast `formationCurve`) — then the **usual script** (camera dolly + settle) plays out. | 0.45 s opacity crossfade; the formation continues to `t = 1`. |
+| 0–~0.35 s | A **cluster** — 2–4 big bodies, 5–10 medium, and ~130 dust points (randomized, varied size) — appears over black and **spirals inward**, abstract black-and-white. | Static `#osp-splash` markup + a tiny **inline script** (in `index.html`) that generates the cluster synchronously, so the hundreds of dust still paint on first paint; **no module bundle / no GPU**, so it can't be late. |
+| ~0.3–0.5 s | The infall **pools into a bright liquid blob** (`.osp-splash__pool`) as the matter merges. | Transform/opacity-only animations (cheap on mobile). |
+| ~0.4–0.7 s | The dark **event horizon expands back outward** through the pool — a slight overshoot, then settles — into the final black circle + photon ring (sized `--core-d ≈ 28vmin` to match the real shadow). | `.osp-splash__core` grows late, after the pool peaks. |
+| ~0.6 s+ | **Crossfade** to the live scene — the hole is lit (fast `formationCurve`) — then the **usual script** (camera dolly + settle) plays out. | 0.45 s opacity crossfade; the formation continues to `t = 1`. |
 
-*Fuzzy by design — to be dialled in against a recording. Levers: splash min time
-(`main.ts`, 550 ms) and crossfade (`style.css`, 0.45 s); ignition speed (`t/0.1`)
-and `FAR_FACTOR` for how "formed" and how close the hole is at the handoff.*
+*Fuzzy by design — dial against a recording. Levers: cluster counts/sizes (the
+inline script in `index.html`), `--core-d` (final circle size), the pool/core
+timings (`style.css`), the splash min time (`main.ts`, 550 ms) and crossfade
+(0.45 s); ignition speed (`t/0.1`) and `FAR_FACTOR` for how "formed"/close the hole
+is at the handoff.*
 
 ## Timeline — the settle (progress = elapsed / duration)
 
