@@ -52,59 +52,181 @@ canvas {
   opacity: 0;
   pointer-events: none;
 }
-/* Sized in vmin so the forming core lines up with the apparent size of the real
-   black-hole shadow at the crossfade (the render's shadow is ~28–32vmin; tune
-   --core-d against a recording). The sequence: a cluster of bodies + dust spirals
-   inward and pools into a bright liquid blob, then the dark event horizon expands
-   back outward through it to the final black circle. */
+/* The binary-merger choreography (sized in vmin so the final event horizon lines
+   up with the real shadow at the crossfade; tune --core-d against a recording).
+   Two big orbs twirl together while a cluster + dust swirls in; at the merger a
+   flash, a tilted jet, colour plumes and reverberating shock rings burst forth,
+   then the dark event horizon settles into the final circle. This is the one
+   place the app "goes crazy with colour". */
 .osp-splash__stage {
   --core-d: 28vmin; /* final diameter of the forming event horizon */
   position: relative;
-  width: 80vmin;
-  height: 80vmin;
-  filter: grayscale(1); /* keep it abstract black-and-white */
+  width: 90vmin;
+  height: 90vmin;
 }
-/* The liquid "pool": a soft blob that brightens as matter converges, then is
-   eaten by the expanding core. */
-.osp-splash__pool {
+/* The two big inspiralling orbs (a cool + a warm twin). Twirl ~2 turns,
+   accelerating, from the rim into the centre where they merge. */
+.osp-splash__orb {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 38vmin;
-  height: 38vmin;
-  margin: -19vmin;
+  width: 13vmin;
+  height: 13vmin;
+  margin: -6.5vmin;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.9) 0%,
-    rgba(255, 255, 255, 0.32) 32%,
-    rgba(255, 255, 255, 0.06) 60%,
-    transparent 76%
-  );
-  transform: scale(0.2);
-  opacity: 0;
-  animation: osp-splash-pool 0.72s ease-out forwards;
+  animation: osp-orb 0.46s cubic-bezier(0.55, 0, 0.78, 1) forwards;
 }
-@keyframes osp-splash-pool {
+.osp-splash__orb--a {
+  --a: 0deg;
+  background: radial-gradient(circle at 42% 38%, #fff 0%, #e6f3ff 32%, #9cc8ff 60%, #5f86e6 100%);
+  box-shadow:
+    0 0 4vmin 1.2vmin rgba(150, 200, 255, 0.7),
+    0 0 10vmin 3vmin rgba(90, 140, 255, 0.32);
+}
+.osp-splash__orb--b {
+  --a: 180deg;
+  background: radial-gradient(circle at 42% 38%, #fff 0%, #fdeef6 32%, #ffb6e0 60%, #c97ad6 100%);
+  box-shadow:
+    0 0 4vmin 1.2vmin rgba(255, 170, 220, 0.6),
+    0 0 10vmin 3vmin rgba(190, 110, 230, 0.3);
+}
+@keyframes osp-orb {
+  0% {
+    transform: rotate(var(--a)) translateX(27vmin) scale(0.85);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  55% {
+    transform: rotate(calc(var(--a) + 300deg)) translateX(13vmin) scale(1);
+    opacity: 1;
+  }
+  85% {
+    transform: rotate(calc(var(--a) + 600deg)) translateX(3.5vmin) scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(calc(var(--a) + 740deg)) translateX(0) scale(0.45);
+    opacity: 0;
+  }
+}
+/* Merger flash — a white-cyan burst as the orbs coalesce (~0.4s). */
+.osp-splash__flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34vmin;
+  height: 34vmin;
+  margin: -17vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #d6efff 22%, rgba(120, 200, 255, 0.45) 46%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.2);
+  animation: osp-flash 0.5s ease-out 0.36s forwards;
+}
+@keyframes osp-flash {
   0% {
     transform: scale(0.2);
     opacity: 0;
   }
-  44% {
+  16% {
     transform: scale(1);
-    opacity: 0.95;
-  } /* matter pooled, bright and liquid */
-  72% {
-    transform: scale(1.06);
-    opacity: 0.6;
+    opacity: 1;
   }
   100% {
-    transform: scale(1.16);
+    transform: scale(2.3);
     opacity: 0;
-  } /* eaten by the expanding core */
+  }
 }
-/* The forming event horizon: holds at a point while matter pools, then expands
-   back outward (with a slight overshoot) to the final black circle + photon ring. */
+/* A tilted jet flaring across the merger. */
+.osp-splash__jet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 92vmin;
+  height: 1.4vmin;
+  margin: -0.7vmin 0 0 -46vmin;
+  border-radius: 1vmin;
+  background: linear-gradient(90deg, transparent 6%, #ff8ad6 26%, #fff 50%, #9fd8ff 74%, transparent 94%);
+  filter: blur(0.4vmin);
+  opacity: 0;
+  transform: rotate(19deg) scaleX(0.06);
+  animation: osp-jet 0.55s ease-out 0.38s forwards;
+}
+@keyframes osp-jet {
+  0% {
+    transform: rotate(19deg) scaleX(0.06);
+    opacity: 0;
+  }
+  22% {
+    transform: rotate(19deg) scaleX(1);
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(19deg) scaleX(1.18);
+    opacity: 0;
+  }
+}
+/* Reverberating shock rings — staggered (--sd), coloured (--rc), tilted to read
+   as 3D rings expanding outward in waves. */
+.osp-splash__shock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9vmin;
+  height: 9vmin;
+  margin: -4.5vmin;
+  border-radius: 50%;
+  border: 0.5vmin solid var(--rc, #ff4fd8);
+  opacity: 0;
+  transform: scale(0.12) rotateX(62deg) rotate(var(--rr, 0deg));
+  animation: osp-shock 0.66s cubic-bezier(0.15, 0.7, 0.3, 1) var(--sd, 0.4s) forwards;
+}
+@keyframes osp-shock {
+  0% {
+    transform: scale(0.12) rotateX(62deg) rotate(var(--rr, 0deg));
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(7) rotateX(62deg) rotate(var(--rr, 0deg));
+    opacity: 0;
+  }
+}
+/* Colour plumes — gas flung radially outward (angle --a, colour --pc). */
+.osp-splash__plume {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4vmin;
+  height: 11vmin;
+  margin: -5.5vmin -2vmin;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 100%, var(--pc, #ff6ad0) 0%, transparent 72%);
+  filter: blur(0.7vmin);
+  opacity: 0;
+  transform: rotate(var(--a)) translateY(0) scale(0.3);
+  animation: osp-plume 0.62s ease-out 0.4s forwards;
+}
+@keyframes osp-plume {
+  0% {
+    transform: rotate(var(--a)) translateY(0) scale(0.3);
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: rotate(var(--a)) translateY(-24vmin) scale(1);
+    opacity: 0;
+  }
+}
+/* The forming event horizon: holds at a point through the merger, then expands
+   back outward (slight overshoot → settle) to the final black circle + a cool
+   photon ring. */
 .osp-splash__core {
   position: absolute;
   left: 50%;
@@ -114,33 +236,32 @@ canvas {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: #05060a;
-  animation: osp-splash-core 0.72s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  animation: osp-splash-core 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 @keyframes osp-splash-core {
   0%,
-  38% {
+  48% {
     width: 0;
     height: 0;
-    box-shadow: 0 0 1vmin 0.2vmin rgba(255, 255, 255, 0);
+    box-shadow: 0 0 1vmin 0.2vmin rgba(190, 215, 255, 0);
   }
-  78% {
-    width: calc(var(--core-d) * 1.07);
-    height: calc(var(--core-d) * 1.07);
+  82% {
+    width: calc(var(--core-d) * 1.06);
+    height: calc(var(--core-d) * 1.06);
     box-shadow:
-      0 0 4.8vmin 1.4vmin rgba(255, 255, 255, 0.85),
+      0 0 5vmin 1.4vmin rgba(200, 225, 255, 0.85),
       inset 0 0 3vmin 1vmin #000;
   } /* expand outward + overshoot */
   100% {
     width: var(--core-d);
     height: var(--core-d);
     box-shadow:
-      0 0 4vmin 1.2vmin rgba(255, 255, 255, 0.8),
+      0 0 4vmin 1.2vmin rgba(190, 215, 255, 0.78),
       inset 0 0 3vmin 1vmin #000;
   } /* settle */
 }
-/* Infalling bodies (white, faintly glowing) and dust (cheap, no glow): spiral
-   inward from the rim (varied size --s, start radius --r, spiral --w) and shrink
-   to nothing as they merge into the pool. Transform/opacity only, so hundreds of
+/* Infalling cluster (a few much-bigger bodies + small) and dust: spiral inward
+   from the rim and shrink as they merge. Transform/opacity only, so hundreds of
    dust stay cheap on mobile. */
 .osp-splash__b,
 .osp-splash__dust {
@@ -152,17 +273,17 @@ canvas {
   margin: calc(var(--s, 1vmin) / -2);
   border-radius: 50%;
   transform: rotate(var(--a)) translateX(var(--r, 36vmin));
-  animation: osp-splash-fall 0.5s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
+  animation: osp-splash-fall 0.48s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
 }
 .osp-splash__b {
-  background: #fff;
-  box-shadow: 0 0 1vmin 0.3vmin rgba(255, 255, 255, 0.5);
+  background: radial-gradient(circle at 42% 40%, #fff 0%, #cfe6ff 70%, #8fb6ee 100%);
+  box-shadow: 0 0 1.2vmin 0.4vmin rgba(150, 200, 255, 0.5);
 }
 .osp-splash__b--big {
-  box-shadow: 0 0 1.7vmin 0.55vmin rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 2.2vmin 0.7vmin rgba(150, 200, 255, 0.55);
 }
 .osp-splash__dust {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(220, 236, 255, 0.92);
 }
 @keyframes osp-splash-fall {
   0% {
@@ -172,21 +293,27 @@ canvas {
   22% {
     opacity: 1;
   }
-  80% {
+  78% {
     opacity: 1;
   }
   100% {
-    transform: rotate(calc(var(--a) + var(--w, 150deg))) translateX(0vmin) scale(0.16);
+    transform: rotate(calc(var(--a) + var(--w, 160deg))) translateX(0vmin) scale(0.14);
     opacity: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Settle straight to the formed state rather than spiralling. */
+  /* Settle quickly to the formed state rather than the full inspiral/burst. */
+  .osp-splash__orb,
+  .osp-splash__flash,
+  .osp-splash__jet,
+  .osp-splash__shock,
+  .osp-splash__plume,
   .osp-splash__b,
-  .osp-splash__dust,
-  .osp-splash__pool,
-  .osp-splash__core {
+  .osp-splash__dust {
     animation-duration: 0.01s;
+  }
+  .osp-splash__core {
+    animation-duration: 0.2s;
   }
 }
 
@@ -331,20 +458,27 @@ canvas {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* Pause: a real toggle button that shows its own state — a lit, "pressed" look
-   with a green accent bar while paused. */
+/* Pause: a real toggle button that shows its own state — green while running,
+   red while stopped, with a coloured accent bar. */
 .lil-controller.osp-pausebtn {
   cursor: pointer;
 }
 .lil-controller.osp-pausebtn .lil-name {
   font-weight: 600;
 }
-.lil-controller.osp-pausebtn.osp-paused {
-  background: rgba(126, 231, 135, 0.14);
+.lil-controller.osp-pausebtn.osp-running {
+  background: rgba(126, 231, 135, 0.13);
   box-shadow: inset 3px 0 0 #7ee787;
 }
-.lil-controller.osp-pausebtn.osp-paused .lil-name {
+.lil-controller.osp-pausebtn.osp-running .lil-name {
   color: #8beca0;
+}
+.lil-controller.osp-pausebtn.osp-paused {
+  background: rgba(255, 123, 114, 0.16);
+  box-shadow: inset 3px 0 0 #ff7b72;
+}
+.lil-controller.osp-pausebtn.osp-paused .lil-name {
+  color: #ff9a92;
 }
 
 /* Add-body confirmation flash: ✓ added (green) / ✗ at max (red). */

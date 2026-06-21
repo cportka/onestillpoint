@@ -14,6 +14,16 @@ N-body simulator.
 
 ## Status
 
+_v0.16.1_ — a **colourful binary-merger splash** + control polish. The load splash
+is reborn: **two big orbs (a cool + a warm twin) twirl together** while a cluster
+of a few much-bigger bodies, some small, and ~130 dust spirals in; at the **merger**
+a white flash, a tilted jet, **colour plumes** and **reverberating shock rings**
+(magenta · orange · cyan · pink) burst forth — the one place the app goes crazy
+with colour — then the dark event horizon settles into the final circle. **Pause**
+is text-only now and shows state by colour (**green = running, red = stopped**).
+And each **Background** loads its own look **preset** when selected (Advanced →
+Background); Nebula now comes up dim, near-grey and a touch warm.
+
 **Phase 16 — spaghettification, background controls & a livelier splash (v0.16).**
 A collision now ends in **tidal spaghettification**: as a body is absorbed it is
 **stretched along the line to the hole and thinned across it** (a true prolate

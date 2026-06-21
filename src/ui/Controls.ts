@@ -83,14 +83,33 @@ export function createControls(ctx: {
 
   // --- Background (the sky behind everything; it lenses around the holes too) ---
   const BACKGROUNDS = ['Stars', 'Nebula', 'Filaments', 'Lattice'];
+  // Per-background look presets, loaded into Advanced → Background on selection.
+  // Nebula reads best dim, near-grey and a touch warm; the rest keep neutrals.
+  const BG_PRESETS: Record<number, { brightness: number; saturation: number; tint: number }> = {
+    0: { brightness: 1, saturation: 1, tint: 0 }, // Stars
+    1: { brightness: 0.15, saturation: 0.18, tint: 0.2 }, // Nebula
+    2: { brightness: 1, saturation: 1, tint: 0 }, // Filaments
+    3: { brightness: 1, saturation: 1, tint: 0 }, // Lattice
+  };
+  const bgCtrls: Controller[] = []; // the Background folder's sliders (filled below)
+  const applyBgPreset = (mode: number): void => {
+    const p = BG_PRESETS[mode] ?? BG_PRESETS[0]!;
+    bgLook.brightness.value = p.brightness;
+    bgLook.saturation.value = p.saturation;
+    bgLook.tint.value = p.tint;
+    bgCtrls.forEach((c) => c.updateDisplay());
+  };
   const bgProxy = { sky: BACKGROUNDS[background.value] ?? 'Stars' };
   tip(
     gui.add(bgProxy, 'sky', BACKGROUNDS).name('Background').onChange((v: string) => {
-      background.value = Math.max(0, BACKGROUNDS.indexOf(v));
+      const mode = Math.max(0, BACKGROUNDS.indexOf(v));
+      background.value = mode;
+      applyBgPreset(mode); // load that sky's look preset
     }),
     'The sky behind the hole — it lenses around the shadow either way. Stars = the default ' +
       'star field; Nebula = a glowing Eagle-palette gas cloud; Filaments = a monochrome cosmic ' +
-      'web; Lattice = a spacetime grid that visibly warps near the holes.',
+      'web; Lattice = a spacetime grid that visibly warps near the holes. Each loads its own ' +
+      'look preset (Advanced → Background).',
   );
 
   // --- Speed (its own line — no longer wrapped in a single-child Time folder) ---
@@ -199,8 +218,9 @@ export function createControls(ctx: {
   let onPauseClick = (): void => {};
   const pauseCtrl = gui.add({ toggle: () => onPauseClick() }, 'toggle');
   const refreshPause = (): void => {
-    pauseCtrl.name(time.paused ? '▶  Resume' : '⏸  Pause');
-    pauseCtrl.domElement.classList.toggle('osp-paused', time.paused);
+    pauseCtrl.name(time.paused ? 'Resume' : 'Pause'); // text only — no glyphs
+    pauseCtrl.domElement.classList.toggle('osp-paused', time.paused); // red = stopped
+    pauseCtrl.domElement.classList.toggle('osp-running', !time.paused); // green = running
   };
   onPauseClick = (): void => {
     time.paused = !time.paused;
@@ -375,19 +395,23 @@ export function createControls(ctx: {
   );
 
   // Background look: a few knobs that post-process whichever sky is selected.
+  // Their values are also driven by the per-sky presets (see applyBgPreset).
   const bgFolder = gui.addFolder('Background');
-  tip(
-    bgFolder.add(bgLook.brightness, 'value', 0, 2, 0.01).name('Brightness'),
-    'Overall brightness of the selected background sky.',
+  bgCtrls.push(
+    tip(
+      bgFolder.add(bgLook.brightness, 'value', 0, 2, 0.01).name('Brightness'),
+      'Overall brightness of the selected background sky.',
+    ),
+    tip(
+      bgFolder.add(bgLook.saturation, 'value', 0, 2, 0.01).name('Saturation'),
+      'Colour intensity of the background. 0 = greyscale, 1 = as-authored, higher = punchier.',
+    ),
+    tip(
+      bgFolder.add(bgLook.tint, 'value', -0.5, 0.5, 0.01).name('Tint (cool–warm)'),
+      'Shift the background cooler (−, bluer) or warmer (+, redder).',
+    ),
   );
-  tip(
-    bgFolder.add(bgLook.saturation, 'value', 0, 2, 0.01).name('Saturation'),
-    'Colour intensity of the background. 0 = greyscale, 1 = as-authored, higher = punchier.',
-  );
-  tip(
-    bgFolder.add(bgLook.tint, 'value', -0.5, 0.5, 0.01).name('Tint (cool–warm)'),
-    'Shift the background cooler (−, bluer) or warmer (+, redder).',
-  );
+  applyBgPreset(background.value); // seed the preset for the initial sky
 
   // Each tuning folder starts collapsed when Advanced is first shown.
   [look, anim, post, quality, bgFolder].forEach((f) => f.close());
