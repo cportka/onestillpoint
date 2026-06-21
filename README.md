@@ -12,266 +12,37 @@ N-body simulator.
 
 ---
 
-## Status
+## Features
 
-_v0.16.2_ — splash polish + smoothness. The two orbs no longer **briefly fly apart**
-mid-inspiral (a WebKit/Safari transform-interpolation quirk — the keyframes now
-rotate < 180° per step so every browser takes the same arc). The dust is now a
-**canvas particle field** of hundreds that **swirl inward then burst back out** as
-a colourful cloud (some **fully saturated**) — one layer instead of hundreds of DOM
-nodes, so it's *more* dust for *less* cost. The render pipeline is **pre-warmed**
-under the splash to cut the hitch as the live scene is revealed. The **FPS** readout
-is just the number now (dropped "WebGPU" and the render-scale "res"). **Pause** is
-red while running / green while stopped (the colours were backwards). And the
-**Background** presets are retuned — Nebula **0.3 / 1.75 / 0.25**, Lattice & Filaments
-brightness **0.5**.
+- **Ray-traced Schwarzschild black hole** — event-horizon shadow, photon ring and
+  gravitational lensing from per-pixel photon geodesics (RK4 integration of the
+  Schwarzschild metric), with an automatic WebGL2 fallback.
+- **Live relativistic accretion disk** — Shakura–Sunyaev temperature → blackbody
+  colour, Doppler beaming and gravitational redshift, over volumetric, turbulent,
+  infalling dust — a participating medium sampled *inside* the raymarch, so it
+  lenses correctly along the bent rays.
+- **Gravitational N-body companions** — stars, planets and up to four secondary
+  black holes (each with its own lensed accretion disk), simulated and raymarched
+  inside the hole's curved spacetime, so they lens and are occluded for free.
+- **Time control** — scrub from ×1/1000 slow-motion to ×1,000,000. Rather than
+  brute-forcing the dynamics, the *representation* crossfades: orbits accelerate
+  (bounded) and the fine turbulence averages into a steady disk.
+- **Selectable lensed skies** — Stars, Nebula, Filaments, Lattice — each
+  post-tunable for brightness / saturation / tint.
+- **Art-directed intro** — a colourful binary-merger load splash that paints
+  instantly (before the shader even compiles), crossfading into a camera dolly +
+  disk ignition.
+- **Filters & polish** — named looks (Physical / EHT / Interstellar / Stylized),
+  HDR bloom, adaptive resolution, and a touch-friendly control panel.
 
-_v0.16.1_ — a **colourful binary-merger splash** + control polish. The load splash
-is reborn: **two big orbs (a cool + a warm twin) twirl together** while a cluster
-of a few much-bigger bodies, some small, and ~130 dust spirals in; at the **merger**
-a white flash, a tilted jet, **colour plumes** and **reverberating shock rings**
-(magenta · orange · cyan · pink) burst forth — the one place the app goes crazy
-with colour — then the dark event horizon settles into the final circle. **Pause**
-is text-only now and shows state by colour (**green = running, red = stopped**).
-And each **Background** loads its own look **preset** when selected (Advanced →
-Background); Nebula now comes up dim, near-grey and a touch warm.
+Drag to orbit · pinch / scroll to zoom · open the panel (top-right) to add bodies,
+change the sky, scrub time, and tune the look.
 
-**Phase 16 — spaghettification, background controls & a livelier splash (v0.16).**
-A collision now ends in **tidal spaghettification**: as a body is absorbed it is
-**stretched along the line to the hole and thinned across it** (a true prolate
-ellipsoid in the raymarch — `segmentHitsStretched`), then redshifts and fades. The
-**load splash** is reborn as a proper little formation — **2–4 big bodies, 5–10
-medium, and ~130 dust points** (randomized each load, generated inline so they
-still paint instantly) spiral inward, **pool into a liquid blob**, and the dark
-event horizon then **expands back outward** into the final circle. **Pause** is now
-a real **toggle button** that shows its state (▶ Resume / ⏸ Pause, lit when
-paused). A new **Advanced → Background** folder post-processes whichever sky is
-selected — **Brightness · Saturation · Tint (cool–warm)** — and **Lattice** is
-re-tinted a little greener and less saturated.
+## Project status
 
-_v0.15.1_ — splash & polish. The **load splash** is sized in `vmin` so its forming
-event horizon roughly **lines up with the real shadow** at the crossfade (was much
-smaller), and its infalling **bodies + dust now vary in size**. The **About** logo
-moves below "Created by Chris Portka". And the **GPU auto-switch** question is
-settled (see [`docs/perf-audit-v0.15.md`](docs/perf-audit-v0.15.md)): for ≤14
-bodies the CPU always wins — the GPU's per-frame read-back overhead only pays off
-around ~150–300 bodies — so it stays a manual toggle (auto-enable would make sense
-only if a future swarm mode raised the cap into the hundreds).
-
-**Phase 15 — performance, an instant load splash & control polish (v0.15).** A
-real smoothness pass. The biggest lever: the **N-body sim runs on the CPU by
-default** again — for this app's body counts (≤14) the exact velocity-Verlet is
-trivially cheap, while the GPU compute path forced a per-frame CPU↔GPU read-back
-that stalled the pipeline (it stays a one-click *Advanced* option, the scaling
-foundation for many bodies). A per-frame array allocation in the render loop
-(`scene.companions`) is gone too. A new **load splash** — a JS-free black-and-white "formation"
-of bodies spiralling inward to form the hole — paints *before* the WebGPU shader
-compiles and crossfades into the live scene, which now **ignites fast** (the hole
-reads as formed by ~0.6 s, then the camera settles); see the reworked
-[`docs/intro-script.md`](docs/intro-script.md) and the
-[`docs/perf-audit-v0.15.md`](docs/perf-audit-v0.15.md) write-up. Controls: **Step**
-now also works while running (a ~1-second jump, ≥20 frames, at the current Speed);
-the add **de-bounce** is 0.5 s for stars/planets, 1 s for black holes; and the
-**About** modal's animated logo goes full-width.
-
-**Phase 14 — background revamp & intro reality doc (v0.14).** The backgrounds
-get a glow-up: **Nebula** is reborn in the Hubble/Eagle palette (glowing teal &
-gold gas carved by dark dust pillars), a new **Filaments** sky draws the
-monochrome cosmic web (ridged-noise threads with bright cluster knots), and
-**Lattice** gains fainter in-between grid lines. The intro itself is unchanged —
-but it now has a *reality* doc, [`docs/intro-description.md`](docs/intro-description.md),
-transcribed from the v0.13 recording to sit beside the *ideal*
-[`docs/intro-script.md`](docs/intro-script.md); the intro-shaping code carries
-`⟳` reminders to keep it current.
-
-_v0.14.1_ — a patch round: the **Nebula** background is re-tuned for punch
-(orange-dominant, high contrast, deep voids); the **About** modal gains a **BTC**
-donation and the shared **tagline** (single source in `src/tagline.ts`,
-sync-checked against this README); and companions that **escape or merge into the
-centre are pruned** — freed from the body list, the render slots, and the count —
-with the GPU storage buffers disposed on every rebuild to stop the add/remove
-memory creep.
-
-_v0.14.2_ — more background contrast: **Nebula** gains blue-green coloured darks
-behind its dominant orange; **Filaments** is sparser and sharper; **Lattice** is a
-touch less blue. The body **± buttons disable at their caps**, added black holes
-spread onto well-separated orbits (so four hold rather than merging back to
-three), and **Replay intro** re-seeds the current line-up on fresh orbits — a
-clean page-load look for the same bodies.
-
-_v0.14.3_ — **intro performance**: the geodesic now escapes at the scene radius
-rather than the camera radius (sparing the far intro camera a long outbound leg),
-the quality tiers cap device-pixel-ratio at ≤ 1.5 (full-retina rendering was the
-main reason a fullscreen laptop crawled) and give the auto-scaler a lower floor.
-Backgrounds again: **Nebula** is a clean dark-blue-green → orange brightness ramp
-(colour tracks luminance), **Filaments** gets big dark gaps + a cool tint so it
-reads as background against the disk. And the **About** tagline now frames the
-dialog — its four parts run along the top, down the right, across the bottom, and
-up the left.
-
-_v0.14.6_ — **adding is solid again + an animated logo + deeper-orange Nebula**.
-The headline fix: on the **GPU physics path (the default on WebGPU)** the
-integrator only ever read **positions** back to the CPU — never velocities — so
-every add re-seeded each body with its *original launch velocity* at its *current*
-position, kicking them onto wrong orbits that escaped or merged (the count
-dropping with no visible disappearance). Velocities now sync each frame, a
-**readback↔rebuild race** that could NaN a body on add is closed, and both
-integrators **bound their substep size** so very high Speed can't blow a close
-encounter up. (Crowded multi-hole *ejection* is real physics, not a bug — see
-[`docs/video-findings-v0.14.5.md`](docs/video-findings-v0.14.5.md).) The **About**
-modal gains an **animated One Still Point logo** (a tilted accretion ring + stardust
-spiralling inward), and **Nebula**'s washed-out cream is pushed to **deeper, richer,
-more saturated orange** (so bloom/tone-map no longer bleach the cores).
-
-_v0.14.5_ — **add/remove polish + a blackout fix**. Adding bodies is **rate-limited
-to one per second**; **removing** one (− stepper) now sends it **plunging into the
-centre over ~1.5 s** with the absorption fade, and the next removal waits for it to
-land. A nasty **all-black-screen bug** — a non-finite body position (a
-close-encounter blow-up) poisoning the lensing uniforms and never being pruned
-(`NaN ≥ 300` is `false`) — is fixed with finite-guards in the uniform upload and
-prune; the recording analysis that root-caused it is in
-[`docs/video-findings-v0.14.4.md`](docs/video-findings-v0.14.4.md) (black-screen
-RCA + collision-animation and camera/gravity notes). The Bodies **✓ / ✗
-confirmation flash lasts longer** (and stays bright when a button greys). And
-**Nebula** is reverted to its punchy v0.14.1 orange — ember shadows, rare blue
-pockets, black dust pillars — with a *faint* dark blue-green floor lifting the
-blackest gaps.
-
-_v0.14.4_ — **orbits & absorption**: a **4th black hole** is now only allowed when
-nothing else orbits (no stars or planets), else three; added bodies **last longer
-in orbit** — they are placed exactly on their requested radius (the tilt no longer
-inflates it) with the true circular speed for the *softened* field, and an added
-hole is a touch lighter (0.2) so it scatters the lighter companions less. A body
-absorbed at the centre no longer **pops** out of existence: it begins an
-*absorption fade* — held in place, shrinking and redshifting over ~0.6 s before it
-is freed (groundwork for richer collision animations). And **Nebula** regains its
-rich, dark orange: a three-stop ramp adds a deep rust mid-tone and the hot knots
-read as orange rather than cream.
-
-**Phase 13 — backgrounds, intro tuning & video workflow (v0.13).** A new
-**Background** dropdown (right after Filter) swaps the sky — **Stars** (default),
-**Nebula** (colourful gas clouds), **Aurora** (flowing colour bands), or
-**Lattice** (a spacetime grid that visibly warps near the holes) — all sampled
-along the bent escape direction, so each one lenses. The formation intro gets
-its first video-driven tuning (see `docs/intro-script.md`): the default scene now
-seeds 3 stars + 3 planets and they enter earlier, so the intro has company from
-the start. Small panel tweaks: the About/version row is split 50/50, **Step**
-sits right after **Pause**, and the Bodies labels are a fixed half-width. The
-Portka Tools `video-bug-analyzer` marketplace is wired in (`.claude/settings.json`)
-for frame-accurate intro work.
-
-**Phase 12 — body steppers, caps & About (v0.12).** The Bodies folder is now
-**− N + steppers** (add/remove per type, count between, ✓/✗ flash) governed by a
-budget: **at most 4 orbiting black holes**, and the more holes there are the
-fewer stars/planets are allowed (≤1 → 5 each, 2 → 4, 3 → 3, 4 → nothing else;
-`bodyCap`). Panel housekeeping: the single-child **Time** folder is gone (Speed
-stands alone), **Pause** moves out to the last basic row, the advanced tuning
-folders **start collapsed**, and an **About** button (left of the version chip)
-credits the author with the project link and Venmo / click-to-copy ETH donations.
-Queued for the next pass: the **video-bug-analyzer** plugin (Portka Tools) for
-frame-accurate intro tuning, and reworking the intro into a **collision→formation**
-of two objects.
-
-**Phase 11 — the secondary black hole's accretion disk (v0.11).** "Add black
-hole" now drops in a *full* second system: a dark core wrapped in its **own
-compact volumetric accretion disk** (`secondaryDisk.ts`) — radial envelope × thin
-Gaussian × co-rotating, inward-drifting turbulence, blackbody-coloured by the
-shared flux law, scaled to the hole and marched only where a ray grazes its slab
-(with a step-cap so the thin disk is never skipped). To keep slower machines
-smooth as the scene gets heavier, the auto-resolution now targets a configurable
-**frame rate (default 50 fps, adjustable in Quality)**. Plus panel polish:
-elegant spacing and **bolder section dividers**, a bold **Advanced settings**
-break, the **Add-body buttons show live counts** and flash **✓ / ✗** on click,
-and "Click outside closes" moves up to the first batch of Advanced toggles.
-
-**Phase 10 — UX polish & intro robustness (v0.10).** The panel leads with the
-essentials and tucks **GPU physics · Display FPS · Pause · Step** as the first
-items under **Advanced settings**, with **Replay intro** as the last basic row;
-it sits flush to the right edge. The long-press tooltip now renders fully opaque
-and above the panel. And the formation intro is hardened for mobile: it no longer
-skips entirely under `prefers-reduced-motion` (which iOS Low Power Mode reports) —
-it plays a gentler, shorter zoom — and a brief guard stops a stray load-time tap
-from cancelling it, fixing the "no intro zoom" seen on an older iPhone.
-
-**Phase 9 — performance auto-tuning & panel polish (v0.9).** A new quality
-**auto-detect** picks a tier (Low / Medium / High) from device signals on load —
-phones default Low — setting the starting resolution, the dust step, and the
-device-pixel-ratio cap (overridable in **Quality → Quality**). Adding a second
-black hole is now far cheaper: its weak-field deflection is evaluated **once per
-geodesic step** (shared across the RK4 stages) instead of four times, and empty
-companion slots short-circuit. The panel is restyled (≈70% opaque, monospace to
-match the corner readout); the duplicate name is gone from the HUD, which is now
-a **Display FPS** toggle (off by default; the "% res" is the live render-scale);
-and click/tap-outside-to-close is on by default.
-
-**Phase 8 — choreography & panel (v0.8).** The formation intro is now
-choreographed: the default scene gains **two inner retrograde planets** that
-swoosh in *after* the outer stars (a per-type `appear` fade staggers the entrance,
-so the two swooshes read as a sequence in opposite directions). The control panel
-is reorganised to lead with the essentials — version · **Filter** (formerly
-Preset) · **Time** · **Bodies** · an **Advanced settings** toggle (remembered
-across sessions) that folds the deep tuning, the **Movie** pause/step, and
-**Replay intro** away. Touch gains an optional *tap-outside-to-close*. And a
-latent bug is fixed: an added **black hole** was filtered out of the render slots
-entirely (so it never drew) — companions are now split by movability, so a
-secondary hole renders (dark core + lensed photon ring) and is properly cleared.
-
-**Phase 7 — formation sequence (v0.7).** On load the visualizer now *forms*: the
-camera dollies in from far while the accretion disk **ignites** (a `formation`
-factor 0 → 1 the shader multiplies into the dust, so the disk condenses and
-brightens into being). It is skippable (tap the scene), replayable (**Time →
-Replay intro**), and honours `prefers-reduced-motion` by settling instantly.
-Alongside it: touch devices start pulled further back and gain **long-press
-tooltips**; the **Time** speed scrubs down to ×1/1000 slow-motion; **GPU physics**
-auto-enables where WebGPU compute exists (and is disabled, explained, on the
-WebGL2 fallback); and **Add black hole** now reads as one — a dark core ringed by
-a luminous lensed photon ring (its full accretion disk is the next step).
-
-**Phase 6 — time acceleration (v0.6).** Simulation time is now decoupled from
-wall-clock by a `TimeController`: a **Time** folder scrubs the rate from ×1
-(real-time) up to ×1,000,000, with pause and single-step. The key idea (build
-plan §6) is that you *cannot* brute-force integrate sub-second dynamics billions
-of times — it is wrong, impossibly slow, and strobes. Instead the visualizer
-**crossfades the representation**: orbits accelerate (bounded), the
-dust-animation clock saturates at a rate it can resolve, and the fine turbulence
-smoothly fades into a steady, time-averaged disk — so the image stays coherent
-at every scale.
-
-**Phase 5 — gravitational body simulator (v0.5).** The engine now grows past a
-single hole: a `Scene` of gravitating `Body` objects is advanced by an N-body
-`PhysicsEngine` (CPU velocity-Verlet, symplectic → stable orbits, validated in
-`scripts/validate-orbit.mjs`). Companion stars orbit the primary and are
-raymarched as emissive spheres **inside the hole's curved spacetime**, so they
-lens and are occluded by the shadow for free. Add/remove bodies from the panel's
-**Bodies** folder.
-
-_v0.5.1–0.5.3_ round out Phase 5: unit tests (Vitest) + CI (lint/typecheck/test/
-validate); a vertical render-flip fix and the full vertical orbit sweep; **weak-field
-lensing of secondary masses** — the panel's **Add black hole** drops in a massive
-companion that bends light around it (`a = −2·m·d/|d|³`, CPU-validated against the GR
-value 4Gm/b, gated so the default scene is unchanged); an **opt-in WebGPU compute
-N-body kernel** (a *GPU physics* toggle — CPU velocity-Verlet stays the exact default,
-the GPU path is the scaling road for many bodies); and hover tooltips on every control.
-
-| Phase | What | State |
-| ----- | ---- | ----- |
-| 0 | Scaffold: renderer + fallback + fullscreen TSL pass + camera/time uniforms + deploy | ✅ done |
-| 1 | Schwarzschild geometry: photon geodesics, shadow, photon ring, lensed starfield | ✅ done |
-| 2 | Accretion disk (static): Shakura–Sunyaev temperature → blackbody, Doppler, redshift, lensing | ✅ done |
-| 3 | Animate & volumetric dust: Keplerian shear, advected turbulence, infall, single-scatter | ✅ done |
-| 4 | Look UI + post (bloom, tone-map) + perf (dynamic resolution, mobile path) | ✅ done |
-| 5 | Gravitational body simulator: N-body (CPU + opt-in GPU compute), lensed companions | ✅ done |
-| 6 | Time acceleration with representation crossfade | ✅ done |
-| 7 | Formation sequence (art-directed): camera dolly + disk ignition, skip/replay | ✅ done |
-| 8 | Choreographed entrance (retrograde planets) + panel reorg (Filter / Advanced settings) | ✅ done |
-| 9 | Performance auto-tuning (quality tiers) + cheaper companion lensing + panel polish | ✅ done |
-| 10 | UX polish (panel reorder / flush-right, opaque tooltip) + reduced-motion intro fix | ✅ done |
-| 11 | Secondary black hole's own accretion disk + frame-rate-targeted auto-resolution + panel polish | ✅ done |
-| 12 | Body ± steppers + black-hole-budget caps + About modal + panel reorg | ✅ done |
-| 13 | Selectable backgrounds (Stars / Nebula / Aurora / Lattice) + video-driven intro tuning | ✅ done |
-| 14 | Background revamp (Eagle Nebula / cosmic-web Filaments / finer Lattice) + intro reality doc | ✅ done |
-| 15 | Performance pass (CPU physics default) + instant load splash + Step/debounce polish | ✅ done |
-| 16 | Spaghettification + Background look controls + Pause toggle button + livelier splash | ✅ done |
+Actively developed in small, themed phases. See **[CHANGELOG.md](CHANGELOG.md)**
+for the full version history, and **[`docs/`](docs/)** for design and tuning notes
+(the intro script, screen-recording findings, and performance audits).
 
 ## Stack
 
@@ -279,7 +50,7 @@ the GPU path is the scaling road for many bodies); and hover tooltips on every c
 - **Three.js r184** via `three/webgpu` (`WebGPURenderer`, auto WebGL2 fallback)
 - **TSL** (`three/tsl`) — one shader source compiles to both WGSL and GLSL
 - **OrbitControls** for swipe-orbit / pinch-zoom
-- **lil-gui** for the look + animation panel (Phase 4)
+- **lil-gui** for the control panel
 
 ## Develop
 
@@ -294,7 +65,7 @@ npm run dev        # http://localhost:5173 (a secure context, so WebGPU works)
 npm run lint       # eslint
 npm run typecheck  # tsc --noEmit
 npm test           # vitest (unit tests for the physics)
-npm run validate   # CPU physics checks (geodesic / disk / orbit)
+npm run validate   # CPU physics checks (geodesic / disk / orbit / lensing)
 npm run build      # typecheck + vite build → dist/
 npm run preview    # serve the production build locally
 ```
@@ -303,14 +74,15 @@ Lint, typecheck, tests, and the validation scripts run in CI
 (`.github/workflows/ci.yml`) on every push to `main` and every pull request.
 
 Append **`?webgl`** to the URL to force the WebGL2 fallback path for testing
-(e.g. `http://localhost:5173/?webgl`). The on-screen HUD reports the active
-backend and frame rate.
+(e.g. `http://localhost:5173/?webgl`).
 
 ## Architecture
 
-The camera is an *input device only*. We render a single fullscreen quad and
-feed the orbit camera's position/orientation into the raymarch shader as
-uniforms each frame.
+The camera is an *input device only*. We render a single fullscreen quad and feed
+the orbit camera's position/orientation into the raymarch shader as uniforms each
+frame. A guiding constraint: the infalling dust is a **volumetric participating
+medium** sampled inside the raymarch, never rasterized particles — only that way
+does it lens correctly along the bent light rays.
 
 ```
 src/
@@ -325,30 +97,30 @@ src/
     quality.ts         device-tier auto-detect (resolution / dust step / DPR cap)
     device.ts          coarse-pointer / reduced-motion probes (framing, tooltips, intro)
   scene/
-    Scene.ts           owns the Body list + PhysicsEngine; spawns companions (prograde stars + retrograde planets)
+    Scene.ts           owns the Body list + PhysicsEngine; spawns companions; prune/absorb/plunge
     Body.ts            a gravitating body (hole / star / planet)
     BlackHole.ts       the hole's parameters as uniforms (mass = length scale)
   physics/
     PhysicsController.ts  switches CPU/GPU integrators behind one step(dt)
-    PhysicsEngine.ts   N-body integrator driver (CPU velocity-Verlet)
+    PhysicsEngine.ts   N-body integrator driver (CPU velocity-Verlet, adaptive substeps)
     integrators.ts     velocity-Verlet + Newtonian accelerations
     GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
-    Controls.ts        lil-gui panel: Filter / Time / Bodies up front, deep tuning behind Advanced
+    Controls.ts        lil-gui panel: Filter / Speed / Bodies up front, deep tuning behind Advanced
     presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
     prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
     stepper.ts         the Bodies "− N +" add/remove rows (✓/✗ flash)
-    about.ts           the About modal (author, project link, donations)
+    about.ts           the About modal (author, project link, donations, animated logo)
     touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
-    hud.ts             corner readout (backend / fps / % res), toggled by "Display FPS"
+    hud.ts             corner FPS readout, toggled by "Display FPS"
   render/
-    uniforms.ts        the shared uniform "bus" (camera, time, resolution)
+    uniforms.ts        the shared uniform "bus" (camera, time, background, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
     PostPipeline.ts    WebGPU node pipeline: HDR bloom → ACES tone-map
-    bodyUniforms.ts    companion render slots (position / radius / colour / staggered appear)
+    bodyUniforms.ts    companion render slots (position / radius / colour / appear / absorb)
     tsl/
-      raymarch.ts      geodesic loop + volume march + body spheres + secondary-hole halo
+      raymarch.ts      geodesic loop + volume march + body spheres + secondary-hole disk
       schwarzschild.ts photon acceleration + static-observer ray (the metric)
       disk.ts          flux/temperature profile + Doppler & redshift shift
       medium.ts        volumetric dust: density, emission, scatter, extinction
@@ -356,30 +128,23 @@ src/
       flow.ts          Keplerian Ω(r) + advected (co-rotating) noise coordinate
       turbulence.ts    fractal (FBM) noise
       blackbody.ts     temperature (K) → linear RGB
-      bodies.ts        segment–sphere test for companions
+      bodies.ts        segment–sphere / stretched-ellipsoid tests for companions
       starfield.ts     procedural lensed star field
       background.ts    selectable sky (Stars / Nebula / Filaments / Lattice), all lensed
+index.html             also hosts the inline, instant-paint load splash (window.__ospSplash)
 scripts/
-  validate-geodesic.mjs  CPU check: recovers b_crit = 3√3·M
-  validate-disk.mjs      CPU check: ISCO speed, flux profile, beaming
-  validate-orbit.mjs     CPU check: orbit stability + energy conservation
-  validate-lensing.mjs   CPU check: weak-field deflection = 4Gm/b (npm run validate)
+  validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
 ```
-
-A guiding constraint: the infalling dust is a **volumetric participating
-medium** sampled inside the raymarch, never rasterized particles — only that way
-does it lens correctly along the bent light rays. See the build plan for the
-full design and physics.
 
 ## Deploy
 
-Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds with
-Vite and publishes `dist/` to GitHub Pages. The custom apex domain is set in
+Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds with Vite
+and publishes `dist/` to GitHub Pages. The custom apex domain is set in
 **Settings → Pages → Custom domain** (`onestillpoint.app`); with artifact-based
 deploys no committed `CNAME` file is needed. `vite.config.ts` uses `base: '/'`
 because the site serves from the domain root.
 
 ## License
 
-[MIT](./LICENSE) © 2026 Chris Portka. Bundled environment assets (star
-cubemaps / HDRIs), if any, retain their own licenses.
+[MIT](./LICENSE) © 2026 Chris Portka. Bundled environment assets (star cubemaps /
+HDRIs), if any, retain their own licenses.

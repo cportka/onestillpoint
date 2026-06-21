@@ -17,6 +17,14 @@ import { Scene } from './scene/Scene';
 import { createControls } from './ui/Controls';
 import { createHud, showFatalError } from './ui/hud';
 
+declare global {
+  interface Window {
+    /** Builds (and on later calls, rebuilds) the load splash; defined inline in
+     *  index.html so it paints before this bundle loads. */
+    __ospSplash?: () => void;
+  }
+}
+
 /**
  * Bootstrap. The shape here is the spine of every phase:
  *
@@ -87,21 +95,27 @@ async function main(): Promise<void> {
   };
   applyQuality(autoTier);
 
+  // The load splash (built by the inline window.__ospSplash in index.html). We
+  // *hide* rather than remove it, so "Replay intro" can rebuild + replay it; the
+  // canvas dust self-stops when the `--hide` class appears, freeing the GPU for
+  // the crossfade.
+  const splash = document.getElementById('osp-splash');
+  const dismissSplash = (): void => splash?.classList.add('osp-splash--hide');
+  const replaySplash = (): void => {
+    window.__ospSplash?.(); // rebuild + restart; the renderer is already warm
+    window.setTimeout(dismissSplash, 1350); // let the merger play, then crossfade
+  };
+
   createControls({
     blackHole, scene, physics, time, formation, backend, renderer, scaler,
     bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
     bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
+    replaySplash,
   });
 
   // Crossfade the load splash out once the first real frame is on screen (the
   // heavy shader has compiled), into the formation playing underneath. Keep it up
   // for a short minimum so its merge animation reads on a fast load.
-  const splash = document.getElementById('osp-splash');
-  const dismissSplash = (): void => {
-    if (!splash || splash.classList.contains('osp-splash--hide')) return;
-    splash.classList.add('osp-splash--hide');
-    window.setTimeout(() => splash.remove(), 700);
-  };
   let firstFrame = true;
 
   loop.onTick = (frameDelta) => {

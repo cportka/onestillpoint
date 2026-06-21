@@ -12,8 +12,7 @@ export interface Hud {
  */
 export function createHud(): Hud {
   const el = document.createElement('div');
-  el.className = 'hud';
-  el.style.display = 'none'; // shown only when "Display FPS" is on
+  el.className = 'hud'; // hidden until the `hud--on` class animates it in
   document.body.appendChild(el);
 
   let frames = 0;
@@ -37,7 +36,9 @@ export function createHud(): Hud {
       }
     },
     setVisible(on: boolean): void {
-      el.style.display = on ? '' : 'none';
+      // Toggling the class fades + pops it in/out (CSS), so it's easy to spot
+      // where the readout lives when you turn it on.
+      el.classList.toggle('hud--on', on);
     },
   };
 }
