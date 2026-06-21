@@ -22,34 +22,52 @@
          spiralling inward to form the hole) that paints on first paint — before
          the bundle parses or the WebGPU shader compiles — then crossfades to the
          live scene once the first real frame is ready (see main.ts). -->
+    <!-- Load splash: a colourful, JS-free binary-merger "formation". Two big orbs
+         twirl together while a cluster + dust swirls in; at the merger a flash,
+         a tilted jet, colour plumes and reverberating shock rings burst forth,
+         and the dark event horizon settles into the final circle. Paints on first
+         paint (static markup + a tiny synchronous generator), so it can't be late. -->
     <div id="osp-splash" aria-hidden="true">
       <div class="osp-splash__stage">
-        <span class="osp-splash__pool"></span>
+        <span class="osp-splash__shock" style="--rc: #ff4fd8; --sd: 0.40s; --rr: 7deg"></span>
+        <span class="osp-splash__shock" style="--rc: #ff9a4c; --sd: 0.50s; --rr: -11deg"></span>
+        <span class="osp-splash__shock" style="--rc: #4fe0ff; --sd: 0.60s; --rr: 3deg"></span>
+        <span class="osp-splash__shock" style="--rc: #ff7aa8; --sd: 0.70s; --rr: -5deg"></span>
+        <span class="osp-splash__plume" style="--a: 18deg; --pc: #ff6ad0"></span>
+        <span class="osp-splash__plume" style="--a: 74deg; --pc: #ffb24f"></span>
+        <span class="osp-splash__plume" style="--a: 138deg; --pc: #7ad0ff"></span>
+        <span class="osp-splash__plume" style="--a: 203deg; --pc: #ff5b8f"></span>
+        <span class="osp-splash__plume" style="--a: 262deg; --pc: #c08aff"></span>
+        <span class="osp-splash__plume" style="--a: 321deg; --pc: #ffd24a"></span>
+        <span class="osp-splash__orb osp-splash__orb--a"></span>
+        <span class="osp-splash__orb osp-splash__orb--b"></span>
+        <span class="osp-splash__jet"></span>
+        <span class="osp-splash__flash"></span>
         <span class="osp-splash__core"></span>
       </div>
     </div>
-    <!-- Generate the infalling cluster synchronously (before the module bundle),
-         so the hundreds of dust points paint on first paint with everything else:
-         2–4 big bodies, 5–10 medium, and many small dust, each with a randomized
-         angle (--a), size (--s), start radius (--r), spiral (--w) and stagger (--d). -->
+    <!-- Generate the infalling cluster synchronously (before the module bundle) so
+         the hundreds of dust points paint with everything else: a few much-bigger
+         bodies, some small, and plenty of dust — each randomized (angle --a, size
+         --s, start radius --r, spiral --w, stagger --d). Inserted at the bottom. -->
     <script>
       (function () {
-        var core = document.querySelector('#osp-splash .osp-splash__core');
-        if (!core) return;
+        var stage = document.querySelector('#osp-splash .osp-splash__stage');
+        if (!stage) return;
         var R = function (a, b) { return a + Math.random() * (b - a); };
+        var h = '';
         function spawn(cls, n, sMin, sMax, rMin, rMax, dSpread) {
-          var h = '';
           for (var i = 0; i < n; i++) {
             h +=
               '<i class="' + cls + '" style="--a:' + R(0, 360).toFixed(1) +
               'deg;--s:' + R(sMin, sMax).toFixed(2) + 'vmin;--r:' + R(rMin, rMax).toFixed(1) +
-              'vmin;--w:' + R(110, 210).toFixed(0) + 'deg;--d:' + (-R(0, dSpread)).toFixed(3) + 's"></i>';
+              'vmin;--w:' + R(120, 240).toFixed(0) + 'deg;--d:' + (-R(0, dSpread)).toFixed(3) + 's"></i>';
           }
-          core.insertAdjacentHTML('beforebegin', h); // between the pool and the (top-most) core
         }
-        spawn('osp-splash__b osp-splash__b--big', 2 + ((Math.random() * 3) | 0), 2.4, 3.8, 26, 42, 0.05);
-        spawn('osp-splash__b', 5 + ((Math.random() * 6) | 0), 1.0, 2.0, 24, 46, 0.12);
-        spawn('osp-splash__dust', 130, 0.28, 0.7, 18, 54, 0.18);
+        spawn('osp-splash__b osp-splash__b--big', 3 + ((Math.random() * 2) | 0), 3.4, 5.2, 24, 40, 0.06);
+        spawn('osp-splash__b', 6 + ((Math.random() * 5) | 0), 0.9, 1.8, 22, 46, 0.14);
+        spawn('osp-splash__dust', 130, 0.28, 0.7, 16, 54, 0.2);
+        stage.insertAdjacentHTML('afterbegin', h); // behind the burst layers
       })();
     </script>
     <script type="module" src="/src/main.ts"></script>

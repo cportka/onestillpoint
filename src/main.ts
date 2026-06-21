@@ -123,8 +123,9 @@ async function main(): Promise<void> {
     if (firstFrame) {
       firstFrame = false;
       // performance.now() ≈ ms since page load, so this also enforces a minimum
-      // on-screen time for the splash on a very fast load.
-      window.setTimeout(dismissSplash, Math.max(0, 550 - performance.now()));
+      // on-screen time so the splash's binary-merger animation (~0.85s) reads even
+      // on a very fast load.
+      window.setTimeout(dismissSplash, Math.max(0, 820 - performance.now()));
     }
   };
   loop.start();
