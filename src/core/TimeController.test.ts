@@ -40,6 +40,23 @@ describe('TimeController', () => {
     expect(tc.tick(0.1).fd).toBeCloseTo(2, 10); // 20 × 0.1s = 2s, beats the 1s floor
   });
 
+  it('rewinds exactly one frame per stepBack() while paused', () => {
+    const tc = new TimeController();
+    tc.paused = true;
+    tc.stepBack();
+    const t = tc.tick(0.016);
+    expect(t.fd).toBeCloseTo(-1 / 60, 10); // one frame, backward
+    expect(t.animDelta).toBeLessThan(0); // the dust clock ebbs with the orbits
+    expect(tc.tick(0.016).fd).toBe(0); // step consumed → frozen again
+  });
+
+  it('jumps back ~1 second per stepBack() while running, then resumes forward', () => {
+    const tc = new TimeController();
+    tc.stepBack(); // not paused → a one-burst rewind
+    expect(tc.tick(0.016).fd).toBe(-1); // ~1 second backward
+    expect(tc.tick(0.016).fd).toBe(0.016); // burst consumed → normal forward frame
+  });
+
   it('caps the dust clock so fast scales never strobe', () => {
     const tc = new TimeController();
     tc.timeScale = 1e6;

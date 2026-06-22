@@ -30,28 +30,37 @@ export class TimeController {
   /** Master multiplier; 1 = the baseline real-time view, up to ~1e6. */
   timeScale = 1;
   paused = false;
-  private stepFrame = false; // paused: advance a single frame
-  private stepBurst = false; // running: jump forward ~1 second
+  private stepFrame = 0; // paused: advance a single frame (+1 forward, −1 back)
+  private stepBurst = 0; // running: jump ~1 second (+1 forward, −1 back)
 
-  /** The Step button. Paused → advance one frame at the current Speed; running →
+  /** Step forward. Paused → advance one frame at the current Speed; running →
    *  jump forward ~1 second (at least 20 frames) at the current Speed. */
   step(): void {
-    if (this.paused) this.stepFrame = true;
-    else this.stepBurst = true;
+    if (this.paused) this.stepFrame = 1;
+    else this.stepBurst = 1;
+  }
+
+  /** Step backward — the mirror of step(). The gravitational orbits integrate
+   *  cleanly in reverse (velocity-Verlet is time-reversible). Note that
+   *  *irreversible* events do not un-happen: a body that was absorbed / removed
+   *  stays gone, and the one-shot intro doesn't rewind. */
+  stepBack(): void {
+    if (this.paused) this.stepFrame = -1;
+    else this.stepBurst = -1;
   }
 
   tick(frameDelta: number): TimeStep {
     let fd: number;
     if (this.paused) {
-      fd = this.stepFrame ? 1 / 60 : 0; // one deterministic frame, else frozen
-      this.stepFrame = false;
+      fd = this.stepFrame / 60; // one deterministic frame (±), else frozen
+      this.stepFrame = 0;
     } else {
       fd = frameDelta;
-      if (this.stepBurst) {
-        // ~1 second, or ≥20 frames at the current rate (whichever is larger), in
-        // one burst — the adaptive substeps keep the big jump stable.
-        fd = Math.max(1, 20 * frameDelta);
-        this.stepBurst = false;
+      if (this.stepBurst !== 0) {
+        // ~1 second, or ≥20 frames at the current rate (whichever is larger),
+        // forward or back, in one burst — the adaptive substeps keep it stable.
+        fd = this.stepBurst * Math.max(1, 20 * frameDelta);
+        this.stepBurst = 0;
       }
     }
     return {

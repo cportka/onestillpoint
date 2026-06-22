@@ -5,6 +5,13 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.16.x — spaghettification, binary-merger splash, controls
 
+- **0.16.5** — **Step back**: rewind time — one frame (paused) or a ~1 s jump
+  (running) — with the new button or the <kbd>←</kbd> key. The orbits reverse
+  exactly because the velocity-Verlet integrator is time-reversible (now unit
+  tested); irreversible events (absorbed/removed bodies, the intro) don't come
+  back. Started a **[roadmap](docs/future-improvements.md)** and logged the intro
+  notes from this session's recordings (fresh-load stutter + the looser — but, per
+  the user, "pretty great" — Replay-intro alignment) as future refinements.
 - **0.16.4** — Splash, shorter + warmer: the whole binary merger now plays in
   ~0.6s (was ~1s). The two orbs are a **warm white-gold + amber** pair (no more
   pink/blue), with plumes/flash/jet/dust all warm, and the surrounding dust

@@ -35,8 +35,9 @@ export class PhysicsEngine {
   }
 
   step(frameDelta: number): void {
-    const total = frameDelta * this.timeScale;
-    const substeps = Math.max(this.substeps, Math.min(this.maxSubsteps, Math.ceil(total / this.maxDt)));
+    const total = frameDelta * this.timeScale; // < 0 when stepping back (orbits reverse)
+    // Substep count tracks the *magnitude* of the jump; dt keeps total's sign.
+    const substeps = Math.max(this.substeps, Math.min(this.maxSubsteps, Math.ceil(Math.abs(total) / this.maxDt)));
     const dt = total / substeps;
     for (let s = 0; s < substeps; s++) {
       velocityVerletStep(this.bodies, this.acc, dt);

@@ -42,8 +42,9 @@ change the sky, scrub time, and tune the look. Keyboard: **Esc** About ·
 ## Project status
 
 Actively developed in small, themed phases. See **[CHANGELOG.md](CHANGELOG.md)**
-for the full version history, and **[`docs/`](docs/)** for design and tuning notes
-(the intro script, screen-recording findings, and performance audits).
+for the full version history, **[`docs/future-improvements.md`](docs/future-improvements.md)**
+for the roadmap, and **[`docs/`](docs/)** for design and tuning notes (the intro
+script, screen-recording findings, and performance audits).
 
 ## Stack
 
@@ -92,7 +93,7 @@ src/
     Renderer.ts        WebGPURenderer + automatic WebGL2 fallback
     CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms; intro dolly driver
     Loop.ts            requestAnimationFrame driver → real frame delta
-    TimeController.ts  decouples sim time from wall-clock: scale / pause / step + crossfade
+    TimeController.ts  decouples sim time from wall-clock: scale / pause / step ± / crossfade
     FormationSequence.ts  the intro: camera dolly + disk "ignition" (skip / replay / reduced-motion)
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
     quality.ts         device-tier auto-detect (resolution / dust step / DPR cap)

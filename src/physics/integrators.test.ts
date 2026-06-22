@@ -66,4 +66,31 @@ describe('velocityVerletStep', () => {
     expect(Math.abs((energy() - e0) / e0)).toBeLessThan(1e-3); // symplectic → bounded
     expect(primary.position.length()).toBe(0); // fixed body never moves
   });
+
+  // Underpins "Step back": the integrator is time-reversible, so stepping the
+  // orbits backward (negative dt) retraces them. The accelerations left in `acc`
+  // by a forward step are exactly what the reverse half-kick consumes.
+  it('is time-reversible: N steps forward then N back returns to the start', () => {
+    const M = 1;
+    const primary = body(new Vector3(0, 0, 0), { mass: M, fixed: true });
+    const planet = body(new Vector3(18, 0, 0), {
+      mass: 1e-3,
+      velocity: new Vector3(0, 0.04, Math.sqrt(M / 18) * 0.8), // an eccentric, non-trivial orbit
+    });
+    const bodies = [primary, planet];
+    const acc = [new Vector3(), new Vector3()];
+    computeAccelerations(bodies, acc);
+
+    const p0 = planet.position.clone();
+    const v0 = planet.velocity.clone();
+
+    const N = 300;
+    const dt = 0.05;
+    for (let i = 0; i < N; i++) velocityVerletStep(bodies, acc, dt);
+    expect(planet.position.distanceTo(p0)).toBeGreaterThan(1); // actually went somewhere
+    for (let i = 0; i < N; i++) velocityVerletStep(bodies, acc, -dt);
+
+    expect(planet.position.distanceTo(p0)).toBeLessThan(1e-6); // …and came back
+    expect(planet.velocity.distanceTo(v0)).toBeLessThan(1e-6);
+  });
 });
