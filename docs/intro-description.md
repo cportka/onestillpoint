@@ -43,11 +43,16 @@ whenever the intro changes substantially, and always record the version.
   Safari defers the first paint past the (now ~0.6 s) splash, so it elapsed unseen.
   Fixed by starting the choreography on the first painted frame (`--go`) and holding
   the crossfade `MIN_SPLASH_MS` past it. Desktop Firefox already played it in full.
-- **Fresh-load stutter.** The fresh load drops frames while the WebGPU shader
-  compiles (a recording measured ~24 fps avg vs 60). v0.17 hides the worst of it by
-  holding the splash over the first few rendered frames; a fuller fix (pre-warming
-  the pipeline) is in [`future-improvements.md`](./future-improvements.md).
-- **The gas/dust ring now forms earlier** (v0.17) and holds, so the splash ends on a
+- **Black void at the cut (fixed in v0.17.1).** An untrimmed recording showed the
+  splash rings expand away and the dust vanish, leaving the hole on **empty black**
+  for ~0.2 s before the engine's stars faded in. Fixed: the dust now drifts and
+  fades *through* the crossfade, and the live (pre-warmed) disk + stars are revealed
+  a touch earlier under a gentler fade, so the field stays populated.
+- **Fresh-load stutter.** The fresh load dropped frames while the WebGPU shader
+  compiled (~24 fps avg vs 60). v0.17.1 `compileAsync`-compiles the raymarch WGSL
+  under the splash; worth a fresh recording to confirm the dip is gone (see
+  [`future-improvements.md`](./future-improvements.md)).
+- **The gas/dust ring forms earlier** (v0.17) and holds, so the splash ends on a
   warm hole-plus-ring that rhymes with the engine's igniting disk at the crossfade.
 - The disk still reads **near-white** (15000 K + bloom washes the colour out);
   bodies stay small until the camera arrives (~5 s); the inner-edge sparkle is a

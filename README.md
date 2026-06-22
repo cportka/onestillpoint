@@ -1,18 +1,22 @@
-# One Still Point
+<h1 align="center">One Still Point</h1>
+
+<p align="center"><em>The worldline · The present resting place</em></p>
 
 <p align="center">
   <img src="docs/hero.svg" alt="One Still Point — an animated black hole: a tilted accretion ring around an event horizon, with stardust spiralling inward" width="300" />
 </p>
 
-> The worldline · The present resting place · The circle of eternal return · The spinning cycle of time
+<p align="center"><strong>Created by Chris&nbsp;Portka</strong></p>
+
+<p align="center"><em>The circle of eternal return · The spinning cycle of time</em></p>
+
+<p align="center">🌐 <a href="https://onestillpoint.app"><strong>onestillpoint.app</strong></a></p>
 
 A scientifically grounded, GPU-accelerated, animated **black hole visualizer** that
 runs in the browser — event-horizon shadow, photon ring, gravitationally lensed
 background, and a live relativistic accretion disk. Built on WebGPU (with an
 automatic WebGL2 fallback) and architected to grow into a general gravitational
 N-body simulator.
-
-🌐 **Live:** [onestillpoint.app](https://onestillpoint.app)
 
 ---
 

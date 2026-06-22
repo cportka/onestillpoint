@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.17.x — intro robustness + Tier-1 polish
 
+- **0.17.1** — Splash → engine handoff: the dust now **drifts gaseously** past the
+  burst and fades *through* the crossfade (with a constant angular drift so nothing
+  is ever momentarily static), so space no longer empties to a **black void** before
+  the stars take over; the live disk is revealed a touch earlier over a gentler fade
+  so it overlaps the expanding splash rings. **Tier 1.1 pre-warm**: the heavy
+  raymarch WGSL is now **`compileAsync`-compiled** under the splash, cutting the
+  fresh-load hitch. The **`?` shortcut also accepts `/`** (no Shift), and its
+  cheat-sheet is now a **translucent top-left panel** (like the control dropdown),
+  not a modal. README reframed like the About dialog (tagline above/below, byline
+  framing the animated mark).
 - **0.17.0** (Phase 17) — **Mobile splash fix**: the merger animation now starts on
   the **first painted frame** (it was on a parse-time timeline, which mobile Safari
   ran through before its first paint, so the splash was never seen). The crossfade
