@@ -4,7 +4,7 @@
  *
  *   Esc          toggle the About dialog
  *   Space        Pause / Resume
- *   →            Step forward
+ *   ← / →        Step back / forward
  *   ↑ / ↓        double / halve the Speed
  *
  * Text entry is never hijacked. The playback keys also defer to a focused
@@ -15,6 +15,7 @@ export interface Keybindings {
   toggleAbout: () => void;
   togglePause: () => void;
   stepForward: () => void;
+  stepBackward: () => void;
   /** Multiply the time scale (2 = double, 0.5 = halve). */
   speedBy: (factor: number) => void;
 }
@@ -46,6 +47,9 @@ export function attachKeybindings(actions: Keybindings): void {
         break;
       case 'ArrowRight':
         actions.stepForward();
+        break;
+      case 'ArrowLeft':
+        actions.stepBackward();
         break;
       case 'ArrowUp':
         actions.speedBy(2);

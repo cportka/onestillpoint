@@ -30,9 +30,11 @@ export class PhysicsController {
     if (this.useGPU) this.gpu.step(frameDelta);
     else this.scene.step(frameDelta);
     // Advance absorption fades and free any companion that escaped or finished
-    // merging into the centre; rebuild the GPU buffers for the smaller set. The
-    // wall-clock `frameDelta` keeps the fade a steady ~0.6s at any Speed.
-    if (this.scene.prune(frameDelta)) this.syncBodies();
+    // merging into the centre; rebuild the GPU buffers for the smaller set. These
+    // are one-way wall-clock animations, so they always advance forward — even
+    // when the orbits are being stepped *back* (|frameDelta|), which scrubs the
+    // reversible gravity, not these irreversible destruction events.
+    if (this.scene.prune(Math.abs(frameDelta))) this.syncBodies();
   }
 
   setGPU(on: boolean): void {

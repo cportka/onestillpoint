@@ -240,8 +240,14 @@ export function createControls(ctx: {
   tip(pauseCtrl, 'Freeze time to inspect the lensing on a still frame. Click again to resume.');
   tip(
     gui.add({ step: () => time.step() }, 'step').name('Step forward'),
-    'Advance time. Paused: one frame at the current Speed. Running: a ~1-second jump forward ' +
-      '(at least 20 frames) at the current Speed.',
+    'Advance time (→ key). Paused: one frame at the current Speed. Running: a ~1-second jump ' +
+      'forward (at least 20 frames) at the current Speed.',
+  );
+  tip(
+    gui.add({ stepBack: () => time.stepBack() }, 'stepBack').name('Step back'),
+    'Rewind time (← key). Paused: one frame back; running: a ~1-second jump back. The orbits ' +
+      'reverse exactly (the integrator is time-reversible) — but absorbed/removed bodies and the ' +
+      'one-shot intro do not come back.',
   );
 
   // --- Advanced settings toggle (remembered across sessions) ---
@@ -456,11 +462,12 @@ export function createControls(ctx: {
   gui.$children.prepend(topRow);
   gui.close();
 
-  // Keyboard shortcuts: Esc = About, Space = Pause/Resume, → = Step, ↑/↓ = Speed.
+  // Keyboard shortcuts: Esc = About, Space = Pause/Resume, ←/→ = Step, ↑/↓ = Speed.
   attachKeybindings({
     toggleAbout: about.toggle,
     togglePause: () => onPauseClick(),
     stepForward: () => time.step(),
+    stepBackward: () => time.stepBack(),
     speedBy,
   });
 

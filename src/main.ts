@@ -122,10 +122,10 @@ async function main(): Promise<void> {
     if (scaler.update(frameDelta)) applySize();
 
     const t = time.tick(frameDelta);
-    uniforms.time.value += t.animDelta; // bounded dust clock
+    uniforms.time.value += t.animDelta; // bounded dust clock (can ebb when stepping back)
     uniforms.timeBlur.value = t.timeBlur;
     physics.timeScale = t.orbitMul;
-    if (t.fd > 0) physics.step(t.fd);
+    if (t.fd !== 0) physics.step(t.fd); // fd < 0 when stepping back (orbits reverse)
 
     updateBodyUniforms(bodyUniforms, scene, formation.progress);
     // The intro drives the camera (controls disabled) until it settles home.

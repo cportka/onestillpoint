@@ -158,9 +158,9 @@ export class GPUPhysicsEngine {
 
   step(frameDelta: number): void {
     if (!this.kernels) return;
-    const total = frameDelta * this.timeScale;
-    const substeps = Math.max(this.substeps, Math.min(this.maxSubsteps, Math.ceil(total / this.maxDt)));
-    const h = total / substeps;
+    const total = frameDelta * this.timeScale; // < 0 when stepping back (orbits reverse)
+    const substeps = Math.max(this.substeps, Math.min(this.maxSubsteps, Math.ceil(Math.abs(total) / this.maxDt)));
+    const h = total / substeps; // keeps total's sign
     for (let s = 0; s < substeps; s++) this.kernels.substep(h);
     void this.applyReadback();
   }
