@@ -2,20 +2,29 @@
  * Global keyboard shortcuts, registered once from createControls (which owns the
  * actions they trigger):
  *
- *   Esc          toggle the About dialog
+ *   Esc          close an open overlay, else toggle the About dialog
+ *   ?            the keyboard-shortcuts cheat-sheet
  *   Space        Pause / Resume
  *   ← / →        Step back / forward
  *   ↑ / ↓        double / halve the Speed
+ *   R            Replay intro
+ *   C            Clear companions
+ *   F            toggle the FPS readout
  *
- * Text entry is never hijacked. The playback keys also defer to a focused
+ * Text entry is never hijacked. The action keys also defer to a focused
  * button/slider (so they don't double-fire or fight a control the user is
  * operating) and act when focus is on the scene — Esc works from anywhere.
  */
 export interface Keybindings {
-  toggleAbout: () => void;
+  /** Esc: close an open overlay if any, otherwise toggle About. */
+  onEscape: () => void;
+  toggleShortcuts: () => void;
   togglePause: () => void;
+  toggleFps: () => void;
   stepForward: () => void;
   stepBackward: () => void;
+  replayIntro: () => void;
+  clearBodies: () => void;
   /** Multiply the time scale (2 = double, 0.5 = halve). */
   speedBy: (factor: number) => void;
 }
@@ -29,14 +38,19 @@ export function attachKeybindings(actions: Keybindings): void {
     const el = document.activeElement;
     if (isTextField(el)) return; // never hijack typing
 
-    // Esc toggles About from anywhere.
+    // Esc and ? work from anywhere (they don't activate a focused control).
     if (e.key === 'Escape') {
-      actions.toggleAbout();
+      actions.onEscape();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === '?') {
+      actions.toggleShortcuts();
       e.preventDefault();
       return;
     }
 
-    // Playback keys: if a button/slider is focused, let it handle the key natively
+    // Action keys: if a button/slider is focused, let it handle the key natively
     // (e.g. Space re-clicks a focused Pause exactly once) rather than double-acting.
     if (el && el.tagName === 'BUTTON') return;
 
@@ -58,7 +72,20 @@ export function attachKeybindings(actions: Keybindings): void {
         actions.speedBy(0.5);
         break;
       default:
-        return; // not ours — leave default behaviour intact
+        // Letter shortcuts, case-insensitive.
+        switch (e.key.toLowerCase()) {
+          case 'r':
+            actions.replayIntro();
+            break;
+          case 'c':
+            actions.clearBodies();
+            break;
+          case 'f':
+            actions.toggleFps();
+            break;
+          default:
+            return; // not ours — leave default behaviour intact
+        }
     }
     e.preventDefault();
   });

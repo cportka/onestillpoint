@@ -13,34 +13,32 @@ of each tier.
 
 ## Tier 1 — near-term polish (do these first)
 
-1. **Pre-warm / pre-compile the shaders under the splash (S–M).** The single
-   biggest "feel" win left. On a fresh load the intro drops frames (a recording
-   measured ~24 fps average vs a 60 fps display) because the heavy WebGPU shader
-   is still compiling while the formation plays, and the final hand-off is gated
-   on the *first real frame* — so on slower devices the splash also lingers.
-   Compiling/priming the pipeline (e.g. an off-screen warm-up render, or
-   `renderer.compileAsync`) during the splash would smooth the intro **and**
-   let it hand off closer to the 0.5–0.8 s target everywhere, not just on fast
-   machines. *Touches: `src/main.ts`, `src/core/Renderer.ts`.*
+1. **Fully pre-compile the pipeline under the splash (S–M).** *Partly done in
+   v0.17* — the splash now holds over the first few rendered frames, so the
+   shader-compile hitch (a recording measured ~24 fps avg vs 60) happens *under*
+   the splash. The deeper win remains: actually **pre-compile** the WGSL before
+   the loop starts (a `renderer.compileAsync`-style warm-up, or a couple of
+   off-screen renders that exercise the dust/disk branches) so the first painted
+   frames are already smooth, not just hidden. *Touches: `src/main.ts`,
+   `src/core/Renderer.ts`, `src/render/PostPipeline.ts`.*
 
-2. **Tighten "Replay intro" alignment (S–M).** A side-by-side of a fresh load vs
-   a replay (v0.16.4 recordings) shows the replay is ~0.8 s longer and looser:
-   it fades the splash *in* over the still-visible old scene for ~0.45 s and then
-   dismisses on a **fixed 760 ms timer**, whereas the fresh load dismisses when
-   the real first frame is ready, so the splash-hole and the real hole line up.
-   Fix: on replay, hide the live scene instantly (no fade-in over it) and gate
-   the dismiss on **formation progress** (as the fresh path does) instead of a
-   timer. *Touches: `src/main.ts` (`replaySplash`), `src/core/FormationSequence.ts`.*
-   — Noted by the user as "pretty great" already; this is a refinement, not a bug.
+2. **Keep tuning the splash ↔ engine overlap (S, ongoing).** v0.17 made the splash
+   start on first paint and gave it a warm gas/dust ring that holds into the
+   crossfade. The standing goal (see `intro-script.md` → "the overlap"): the
+   splash's last ½-second and the engine's first ½-second should share silhouette,
+   **ring orientation**, and warmth so the cut reads as one continuous motion.
+   Dial against each new recording. *Touches: `index.html`, `src/style.css`,
+   `src/core/FormationSequence.ts`.*
 
-3. **A keyboard-shortcuts help overlay + a few more keys (S).** Now that there
-   are shortcuts (`Esc`, `Space`, `←/→`, `↑/↓`), add a `?` overlay that lists
-   them, and consider `R` = Replay intro, `C` = Clear companions, `F` = toggle
-   FPS. *Touches: `src/ui/keybindings.ts`, a small overlay like `about.ts`.*
+3. **A real captured hero GIF/video (S).** v0.17 added an animated **SVG** logo
+   hero (the About mark) to the README — a good placeholder. A short *captured*
+   clip of the actual intro + a lensed companion would sell the real thing better.
+   *Touches: `README.md`, `docs/`.*
 
-4. **A hero image / GIF in the README (S).** The landing page is text-only. A
-   single looping GIF of the intro + a lensed companion would sell it instantly
-   on the GitHub page. *Touches: `README.md`, `docs/`.*
+> **Shipped from Tier 1:** Replay-intro alignment (instant-show + play-from-first-
+> paint gating, v0.17) · keyboard-shortcuts overlay + R/C/F keys (v0.17) · README
+> hero (animated SVG, v0.17). The mobile "splash never plays" bug (first-paint
+> gating) also shipped in v0.17.
 
 ---
 

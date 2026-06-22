@@ -15,6 +15,7 @@ import { bodyCap, type Scene } from '../scene/Scene';
 import type { Hud } from './hud';
 import { createAboutButton } from './about';
 import { attachKeybindings } from './keybindings';
+import { createShortcutsOverlay } from './shortcuts';
 import { loadPrefs, savePrefs } from './prefs';
 import { PRESETS } from './presets';
 import { createStepper, type Stepper } from './stepper';
@@ -201,23 +202,18 @@ export function createControls(ctx: {
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
 
   // --- Replay intro (re-seed the current line-up on fresh orbits, then replay) ---
+  // Named so the R key can trigger it too (see attachKeybindings below).
+  const replayIntro = (): void => {
+    replaySplash(); // re-show the load splash over the re-forming scene
+    scene.reseed(); // fresh orbits for the current composition
+    physics.syncBodies(); // rebuild GPU buffers for the new bodies
+    refreshAll(); // update counts + ± limits
+    formation.restart();
+  };
   tip(
-    gui
-      .add(
-        {
-          replay: () => {
-            replaySplash(); // re-show the load splash over the re-forming scene
-            scene.reseed(); // fresh orbits for the current composition
-            physics.syncBodies(); // rebuild GPU buffers for the new bodies
-            refreshAll(); // update counts + ± limits
-            formation.restart();
-          },
-        },
-        'replay',
-      )
-      .name('Replay intro'),
+    gui.add({ replay: replayIntro }, 'replay').name('Replay intro'),
     'Replay the formation intro with the current bodies — re-seeded onto fresh orbits, so it ' +
-      'looks like a clean page-load for the same line-up (identical for the default 3 + 3).',
+      'looks like a clean page-load for the same line-up (identical for the default 3 + 3). [R]',
   );
 
   // --- Pause + Step (last basic controls, right before the Advanced toggle) ---
@@ -273,13 +269,17 @@ export function createControls(ctx: {
   hud.setVisible(prefs.showFps);
   const fpsCtrl = tip(
     gui.add(prefs, 'showFps').name('Display FPS'),
-    'Show a small corner readout: renderer (WebGPU / WebGL2), frame rate, and the current ' +
-      'render-resolution scale ("% res" — auto-resolution lowers it under load).',
+    'Show a small frame-rate readout in the corner (it fades + pulses in/out so it is easy to ' +
+      'spot). Toggle with the F key.',
   );
   fpsCtrl.onChange((v: boolean) => {
     hud.setVisible(v);
     savePrefs(prefs);
   });
+  // Named so the F key can toggle it too; setValue updates the checkbox + fires onChange.
+  const toggleFps = (): void => {
+    fpsCtrl.setValue(!prefs.showFps);
+  };
 
   // Last of the first batch of Advanced toggles: click/tap outside to collapse.
   const tapOutsideCtrl = tip(
@@ -462,12 +462,18 @@ export function createControls(ctx: {
   gui.$children.prepend(topRow);
   gui.close();
 
-  // Keyboard shortcuts: Esc = About, Space = Pause/Resume, ←/→ = Step, ↑/↓ = Speed.
+  // Keyboard shortcuts (see keybindings.ts): Esc About · ? this list · Space
+  // Pause · ←/→ Step · ↑/↓ Speed · R Replay · C Clear · F FPS.
+  const shortcuts = createShortcutsOverlay();
   attachKeybindings({
-    toggleAbout: about.toggle,
+    onEscape: () => (shortcuts.isOpen() ? shortcuts.close() : about.toggle()),
+    toggleShortcuts: shortcuts.toggle,
     togglePause: () => onPauseClick(),
+    toggleFps,
     stepForward: () => time.step(),
     stepBackward: () => time.stepBack(),
+    replayIntro,
+    clearBodies: actions.clear,
     speedBy,
   });
 

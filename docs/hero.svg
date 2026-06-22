@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="300" role="img" aria-labelledby="osp-t osp-d">
+<title id="osp-t">One Still Point</title>
+<desc id="osp-d">A black hole: a tilted accretion ring wrapping an event-horizon sphere, with stardust spiralling inward along the ring.</desc>
+<defs>
+<radialGradient id="osp-gl" cx="50%" cy="50%" r="50%">
+<stop offset="0" stop-color="#ffe7c8" stop-opacity=".18"/>
+<stop offset=".55" stop-color="#ffd9a8" stop-opacity=".05"/>
+<stop offset="1" stop-color="#ffd9a8" stop-opacity="0"/>
+</radialGradient>
+<filter id="osp-b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.4"/></filter>
+<ellipse id="osp-dk" cx="320" cy="320" rx="215" ry="58"/>
+<clipPath id="osp-lo"><rect x="0" y="318" width="640" height="322"/></clipPath>
+<style>
+.osp-s{fill:none;stroke:#ffe7c8;stroke-width:3}
+.osp-d{fill:#fff;offset-path:path("M168 392C120 250 220 152 320 152C430 152 470 270 408 344");offset-rotate:0deg;opacity:.85}
+#osp-m1{offset-distance:62%}#osp-m2{offset-distance:40%}#osp-m3{offset-distance:18%}
+@media (prefers-reduced-motion:no-preference){
+.osp-d{animation:osp-fall 9.2s linear infinite}
+#osp-m2{animation-delay:-3.07s}#osp-m3{animation-delay:-6.13s}
+}
+@keyframes osp-fall{0%{offset-distance:0%;opacity:0}8%{opacity:1}82%{opacity:1}100%{offset-distance:100%;opacity:0}}
+</style>
+</defs>
+<rect width="640" height="640" rx="36" fill="#05060a"/>
+<circle cx="320" cy="320" r="230" fill="url(#osp-gl)"/>
+<g transform="rotate(-8 320 320)"><use href="#osp-dk" class="osp-s" filter="url(#osp-b)"/></g>
+<g filter="url(#osp-b)"><circle class="osp-d" id="osp-m1" r="5"/><circle class="osp-d" id="osp-m2" r="3.6"/><circle class="osp-d" id="osp-m3" r="2.8"/></g>
+<circle cx="320" cy="320" r="82" fill="#05060a"/>
+<circle cx="320" cy="320" r="82" class="osp-s" stroke-width="2.4" filter="url(#osp-b)"/>
+<g transform="rotate(-8 320 320)"><use href="#osp-dk" class="osp-s" clip-path="url(#osp-lo)" filter="url(#osp-b)"/></g>
+<circle cx="320" cy="320" r="94" class="osp-s" filter="url(#osp-b)"/>
+</svg>

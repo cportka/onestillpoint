@@ -46,11 +46,23 @@ canvas {
   display: grid;
   place-items: center;
   opacity: 1;
-  transition: opacity 0.3s ease;
+  /* No *show* transition: a replay must cover the live scene instantly (no old
+     frame bleeding through). Only the dismiss fades — see .osp-splash--hide. */
 }
 #osp-splash.osp-splash--hide {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+/* Hold the merger choreography until the first *painted* frame (the inline script
+   adds --go on its first rAF), so it plays in full even when the browser defers
+   painting during a heavy mobile load — and stays in lockstep with the canvas
+   dust (which starts on the same frame). */
+.osp-splash__stage > * {
+  animation-play-state: paused;
+}
+.osp-splash--go .osp-splash__stage > * {
+  animation-play-state: running;
 }
 /* The binary-merger choreography (sized in vmin so the final event horizon lines
    up with the real shadow at the crossfade; tune --core-d against a recording).
@@ -286,6 +298,39 @@ canvas {
     opacity: 0;
   }
 }
+/* The gas/dust accretion ring: forms early (≈0.14 s) and *holds* around the
+   horizon, warm and tilted nearly disk-flat — unlike the shock rings (which
+   expand away). It reads as the accretion ring and is the visual bridge to the
+   real disk during the crossfade. */
+.osp-splash__disk {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 33vmin;
+  height: 33vmin;
+  margin: -16.5vmin;
+  border-radius: 50%;
+  border: 0.55vmin solid rgba(255, 201, 130, 0.92);
+  box-shadow:
+    0 0 3vmin 0.3vmin rgba(255, 178, 96, 0.55),
+    inset 0 0 2vmin rgba(255, 156, 84, 0.5);
+  opacity: 0;
+  transform: scale(0.2) rotateX(76deg);
+  animation: osp-disk 0.52s cubic-bezier(0.2, 0.8, 0.3, 1) 0.14s forwards;
+}
+@keyframes osp-disk {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotateX(76deg);
+  }
+  45% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1) rotateX(76deg);
+  } /* settle and hold (forwards) — the gas ring persists into the crossfade */
+}
 /* The forming event horizon: holds at a point through the merger, then expands
    back outward (slight overshoot → settle) to the final black circle + a cool
    photon ring. */
@@ -373,6 +418,7 @@ canvas {
   .osp-splash__shock,
   .osp-splash__streak,
   .osp-splash__plume,
+  .osp-splash__disk,
   .osp-splash__b {
     animation-duration: 0.01s;
   }
@@ -803,6 +849,81 @@ canvas {
 }
 .osp-about__edge--left span {
   transform: rotate(-90deg); /* read up the left side */
+}
+
+/* Keyboard-shortcuts cheat-sheet (opened with "?"; see src/ui/shortcuts.ts). */
+.osp-keys {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 3, 6, 0.6);
+  backdrop-filter: blur(3px);
+}
+.osp-keys[hidden] {
+  display: none;
+}
+.osp-keys__card {
+  position: relative;
+  min-width: 17rem;
+  max-width: min(90vw, 23rem);
+  padding: 1.2rem 1.4rem 1.3rem;
+  border-radius: 0.8rem;
+  background: #0b0d14;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.5);
+  color: #e8ecf4;
+  font: 0.92rem/1.5 system-ui, sans-serif;
+}
+.osp-keys__title {
+  font-weight: 600;
+  margin-bottom: 0.7rem;
+  letter-spacing: 0.02em;
+}
+.osp-keys__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.22rem 0;
+}
+.osp-keys__d {
+  color: #aeb6c6;
+}
+.osp-keys__sep {
+  margin: 0 0.25em;
+  color: #6b7488;
+}
+.osp-keys kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0.1em 0.45em;
+  text-align: center;
+  font: 0.82rem/1.4 ui-monospace, monospace;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom-width: 2px;
+  border-radius: 0.35rem;
+}
+.osp-keys__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: #aeb6c6;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.osp-keys__close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Bodies ± steppers (custom rows inside the lil-gui Bodies folder). */
