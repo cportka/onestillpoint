@@ -3,7 +3,7 @@
 <p align="center"><em>The worldline · The present resting place</em></p>
 
 <p align="center">
-  <img src="docs/hero.svg" alt="One Still Point — an animated black hole: a tilted accretion ring around an event horizon, with stardust spiralling inward" width="300" />
+  <img src="assets/hero.svg" alt="One Still Point — an animated black hole: a tilted accretion ring around an event horizon, with stardust spiralling inward" width="300" />
 </p>
 
 <p align="center"><strong>Created by Chris&nbsp;Portka</strong></p>
@@ -47,6 +47,25 @@ Drag to orbit · pinch / scroll to zoom · open the panel (top-right) to add bod
 change the sky, scrub time, and tune the look. Keyboard (press **?** for the full
 list): **Esc** About · **Space** Pause/Resume · **← / →** Step back / forward ·
 **↑ / ↓** double / halve Speed · **R** Replay · **C** Clear · **F** FPS.
+
+## Splash
+
+<p align="center">
+  <img src="assets/splash.gif" alt="The load-splash: two warm orbs spiral together and merge into a black hole ringed by neon shock waves, then settle" width="400" />
+</p>
+
+The app opens on a tiny, art-directed **binary-merger splash** that paints
+*instantly* — before the WebGPU shader even compiles — so there's never a blank
+screen. Two warm stars spiral together through a field of drifting dust, flash and
+merge, and the new event horizon settles inside an accretion ring as neon shock
+waves reverberate outward — then it crossfades into the live, formed black hole.
+It's plain CSS + one `<canvas>` layer (no engine), and it starts on the first
+painted frame so it plays in full on mobile too.
+
+The animation above is captured straight from the running splash by
+[`scripts/capture-splash.mjs`](scripts/capture-splash.mjs) (`npm run
+capture:splash`) — re-run it whenever the splash changes to refresh
+[`assets/splash.gif`](assets/splash.gif).
 
 ## Project status
 
@@ -147,6 +166,8 @@ src/
 index.html             also hosts the inline, instant-paint load splash (window.__ospSplash)
 scripts/
   validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
+  capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash
+assets/                tracked art: hero.svg (logo) + splash.gif (captured intro loop)
 ```
 
 ## Deploy

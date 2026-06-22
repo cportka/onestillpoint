@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.17.x — intro robustness + Tier-1 polish
 
+- **0.17.2** — Splash cohesion: the dust is now one **continuous breath** per
+  particle (no separate inward/burst/drift beats), each turning at its own
+  **staggered** time through an **annulus** — never the centre — so it stops piling
+  into the **static central clot** seen before the cut, and a constant drift keeps
+  everything moving. The flash starts earlier + lingers and the orbs dissolve into
+  it, so the beats overlap rather than pop. New **assets/** folder (the logo moved
+  here) and an auto-capture system — `npm run capture:splash`
+  ([`scripts/capture-splash.mjs`](scripts/capture-splash.mjs)) renders the live
+  splash to a looping **`assets/splash.gif`**, shown in a new README **Splash**
+  section.
 - **0.17.1** — Splash → engine handoff: the dust now **drifts gaseously** past the
   burst and fades *through* the crossfade (with a constant angular drift so nothing
   is ever momentarily static), so space no longer empties to a **black void** before

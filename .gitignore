@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Splash-capture scratch (npm run capture:splash)
+.splash-capture/
+__cap_*.html
