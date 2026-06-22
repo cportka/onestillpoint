@@ -47,8 +47,11 @@ const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" 
  * The "About" button (sits to the left of the version chip). Clicking it opens a
  * small modal crediting the author with a link to the project, donation options
  * (Venmo plus ETH/BTC addresses that copy in full on click), and the tagline.
+ *
+ * Returns the button plus a `toggle` so a keyboard shortcut (Esc) can open/close
+ * the same dialog.
  */
-export function createAboutButton(): HTMLElement {
+export function createAboutButton(): { button: HTMLButtonElement; toggle: () => void } {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'osp-about-btn';
@@ -100,6 +103,9 @@ export function createAboutButton(): HTMLElement {
   const close = (): void => {
     overlay.hidden = true;
   };
+  const toggle = (): void => {
+    overlay.hidden = !overlay.hidden;
+  };
   button.addEventListener('click', (e) => {
     e.stopPropagation();
     overlay.hidden = false;
@@ -123,5 +129,5 @@ export function createAboutButton(): HTMLElement {
     });
   });
 
-  return button;
+  return { button, toggle };
 }

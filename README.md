@@ -36,7 +36,8 @@ N-body simulator.
   HDR bloom, adaptive resolution, and a touch-friendly control panel.
 
 Drag to orbit · pinch / scroll to zoom · open the panel (top-right) to add bodies,
-change the sky, scrub time, and tune the look.
+change the sky, scrub time, and tune the look. Keyboard: **Esc** About ·
+**Space** Pause/Resume · **→** Step forward · **↑ / ↓** double / halve Speed.
 
 ## Project status
 
@@ -107,6 +108,7 @@ src/
     GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
     Controls.ts        lil-gui panel: Filter / Speed / Bodies up front, deep tuning behind Advanced
+    keybindings.ts     keyboard shortcuts (Esc About · Space Pause · → Step · ↑/↓ Speed)
     presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
     prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
     stepper.ts         the Bodies "− N +" add/remove rows (✓/✗ flash)

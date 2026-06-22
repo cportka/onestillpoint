@@ -14,6 +14,7 @@ import type { BlackHole } from '../scene/BlackHole';
 import { bodyCap, type Scene } from '../scene/Scene';
 import type { Hud } from './hud';
 import { createAboutButton } from './about';
+import { attachKeybindings } from './keybindings';
 import { loadPrefs, savePrefs } from './prefs';
 import { PRESETS } from './presets';
 import { createStepper, type Stepper } from './stepper';
@@ -128,6 +129,11 @@ export function createControls(ctx: {
     time.timeScale = Math.pow(10, v);
     speedCtrl.name(`Speed ×${fmtScale(time.timeScale)}`);
   });
+  // Multiply the speed by a factor (the ↑/↓ keys double / halve it); log-space, so
+  // it tracks the slider and clamps to the same ×1/1000 … ×1,000,000 range.
+  const speedBy = (factor: number): void => {
+    speedCtrl.setValue(Math.min(6, Math.max(-3, speedProxy.exp + Math.log10(factor))));
+  };
   tip(
     speedCtrl,
     'How fast time runs — from ×1/1000 (slow-motion) through ×1 (real-time) up to ' +
@@ -443,11 +449,20 @@ export function createControls(ctx: {
 
   // Top row — About button + click-to-copy version chip — pinned above the
   // folders; the panel starts collapsed.
+  const about = createAboutButton();
   const topRow = document.createElement('div');
   topRow.className = 'osp-toprow';
-  topRow.append(createAboutButton(), createVersionBadge(VERSION));
+  topRow.append(about.button, createVersionBadge(VERSION));
   gui.$children.prepend(topRow);
   gui.close();
+
+  // Keyboard shortcuts: Esc = About, Space = Pause/Resume, → = Step, ↑/↓ = Speed.
+  attachKeybindings({
+    toggleAbout: about.toggle,
+    togglePause: () => onPauseClick(),
+    stepForward: () => time.step(),
+    speedBy,
+  });
 
   // Long-press on a row shows its tooltip on touch devices (no native hover).
   attachTouchTooltips(gui.domElement);
