@@ -48,10 +48,19 @@
 
           // Structured burst elements (CSS-animated).
           var h = '';
-          var SC = [['#ff2bbf', '0.40', '7'], ['#ff8a3c', '0.50', '-11'], ['#3cd6ff', '0.60', '3'], ['#ff6aa0', '0.70', '-5']];
+          // Reverberating shock rings: vibrant neon bases; CSS animates a hue-shift
+          // + glow so they shimmer through the spectrum as they expand (--sd staggers
+          // them, compressed so the whole burst lands inside ~0.65s).
+          var SC = [['#ff1f9e', '0.22', '7'], ['#ff7a1f', '0.28', '-11'], ['#14e3ff', '0.34', '3'], ['#c23dff', '0.40', '-5']];
           for (var s = 0; s < SC.length; s++)
             h += '<span class="osp-splash__shock" style="--rc:' + SC[s][0] + ';--sd:' + SC[s][1] + 's;--rr:' + SC[s][2] + 'deg"></span>';
-          var PC = ['#ff3cc0', '#ffae4f', '#3ce0ff', '#ff5a86', '#b06aff', '#ffd24a'], PA = [18, 74, 138, 203, 262, 321];
+          // Neon streaks — thin bright rays that shoot out with the rings (hue-shifted).
+          var KC = ['#ff2fae', '#22e6ff', '#b65cff', '#ffd24a', '#ff5cf0', '#3affd0'], KA = [34, 96, 162, 214, 283, 331];
+          for (var kk = 0; kk < KC.length; kk++)
+            h += '<span class="osp-splash__streak" style="--a:' + KA[kk] + 'deg;--kc:' + KC[kk] + '"></span>';
+          // Gas plumes — kept warm (gold → orange) so the overall colourway reads warm
+          // and elegant; the neon lives in the rings + streaks above.
+          var PC = ['#ffd24a', '#ffb24a', '#ff8a3c', '#ffe2a0', '#ffc266', '#ff9a48'], PA = [18, 74, 138, 203, 262, 321];
           for (var q = 0; q < PC.length; q++)
             h += '<span class="osp-splash__plume" style="--a:' + PA[q] + 'deg;--pc:' + PC[q] + '"></span>';
           h += '<span class="osp-splash__orb osp-splash__orb--a"></span><span class="osp-splash__orb osp-splash__orb--b"></span>' +
@@ -92,8 +101,8 @@
             g.fill();
             return c;
           }
-          var warm = ['#fff3df', '#ffe6c2', '#ffd49a', '#ffcf86', '#fff7ec', '#ffdca8'].map(sprite);
-          var cool = ['#dfe9ff', '#cfe0ff'].map(sprite);
+          var warm = ['#fff3df', '#ffe6c2', '#ffd49a', '#ffcf86', '#fff7ec', '#ffdca8', '#ffc878'].map(sprite);
+          var cool = ['#eef2ff', '#e4ecff'].map(sprite); // a few near-white sparkles, not blue
           var DIR = Math.random() < 0.5 ? 1 : -1; // one swirl direction for the whole field
           var N = reduce ? 70 : 320;
           var P = new Array(N);
@@ -101,11 +110,11 @@
             P[k] = {
               a: R(0, 6.2832), r0: R(20, 52), rb: R(28, 88),
               tn: DIR * (1.25 + R(-0.2, 0.2)), bt: DIR * (0.45 + R(-0.1, 0.2)),
-              sz: (0.2 + Math.pow(Math.random(), 2) * 1) * vmin, dl: R(0, 0.1),
-              spr: Math.random() < 0.13 ? cool[(Math.random() * cool.length) | 0] : warm[(Math.random() * warm.length) | 0],
+              sz: (0.16 + Math.pow(Math.random(), 2.2) * 0.95) * vmin, dl: R(0, 0.04),
+              spr: Math.random() < 0.05 ? cool[(Math.random() * cool.length) | 0] : warm[(Math.random() * warm.length) | 0],
             };
           }
-          var t0 = performance.now(), MERGE = 0.42, END = 1.15;
+          var t0 = performance.now(), MERGE = 0.26, END = 0.66;
           function draw(now) {
             var t = (now - t0) / 1000;
             ctx.clearRect(0, 0, W, H);
@@ -115,10 +124,10 @@
               if (tt < 0) continue;
               var r, ang, al, grow = 1;
               if (tt < MERGE) {
-                var e = tt / MERGE; e = e * e;
-                r = p.r0 * (1 - e) + 0.5;
-                ang = p.a + p.tn * 6.2832 * e;
-                al = Math.min(1, (tt / MERGE) * 4) * (1 - e * 0.1);
+                var e = tt / MERGE, ei = e * (2 - e); // ease-OUT: spiralling immediately, not a slow crawl
+                r = p.r0 * (1 - ei * 0.985) + 0.5;
+                ang = p.a + p.tn * 6.2832 * ei;
+                al = Math.min(1, tt / MERGE * 9) * (1 - ei * 0.1); // fade in fast so motion is visible at once
               } else {
                 var k2 = (tt - MERGE) / (END - MERGE);
                 if (k2 >= 1) continue;

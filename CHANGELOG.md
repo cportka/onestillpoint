@@ -5,6 +5,14 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.16.x — spaghettification, binary-merger splash, controls
 
+- **0.16.4** — Splash, shorter + warmer: the whole binary merger now plays in
+  ~0.6s (was ~1s). The two orbs are a **warm white-gold + amber** pair (no more
+  pink/blue), with plumes/flash/jet/dust all warm, and the surrounding dust
+  **spirals from the very first frame** (was an ease-in crawl that read as static).
+  The neon is concentrated where it's wanted: the reverberating **shock rings now
+  shimmer through an animated hue-shift**, joined by bright **neon streaks**. New
+  **keyboard shortcuts**: <kbd>Esc</kbd> About · <kbd>Space</kbd> Pause/Resume ·
+  <kbd>→</kbd> Step forward · <kbd>↑</kbd>/<kbd>↓</kbd> double / halve Speed.
 - **0.16.3** — Splash: the dust is now **small, mostly-warm and lightly
   saturated** (was clownish rainbow) and **spirals** coherently in and back out;
   the canvas is capped-resolution with smaller sprites, so it's much **smoother**.

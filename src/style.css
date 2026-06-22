@@ -46,7 +46,7 @@ canvas {
   display: grid;
   place-items: center;
   opacity: 1;
-  transition: opacity 0.45s ease;
+  transition: opacity 0.3s ease;
 }
 #osp-splash.osp-splash--hide {
   opacity: 0;
@@ -75,21 +75,22 @@ canvas {
   margin: -6.5vmin;
   border-radius: 50%;
   will-change: transform, opacity;
-  animation: osp-orb 0.46s cubic-bezier(0.55, 0, 0.78, 1) forwards;
+  animation: osp-orb 0.3s cubic-bezier(0.55, 0, 0.78, 1) forwards;
 }
+/* A warm binary: a hot white-gold twin + an amber twin (no pink/blue). */
 .osp-splash__orb--a {
   --a: 0deg;
-  background: radial-gradient(circle at 42% 38%, #fff 0%, #e6f3ff 32%, #9cc8ff 60%, #5f86e6 100%);
+  background: radial-gradient(circle at 42% 38%, #fff 0%, #fff6e6 32%, #ffe1a8 60%, #ffc164 100%);
   box-shadow:
-    0 0 4vmin 1.2vmin rgba(150, 200, 255, 0.7),
-    0 0 10vmin 3vmin rgba(90, 140, 255, 0.32);
+    0 0 4vmin 1.2vmin rgba(255, 220, 150, 0.7),
+    0 0 10vmin 3vmin rgba(255, 180, 90, 0.32);
 }
 .osp-splash__orb--b {
   --a: 180deg;
-  background: radial-gradient(circle at 42% 38%, #fff 0%, #fdeef6 32%, #ffb6e0 60%, #c97ad6 100%);
+  background: radial-gradient(circle at 42% 38%, #fff 0%, #ffe9cf 32%, #ffbf72 60%, #ff8a36 100%);
   box-shadow:
-    0 0 4vmin 1.2vmin rgba(255, 170, 220, 0.6),
-    0 0 10vmin 3vmin rgba(190, 110, 230, 0.3);
+    0 0 4vmin 1.2vmin rgba(255, 175, 95, 0.6),
+    0 0 10vmin 3vmin rgba(255, 130, 55, 0.3);
 }
 /* Frequent keyframes, each rotating < 180°, so the inspiral interpolates the
    same way in every browser — WebKit/Safari decomposes big rotate+translate
@@ -134,10 +135,10 @@ canvas {
   height: 34vmin;
   margin: -17vmin;
   border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, #d6efff 22%, rgba(120, 200, 255, 0.45) 46%, transparent 70%);
+  background: radial-gradient(circle, #fff 0%, #fff1d6 22%, rgba(255, 200, 120, 0.45) 46%, transparent 70%);
   opacity: 0;
   transform: scale(0.2);
-  animation: osp-flash 0.5s ease-out 0.36s forwards;
+  animation: osp-flash 0.34s ease-out 0.22s forwards;
 }
 @keyframes osp-flash {
   0% {
@@ -162,11 +163,11 @@ canvas {
   height: 1.4vmin;
   margin: -0.7vmin 0 0 -46vmin;
   border-radius: 1vmin;
-  background: linear-gradient(90deg, transparent 6%, #ff8ad6 26%, #fff 50%, #9fd8ff 74%, transparent 94%);
+  background: linear-gradient(90deg, transparent 6%, #ffb44f 26%, #fff 50%, #ffd98a 74%, transparent 94%);
   filter: blur(0.4vmin);
   opacity: 0;
   transform: rotate(19deg) scaleX(0.06);
-  animation: osp-jet 0.55s ease-out 0.38s forwards;
+  animation: osp-jet 0.36s ease-out 0.24s forwards;
 }
 @keyframes osp-jet {
   0% {
@@ -182,8 +183,9 @@ canvas {
     opacity: 0;
   }
 }
-/* Reverberating shock rings — staggered (--sd), coloured (--rc), tilted to read
-   as 3D rings expanding outward in waves. */
+/* Reverberating shock rings — staggered (--sd), neon (--rc), tilted to read as 3D
+   rings expanding in waves. A neon glow (box-shadow) + an animated hue-shift make
+   them shimmer vibrantly through the spectrum as they expand. */
 .osp-splash__shock {
   position: absolute;
   left: 50%;
@@ -193,9 +195,14 @@ canvas {
   margin: -4.5vmin;
   border-radius: 50%;
   border: 0.5vmin solid var(--rc, #ff4fd8);
+  box-shadow:
+    0 0 2.4vmin 0.2vmin var(--rc, #ff4fd8),
+    inset 0 0 1.2vmin var(--rc, #ff4fd8);
   opacity: 0;
   transform: scale(0.12) rotateX(62deg) rotate(var(--rr, 0deg));
-  animation: osp-shock 0.66s cubic-bezier(0.15, 0.7, 0.3, 1) var(--sd, 0.4s) forwards;
+  animation:
+    osp-shock 0.46s cubic-bezier(0.15, 0.7, 0.3, 1) var(--sd, 0.24s) forwards,
+    osp-hue 0.62s linear var(--sd, 0.24s) forwards;
 }
 @keyframes osp-shock {
   0% {
@@ -203,10 +210,51 @@ canvas {
     opacity: 0;
   }
   12% {
-    opacity: 0.9;
+    opacity: 0.95;
   }
   100% {
     transform: scale(7) rotateX(62deg) rotate(var(--rr, 0deg));
+    opacity: 0;
+  }
+}
+/* Cycle the hue (with extra saturation/brightness) so rings + streaks read neon. */
+@keyframes osp-hue {
+  0% {
+    filter: hue-rotate(0deg) saturate(1.5) brightness(1.18);
+  }
+  100% {
+    filter: hue-rotate(170deg) saturate(1.5) brightness(1.18);
+  }
+}
+/* Neon streaks — thin bright rays fired radially from the merger with the rings;
+   hue-shifted to read as electric, vibrant flashes (the "streaks" on the rings). */
+.osp-splash__streak {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58vmin;
+  height: 0.5vmin;
+  margin: -0.25vmin 0 0 0;
+  transform-origin: 0 50%;
+  border-radius: 0.5vmin;
+  background: linear-gradient(90deg, #fff 0%, var(--kc, #ff2fae) 16%, transparent 82%);
+  box-shadow: 0 0 1.3vmin 0.1vmin var(--kc, #ff2fae);
+  opacity: 0;
+  transform: rotate(var(--a, 0deg)) scaleX(0.04);
+  animation:
+    osp-streak 0.42s cubic-bezier(0.1, 0.7, 0.3, 1) 0.24s forwards,
+    osp-hue 0.62s linear 0.24s forwards;
+}
+@keyframes osp-streak {
+  0% {
+    transform: rotate(var(--a, 0deg)) scaleX(0.04);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(var(--a, 0deg)) scaleX(1);
     opacity: 0;
   }
 }
@@ -219,11 +267,11 @@ canvas {
   height: 11vmin;
   margin: -5.5vmin -2vmin;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 100%, var(--pc, #ff6ad0) 0%, transparent 72%);
+  background: radial-gradient(ellipse at 50% 100%, var(--pc, #ffb24a) 0%, transparent 72%);
   filter: blur(0.7vmin);
   opacity: 0;
   transform: rotate(var(--a)) translateY(0) scale(0.3);
-  animation: osp-plume 0.62s ease-out 0.4s forwards;
+  animation: osp-plume 0.42s ease-out 0.25s forwards;
 }
 @keyframes osp-plume {
   0% {
@@ -250,27 +298,27 @@ canvas {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: #05060a;
-  animation: osp-splash-core 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  animation: osp-splash-core 0.56s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 @keyframes osp-splash-core {
   0%,
-  48% {
+  44% {
     width: 0;
     height: 0;
-    box-shadow: 0 0 1vmin 0.2vmin rgba(190, 215, 255, 0);
+    box-shadow: 0 0 1vmin 0.2vmin rgba(255, 238, 210, 0);
   }
-  82% {
+  80% {
     width: calc(var(--core-d) * 1.06);
     height: calc(var(--core-d) * 1.06);
     box-shadow:
-      0 0 5vmin 1.4vmin rgba(200, 225, 255, 0.85),
+      0 0 5vmin 1.4vmin rgba(255, 240, 214, 0.85),
       inset 0 0 3vmin 1vmin #000;
   } /* expand outward + overshoot */
   100% {
     width: var(--core-d);
     height: var(--core-d);
     box-shadow:
-      0 0 4vmin 1.2vmin rgba(190, 215, 255, 0.78),
+      0 0 4vmin 1.2vmin rgba(255, 236, 206, 0.78),
       inset 0 0 3vmin 1vmin #000;
   } /* settle */
 }
@@ -292,13 +340,13 @@ canvas {
   height: var(--s, 1vmin);
   margin: calc(var(--s, 1vmin) / -2);
   border-radius: 50%;
-  background: radial-gradient(circle at 42% 40%, #fff 0%, #cfe6ff 70%, #8fb6ee 100%);
-  box-shadow: 0 0 1.2vmin 0.4vmin rgba(150, 200, 255, 0.5);
+  background: radial-gradient(circle at 42% 40%, #fff 0%, #ffe6c2 70%, #ffb870 100%);
+  box-shadow: 0 0 1.2vmin 0.4vmin rgba(255, 195, 120, 0.5);
   transform: rotate(var(--a)) translateX(var(--r, 36vmin));
-  animation: osp-splash-fall 0.48s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
+  animation: osp-splash-fall 0.32s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
 }
 .osp-splash__b--big {
-  box-shadow: 0 0 2.2vmin 0.7vmin rgba(150, 200, 255, 0.55);
+  box-shadow: 0 0 2.2vmin 0.7vmin rgba(255, 190, 110, 0.55);
 }
 @keyframes osp-splash-fall {
   0% {
@@ -323,6 +371,7 @@ canvas {
   .osp-splash__flash,
   .osp-splash__jet,
   .osp-splash__shock,
+  .osp-splash__streak,
   .osp-splash__plume,
   .osp-splash__b {
     animation-duration: 0.01s;
