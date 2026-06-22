@@ -52,7 +52,7 @@ canvas {
 #osp-splash.osp-splash--hide {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.45s ease; /* gentle, so the live disk/stars overlap the fading rings + dust */
 }
 /* Hold the merger choreography until the first *painted* frame (the inline script
    adds --go on its first rAF), so it plays in full even when the browser defers
@@ -851,79 +851,51 @@ canvas {
   transform: rotate(-90deg); /* read up the left side */
 }
 
-/* Keyboard-shortcuts cheat-sheet (opened with "?"; see src/ui/shortcuts.ts). */
+/* Keyboard-shortcuts cheat-sheet (toggled with "?" / "/"; see src/ui/shortcuts.ts).
+   Not a modal — a translucent panel pinned top-left, matching the control panel's
+   opacity, font and blur (top-right). */
 .osp-keys {
   position: fixed;
-  inset: 0;
-  z-index: 3000;
-  display: grid;
-  place-items: center;
-  background: rgba(2, 3, 6, 0.6);
-  backdrop-filter: blur(3px);
+  top: 0;
+  left: 0;
+  z-index: 1900; /* below the load splash (2000), above the scene */
+  margin: 8px;
+  padding: 9px 12px 11px;
+  border-radius: 6px;
+  background: rgba(20, 20, 24, 0.7);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  color: rgba(255, 255, 255, 0.72);
+  font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
+  cursor: pointer; /* tap to dismiss */
+  user-select: none;
 }
 .osp-keys[hidden] {
   display: none;
 }
-.osp-keys__card {
-  position: relative;
-  min-width: 17rem;
-  max-width: min(90vw, 23rem);
-  padding: 1.2rem 1.4rem 1.3rem;
-  border-radius: 0.8rem;
-  background: #0b0d14;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.5);
-  color: #e8ecf4;
-  font: 0.92rem/1.5 system-ui, sans-serif;
-}
 .osp-keys__title {
-  font-weight: 600;
-  margin-bottom: 0.7rem;
-  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.86);
+  margin-bottom: 6px;
 }
 .osp-keys__row {
   display: flex;
   align-items: center;
+  gap: 10px;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.22rem 0;
 }
 .osp-keys__d {
-  color: #aeb6c6;
-}
-.osp-keys__sep {
-  margin: 0 0.25em;
-  color: #6b7488;
+  color: rgba(255, 255, 255, 0.62);
 }
 .osp-keys kbd {
   display: inline-block;
-  min-width: 1.4em;
-  padding: 0.1em 0.45em;
+  min-width: 1.3em;
+  padding: 0 0.35em;
   text-align: center;
-  font: 0.82rem/1.4 ui-monospace, monospace;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-bottom-width: 2px;
-  border-radius: 0.35rem;
-}
-.osp-keys__close {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.6rem;
-  width: 1.7rem;
-  height: 1.7rem;
-  border: 0;
-  border-radius: 0.4rem;
-  background: transparent;
-  color: #aeb6c6;
-  font-size: 1.2rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.osp-keys__close:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
 }
 
 /* Bodies ± steppers (custom rows inside the lil-gui Bodies folder). */

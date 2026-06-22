@@ -3,7 +3,7 @@
  * actions they trigger):
  *
  *   Esc          close an open overlay, else toggle the About dialog
- *   ?            the keyboard-shortcuts cheat-sheet
+ *   ? or /       the keyboard-shortcuts cheat-sheet
  *   Space        Pause / Resume
  *   ← / →        Step back / forward
  *   ↑ / ↓        double / halve the Speed
@@ -44,7 +44,8 @@ export function attachKeybindings(actions: Keybindings): void {
       e.preventDefault();
       return;
     }
-    if (e.key === '?') {
+    if (e.key === '?' || e.key === '/') {
+      // "/" so the user need not press Shift; preventDefault stops Firefox quick-find.
       actions.toggleShortcuts();
       e.preventDefault();
       return;

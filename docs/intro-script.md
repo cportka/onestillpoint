@@ -27,7 +27,7 @@ neon reserved for the brief ring/streak burst.
 | ~0.14 s+ | A **warm accretion ring** forms early and **holds** around the forming horizon — the gas/dust ring, tilted nearly disk-flat. | `.osp-splash__disk` (forms at 0.14 s, settles + holds via `forwards`). |
 | ~0.22–0.4 s | **Merger**: a warm-white **flash**, a warm **jet**, warm **plumes**, then **neon streaks** fire radially and **reverberating shock rings** expand — both **hue-shifted** so they shimmer through the spectrum. | `__flash` / `__jet` / `__plume` (warm) + `__streak` + `__shock` (neon `--rc` + `osp-hue`), transform/opacity only. |
 | ~0.3–0.6 s | Dust **bursts back outward**; the dark **event horizon** grows back out (overshoot → settle) to the final circle + a warm photon ring (`--core-d ≈ 28vmin`, to match the real shadow). The warm disk ring persists. | canvas burst phase + `.osp-splash__core`. |
-| ~0.6 s+ | **Crossfade** to the live scene — the hole is lit (fast `formationCurve`), its disk igniting where the splash's warm ring was. | 0.3 s opacity crossfade; the formation continues to `t = 1`. |
+| ~0.6 s+ | Dust enters a **gaseous drift** (keeps expanding + rotating, fading) so the field never empties to black; the **crossfade** reveals the live scene — already pre-warmed, so its disk is lit and its stars are up — *under* the still-drifting dust + fading rings. | dust drift phase + a gentle **0.45 s** opacity crossfade beginning ~0.6 s; the formation continues to `t = 1`. |
 
 **Start-on-first-paint (Phase 17).** The CSS choreography is held
 (`animation-play-state: paused`) until the inline script adds `.osp-splash--go`
@@ -67,11 +67,16 @@ for how "formed"/close the hole is at the handoff.*
 
 ## Tuning log & targets
 
+- **[done · v0.17.1] No black void at the cut + pre-warm.** The dust drifts
+  gaseously and fades *through* the crossfade (a constant per-particle angular
+  drift means nothing is ever momentarily static), so space stays populated as the
+  engine's stars take over; the live disk is revealed slightly earlier over a
+  gentler 0.45 s fade so it overlaps the expanding splash rings; the heavy raymarch
+  WGSL is `compileAsync`-compiled under the splash. **[open]** ring-orientation
+  match at the cut (splash rings head-on vs the disk's near-edge-on band).
 - **[done · v0.17] Mobile first-paint + overlap.** Splash animations start on the
   first painted frame (`--go`), fixing "the splash doesn't play on mobile"; the
-  warm gas/dust ring forms early and holds to bridge to the real disk; the
-  crossfade hides the compile hitch under the splash. **[open]** keep tuning the
-  splash↔engine rhyme against recordings (ring orientation/warmth at the cut).
+  warm gas/dust ring forms early and holds to bridge to the real disk.
 - **[done · v0.16] Warm, neon, shorter.** Orbs → warm white-gold + amber (no
   pink/blue); neon moved into the hue-shifted shock rings + new streaks; merger
   compressed to ~0.6 s; dust spirals from the first frame; Replay shows the splash

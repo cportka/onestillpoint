@@ -108,7 +108,10 @@ async function main(): Promise<void> {
   // Crossfade out only once the merger has had its minimum time on screen,
   // measured from the splash's first *painted* frame (window.__ospSplashStart) —
   // so it always plays in full, even when a heavy mobile load defers that paint.
-  const MIN_SPLASH_MS = 700;
+  // The reveal is intentionally a touch earlier than the merger's full end + a
+  // longer fade (see style.css), so the live disk + background overlap the
+  // expanding splash rings/dust rather than cutting to a black void.
+  const MIN_SPLASH_MS = 600;
   const dismissAfterPlayed = (): void => {
     const started = window.__ospSplashStart ?? performance.now();
     window.setTimeout(dismissSplash, Math.max(0, started + MIN_SPLASH_MS - performance.now()));
@@ -156,9 +159,15 @@ async function main(): Promise<void> {
     }
   };
 
-  // Pre-warm the render pipeline (compile the heavy WGSL, prime the GPU) while the
-  // splash still covers the screen, so the live scene doesn't hitch the moment it
-  // is revealed — the "choppiness before the physics kicks in".
+  // Pre-warm the render pipeline while the splash still covers the screen, so the
+  // fresh-load compile hitch is paid here, not on the first live frame (the intro
+  // "choppiness"):
+  //   1. compileAsync builds the heavy raymarch WGSL up front (awaited → ready);
+  //   2. a couple of post renders (a frame apart) compile + prime the bloom chain
+  //      and warm the GPU caches, so the disk is already lit under the splash.
+  await renderer.compileAsync(pass.scene, pass.camera);
+  post.render();
+  await new Promise((resolve) => requestAnimationFrame(resolve));
   post.render();
   loop.start();
 

@@ -41,6 +41,7 @@
           var stage = splash && splash.querySelector('.osp-splash__stage');
           if (!stage) return;
           splash.classList.remove('osp-splash--hide');
+          splash.__hideAt = 0; // reset the crossfade marker on (re)build
           if (splash.__raf) cancelAnimationFrame(splash.__raf);
           var prev = splash.querySelector('.osp-splash__dustcv');
           if (prev) prev.remove();
@@ -110,13 +111,13 @@
           var P = new Array(N);
           for (var k = 0; k < N; k++) {
             P[k] = {
-              a: R(0, 6.2832), r0: R(20, 52), rb: R(28, 88),
-              tn: DIR * (1.25 + R(-0.2, 0.2)), bt: DIR * (0.45 + R(-0.1, 0.2)),
+              a: R(0, 6.2832), r0: R(20, 52), rb: R(28, 84),
+              tn: DIR * (1.25 + R(-0.2, 0.2)), om: DIR * (0.6 + R(0, 0.9)), // constant drift (rad/s)
               sz: (0.16 + Math.pow(Math.random(), 2.2) * 0.95) * vmin, dl: R(0, 0.04),
               spr: Math.random() < 0.05 ? cool[(Math.random() * cool.length) | 0] : warm[(Math.random() * warm.length) | 0],
             };
           }
-          var t0 = 0, MERGE = 0.26, END = 0.66;
+          var t0 = 0, MERGE = 0.26, BURST = 0.6, STOP = 1.7;
           function draw(now) {
             if (!t0) {
               // Start the clock AND the CSS choreography (--go) on the first
@@ -135,29 +136,40 @@
             for (var j = 0; j < N; j++) {
               var p = P[j], tt = t - p.dl;
               if (tt < 0) continue;
-              var r, ang, al, grow = 1;
+              var r, al, grow = 1;
               if (tt < MERGE) {
-                var e = tt / MERGE, ei = e * (2 - e); // ease-OUT: spiralling immediately, not a slow crawl
+                // Spiral inward (ease-out → moving from the first frame).
+                var e = tt / MERGE, ei = e * (2 - e);
                 r = p.r0 * (1 - ei * 0.985) + 0.5;
-                ang = p.a + p.tn * 6.2832 * ei;
-                al = Math.min(1, tt / MERGE * 9) * (1 - ei * 0.1); // fade in fast so motion is visible at once
-              } else {
-                var k2 = (tt - MERGE) / (END - MERGE);
-                if (k2 >= 1) continue;
-                var eo = 1 - (1 - k2) * (1 - k2);
+                al = Math.min(1, tt / MERGE * 9);
+              } else if (tt < BURST) {
+                // Burst back outward.
+                var k2 = (tt - MERGE) / (BURST - MERGE), eo = 1 - (1 - k2) * (1 - k2);
                 r = p.rb * eo + 0.5;
-                ang = p.a + p.tn * 6.2832 + p.bt * 6.2832 * eo;
-                al = (1 - k2) * 0.85; grow = 1 + eo * 1.2;
+                al = 0.85; grow = 1 + eo * 1.1;
+              } else {
+                // Gaseous drift: keep expanding slowly and fade, so the field never
+                // empties to a black void before the engine's stars take over.
+                var td = tt - BURST;
+                r = p.rb + td * 8;
+                al = 0.85 - td * 0.95;
+                grow = 2.1 + td * 0.7;
               }
               if (al <= 0.02) continue;
+              // A constant angular drift (p.om) on top of the inspiral wind, so a
+              // particle is never momentarily static at a phase boundary.
+              var w = Math.min(1, tt / MERGE); w = w * (2 - w);
+              var ang = p.a + p.tn * 6.2832 * w + p.om * tt;
               var z = p.sz * grow;
               ctx.globalAlpha = al;
               ctx.drawImage(p.spr, cx + Math.cos(ang) * r * vmin - z, cy + Math.sin(ang) * r * vmin - z, z * 2, z * 2);
             }
             ctx.globalAlpha = 1;
-            // Stop early when the splash is dismissed, to free the GPU for the crossfade.
-            if (t < END && !splash.classList.contains('osp-splash--hide')) splash.__raf = requestAnimationFrame(draw);
-            else { ctx.clearRect(0, 0, W, H); splash.__raf = 0; }
+            // Keep drifting *through* the crossfade — the div's opacity fades the
+            // dust out as the engine is revealed — then stop to free the GPU.
+            if (splash.classList.contains('osp-splash--hide') && !splash.__hideAt) splash.__hideAt = t;
+            if (t < STOP && !(splash.__hideAt && t > splash.__hideAt + 0.5)) splash.__raf = requestAnimationFrame(draw);
+            else { ctx.clearRect(0, 0, W, H); splash.__raf = 0; splash.__hideAt = 0; }
           }
           splash.__raf = requestAnimationFrame(draw);
         } catch (e) {

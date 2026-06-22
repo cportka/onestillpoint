@@ -13,32 +13,35 @@ of each tier.
 
 ## Tier 1 — near-term polish (do these first)
 
-1. **Fully pre-compile the pipeline under the splash (S–M).** *Partly done in
-   v0.17* — the splash now holds over the first few rendered frames, so the
-   shader-compile hitch (a recording measured ~24 fps avg vs 60) happens *under*
-   the splash. The deeper win remains: actually **pre-compile** the WGSL before
-   the loop starts (a `renderer.compileAsync`-style warm-up, or a couple of
-   off-screen renders that exercise the dust/disk branches) so the first painted
-   frames are already smooth, not just hidden. *Touches: `src/main.ts`,
-   `src/core/Renderer.ts`, `src/render/PostPipeline.ts`.*
+1. **Keep tuning the splash ↔ engine overlap (S, ongoing).** Much improved in
+   v0.17.1 — the dust now drifts past the burst and fades through the crossfade
+   (no black void), and the live disk is revealed a touch earlier. The standing
+   goal (see `intro-script.md` → "the overlap"): the splash's last ½-second and the
+   engine's first ½-second should share silhouette, **ring orientation**, and
+   warmth so the cut reads as one continuous motion. The remaining mismatch is
+   *ring orientation* — the splash rings reverberate roughly head-on while the real
+   disk is a near-edge-on band; nudging the splash's late rings toward the disk's
+   tilt would seal it. Dial against each new recording. *Touches: `index.html`,
+   `src/style.css`, `src/core/FormationSequence.ts`.*
 
-2. **Keep tuning the splash ↔ engine overlap (S, ongoing).** v0.17 made the splash
-   start on first paint and gave it a warm gas/dust ring that holds into the
-   crossfade. The standing goal (see `intro-script.md` → "the overlap"): the
-   splash's last ½-second and the engine's first ½-second should share silhouette,
-   **ring orientation**, and warmth so the cut reads as one continuous motion.
-   Dial against each new recording. *Touches: `index.html`, `src/style.css`,
-   `src/core/FormationSequence.ts`.*
+2. **Verify the pre-warm actually flattened the stutter (S).** v0.17.1
+   `compileAsync`-compiles the raymarch WGSL under the splash (Tier 1.1, the bulk
+   of it) and the splash hides the rest. Worth a fresh recording to confirm the
+   ~24 fps fresh-load dip is gone; if a residual hitch remains it's likely the
+   bloom post-chain's first compile — pre-warm that too (an off-screen `post`
+   render already runs; may need one more, or a compile hook). *Touches:
+   `src/main.ts`, `src/render/PostPipeline.ts`.*
 
 3. **A real captured hero GIF/video (S).** v0.17 added an animated **SVG** logo
    hero (the About mark) to the README — a good placeholder. A short *captured*
    clip of the actual intro + a lensed companion would sell the real thing better.
    *Touches: `README.md`, `docs/`.*
 
-> **Shipped from Tier 1:** Replay-intro alignment (instant-show + play-from-first-
-> paint gating, v0.17) · keyboard-shortcuts overlay + R/C/F keys (v0.17) · README
-> hero (animated SVG, v0.17). The mobile "splash never plays" bug (first-paint
-> gating) also shipped in v0.17.
+> **Shipped from Tier 1:** the bulk of pre-warm (`compileAsync`, v0.17.1) ·
+> splash→engine dust bridge / no black void (v0.17.1) · Replay-intro alignment
+> (v0.17) · keyboard-shortcuts overlay → top-left panel + R/C/F + `?`/`/` (v0.17–
+> 0.17.1) · README hero + About-style framing (v0.17–0.17.1). The mobile "splash
+> never plays" bug (first-paint gating) also shipped in v0.17.
 
 ---
 
