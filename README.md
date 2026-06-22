@@ -1,5 +1,9 @@
 # One Still Point
 
+<p align="center">
+  <img src="docs/hero.svg" alt="One Still Point — an animated black hole: a tilted accretion ring around an event horizon, with stardust spiralling inward" width="300" />
+</p>
+
 > The worldline · The present resting place · The circle of eternal return · The spinning cycle of time
 
 A scientifically grounded, GPU-accelerated, animated **black hole visualizer** that
@@ -36,8 +40,9 @@ N-body simulator.
   HDR bloom, adaptive resolution, and a touch-friendly control panel.
 
 Drag to orbit · pinch / scroll to zoom · open the panel (top-right) to add bodies,
-change the sky, scrub time, and tune the look. Keyboard: **Esc** About ·
-**Space** Pause/Resume · **→** Step forward · **↑ / ↓** double / halve Speed.
+change the sky, scrub time, and tune the look. Keyboard (press **?** for the full
+list): **Esc** About · **Space** Pause/Resume · **← / →** Step back / forward ·
+**↑ / ↓** double / halve Speed · **R** Replay · **C** Clear · **F** FPS.
 
 ## Project status
 
@@ -109,7 +114,8 @@ src/
     GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
     Controls.ts        lil-gui panel: Filter / Speed / Bodies up front, deep tuning behind Advanced
-    keybindings.ts     keyboard shortcuts (Esc About · Space Pause · → Step · ↑/↓ Speed)
+    keybindings.ts     keyboard shortcuts (Esc About · ? help · Space Pause · ←/→ Step · ↑/↓ Speed · R/C/F)
+    shortcuts.ts       the "?" keyboard-shortcuts cheat-sheet overlay
     presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
     prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
     stepper.ts         the Bodies "− N +" add/remove rows (✓/✗ flash)

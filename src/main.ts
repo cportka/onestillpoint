@@ -22,6 +22,10 @@ declare global {
     /** Builds (and on later calls, rebuilds) the load splash; defined inline in
      *  index.html so it paints before this bundle loads. */
     __ospSplash?: () => void;
+    /** Timestamp (performance.now) of the splash's first *painted* frame, set by
+     *  the inline script. The crossfade waits MIN_PLAY past this so the merger is
+     *  always seen — even when a heavy mobile load defers the first paint. */
+    __ospSplashStart?: number;
   }
 }
 
@@ -101,9 +105,17 @@ async function main(): Promise<void> {
   // the crossfade.
   const splash = document.getElementById('osp-splash');
   const dismissSplash = (): void => splash?.classList.add('osp-splash--hide');
+  // Crossfade out only once the merger has had its minimum time on screen,
+  // measured from the splash's first *painted* frame (window.__ospSplashStart) —
+  // so it always plays in full, even when a heavy mobile load defers that paint.
+  const MIN_SPLASH_MS = 700;
+  const dismissAfterPlayed = (): void => {
+    const started = window.__ospSplashStart ?? performance.now();
+    window.setTimeout(dismissSplash, Math.max(0, started + MIN_SPLASH_MS - performance.now()));
+  };
   const replaySplash = (): void => {
-    window.__ospSplash?.(); // rebuild + restart; the renderer is already warm
-    window.setTimeout(dismissSplash, 760); // let the (now snappier) merger play, then crossfade
+    window.__ospSplash?.(); // rebuild + restart (instant-show over the live scene); renderer is warm
+    window.requestAnimationFrame(dismissAfterPlayed); // wait for the new first paint, then play out
   };
 
   createControls({
@@ -113,10 +125,12 @@ async function main(): Promise<void> {
     replaySplash,
   });
 
-  // Crossfade the load splash out once the first real frame is on screen (the
-  // heavy shader has compiled), into the formation playing underneath. Keep it up
-  // for a short minimum so its merge animation reads on a fast load.
-  let firstFrame = true;
+  // Hold the splash until a few frames have rendered — the WebGPU pipeline
+  // finishes compiling over the first frames, which is the fresh-load hitch, so
+  // we let it happen *under* the splash — and until the merger has played
+  // (dismissAfterPlayed). Into the formation playing underneath.
+  let warmFrames = 0;
+  const WARM_FRAMES = 5;
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
@@ -134,12 +148,11 @@ async function main(): Promise<void> {
     post.render();
     hud.update(frameDelta);
 
-    if (firstFrame) {
-      firstFrame = false;
-      // performance.now() ≈ ms since page load, so this also enforces a minimum
-      // on-screen time so the splash's (now ~0.6s) binary-merger animation reads
-      // even on a very fast load, while keeping the whole intro short.
-      window.setTimeout(dismissSplash, Math.max(0, 560 - performance.now()));
+    if (warmFrames < WARM_FRAMES) {
+      warmFrames += 1;
+      // Once the pipeline is warm, schedule the crossfade for when the merger
+      // has finished playing (from its first painted frame).
+      if (warmFrames === WARM_FRAMES) dismissAfterPlayed();
     }
   };
 

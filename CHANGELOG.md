@@ -3,6 +3,19 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.17.x — intro robustness + Tier-1 polish
+
+- **0.17.0** (Phase 17) — **Mobile splash fix**: the merger animation now starts on
+  the **first painted frame** (it was on a parse-time timeline, which mobile Safari
+  ran through before its first paint, so the splash was never seen). The crossfade
+  waits for that first paint + holds over the first few rendered frames, so the
+  shader-compile hitch hides under the splash. The **gas/dust ring forms earlier and
+  holds**, bridging to the real disk. **Replay intro** now covers the old scene
+  **instantly** (no fade-in) and plays the same as a fresh load. New **keyboard
+  shortcuts** — `?` (cheat-sheet overlay), **R** Replay, **C** Clear, **F** FPS — on
+  top of Esc / Space / arrows. README gains an **animated hero** (the About mark).
+  Intro [ideal/reality docs](docs/intro-script.md) refreshed.
+
 ## 0.16.x — spaghettification, binary-merger splash, controls
 
 - **0.16.5** — **Step back**: rewind time — one frame (paused) or a ~1 s jump
@@ -120,3 +133,4 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 | 9–11 | Perf auto-tuning; UX polish; secondary black-hole disk |
 | 12–14 | Body steppers + caps + About; selectable backgrounds; background revamp |
 | 15–16 | CPU-physics perf pass + load splash; spaghettification + background controls |
+| 17 | Intro robustness (mobile first-paint splash) + Tier-1 polish (shortcuts, hero) |

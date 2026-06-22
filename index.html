@@ -72,7 +72,9 @@
           }
           body('osp-splash__b osp-splash__b--big', 3 + ((Math.random() * 2) | 0), 3.2, 5, 24, 40, 0.06);
           body('osp-splash__b', 5 + ((Math.random() * 4) | 0), 0.8, 1.6, 22, 46, 0.14);
-          h += '<span class="osp-splash__core"></span>';
+          // A warm accretion ring that forms *early* and holds around the horizon
+          // (the gas/dust ring), then the event-horizon core settles inside it.
+          h += '<span class="osp-splash__disk"></span><span class="osp-splash__core"></span>';
           stage.innerHTML = h;
 
           // Canvas dust — small, mostly-warm, coherent spiral; cheap (capped res).
@@ -114,8 +116,19 @@
               spr: Math.random() < 0.05 ? cool[(Math.random() * cool.length) | 0] : warm[(Math.random() * warm.length) | 0],
             };
           }
-          var t0 = performance.now(), MERGE = 0.26, END = 0.66;
+          var t0 = 0, MERGE = 0.26, END = 0.66;
           function draw(now) {
+            if (!t0) {
+              // Start the clock AND the CSS choreography (--go) on the first
+              // *painted* frame, not at parse: mobile Safari often defers the
+              // first paint past the short splash, so a parse-time timeline meant
+              // the merger was never seen. This also locks the CSS layers to this
+              // canvas, and lets main.ts hold the crossfade until the splash has
+              // actually played (window.__ospSplashStart).
+              t0 = now;
+              window.__ospSplashStart = now;
+              splash.classList.add('osp-splash--go');
+            }
             var t = (now - t0) / 1000;
             ctx.clearRect(0, 0, W, H);
             ctx.globalCompositeOperation = 'lighter';
