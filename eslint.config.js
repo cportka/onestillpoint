@@ -15,7 +15,13 @@ export default tseslint.config(
     // Node scripts (plain JS): allow console and Node globals.
     files: ['scripts/**/*.mjs'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
+        fetch: 'readonly',
+      },
     },
   },
 );

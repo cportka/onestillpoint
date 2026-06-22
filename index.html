@@ -111,13 +111,14 @@
           var P = new Array(N);
           for (var k = 0; k < N; k++) {
             P[k] = {
-              a: R(0, 6.2832), r0: R(20, 52), rb: R(28, 84),
-              tn: DIR * (1.25 + R(-0.2, 0.2)), om: DIR * (0.6 + R(0, 0.9)), // constant drift (rad/s)
-              sz: (0.16 + Math.pow(Math.random(), 2.2) * 0.95) * vmin, dl: R(0, 0.04),
+              a: R(0, 6.2832), r0: R(22, 54), rmin: R(7, 20), rb: R(30, 86), // breathe r0 → annulus → rb (never the centre)
+              tn: DIR * (1.15 + R(-0.2, 0.2)), om: DIR * (0.5 + R(0, 0.9)), // inspiral wind + constant drift (rad/s)
+              mg: 0.2 + R(0, 0.16), // staggered turn time, so the field never converges/bursts in unison
+              sz: (0.16 + Math.pow(Math.random(), 2.2) * 0.95) * vmin, dl: R(0, 0.05),
               spr: Math.random() < 0.05 ? cool[(Math.random() * cool.length) | 0] : warm[(Math.random() * warm.length) | 0],
             };
           }
-          var t0 = 0, MERGE = 0.26, BURST = 0.6, STOP = 1.7;
+          var t0 = 0, STOP = 1.7;
           function draw(now) {
             if (!t0) {
               // Start the clock AND the CSS choreography (--go) on the first
@@ -136,29 +137,29 @@
             for (var j = 0; j < N; j++) {
               var p = P[j], tt = t - p.dl;
               if (tt < 0) continue;
-              var r, al, grow = 1;
-              if (tt < MERGE) {
-                // Spiral inward (ease-out → moving from the first frame).
-                var e = tt / MERGE, ei = e * (2 - e);
-                r = p.r0 * (1 - ei * 0.985) + 0.5;
-                al = Math.min(1, tt / MERGE * 9);
-              } else if (tt < BURST) {
-                // Burst back outward.
-                var k2 = (tt - MERGE) / (BURST - MERGE), eo = 1 - (1 - k2) * (1 - k2);
-                r = p.rb * eo + 0.5;
-                al = 0.85; grow = 1 + eo * 1.1;
+              // One continuous "breath" per particle (no hard inward/burst/drift
+              // boundaries that read as separate beats), turning at its own time
+              // (p.mg) through an *annulus* (p.rmin, not the centre — so the field
+              // never piles into a static central clot).
+              var r, grow;
+              if (tt < p.mg) {
+                var e = tt / p.mg, ei = e * (2 - e); // ease-out inward, moving from frame 1
+                r = p.r0 + (p.rmin - p.r0) * ei;
+                grow = 1;
               } else {
-                // Gaseous drift: keep expanding slowly and fade, so the field never
-                // empties to a black void before the engine's stars take over.
-                var td = tt - BURST;
-                r = p.rb + td * 8;
-                al = 0.85 - td * 0.95;
-                grow = 2.1 + td * 0.7;
+                var td = tt - p.mg, k = td / 0.35; // smoothstep out of the turn, then gaseous drift
+                var eo = k < 1 ? k * k * (3 - 2 * k) : 1;
+                r = p.rmin + (p.rb - p.rmin) * eo + (td > 0.35 ? (td - 0.35) * 12 : 0);
+                grow = 1 + eo + (td > 0.35 ? (td - 0.35) * 0.8 : 0);
               }
+              // Alpha: quick in, hold across the turn, then a gentle gaseous fade —
+              // no pop in or out.
+              var al = Math.min(1, tt * 12), fs = p.mg + 0.34;
+              if (tt > fs) al *= Math.max(0, 1 - (tt - fs));
               if (al <= 0.02) continue;
-              // A constant angular drift (p.om) on top of the inspiral wind, so a
-              // particle is never momentarily static at a phase boundary.
-              var w = Math.min(1, tt / MERGE); w = w * (2 - w);
+              // Always rotating: the inspiral wind (caps after the turn) plus a
+              // constant drift, so nothing is ever momentarily static.
+              var w = Math.min(1, tt / p.mg); w = w * (2 - w);
               var ang = p.a + p.tn * 6.2832 * w + p.om * tt;
               var z = p.sz * grow;
               ctx.globalAlpha = al;

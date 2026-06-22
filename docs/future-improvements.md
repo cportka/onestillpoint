@@ -32,16 +32,19 @@ of each tier.
    render already runs; may need one more, or a compile hook). *Touches:
    `src/main.ts`, `src/render/PostPipeline.ts`.*
 
-3. **A real captured hero GIF/video (S).** v0.17 added an animated **SVG** logo
-   hero (the About mark) to the README — a good placeholder. A short *captured*
-   clip of the actual intro + a lensed companion would sell the real thing better.
-   *Touches: `README.md`, `docs/`.*
+3. **A captured *scene* clip for the README (S).** v0.17.2 added a captured,
+   looping **splash** GIF (`assets/splash.gif`, via `npm run capture:splash`) and
+   a "Splash" section. A short clip of the *live engine* — a lensed companion
+   swinging past the disk — would round out the README. The capture harness in
+   `scripts/capture-splash.mjs` is splash-specific (deterministic freeze); a live
+   clip needs a real-time screen grab instead. *Touches: `README.md`, `assets/`.*
 
-> **Shipped from Tier 1:** the bulk of pre-warm (`compileAsync`, v0.17.1) ·
-> splash→engine dust bridge / no black void (v0.17.1) · Replay-intro alignment
-> (v0.17) · keyboard-shortcuts overlay → top-left panel + R/C/F + `?`/`/` (v0.17–
-> 0.17.1) · README hero + About-style framing (v0.17–0.17.1). The mobile "splash
-> never plays" bug (first-paint gating) also shipped in v0.17.
+> **Shipped from Tier 1:** captured looping splash GIF + capture system (v0.17.2) ·
+> the bulk of pre-warm (`compileAsync`, v0.17.1) · splash→engine dust bridge / no
+> black void (v0.17.1) · Replay-intro alignment (v0.17) · keyboard-shortcuts
+> overlay → top-left panel + R/C/F + `?`/`/` (v0.17–0.17.1) · README hero +
+> About-style framing (v0.17–0.17.1). The mobile "splash never plays" bug
+> (first-paint gating) also shipped in v0.17.
 
 ---
 

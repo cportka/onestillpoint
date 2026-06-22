@@ -67,6 +67,13 @@ for how "formed"/close the hole is at the handoff.*
 
 ## Tuning log & targets
 
+- **[done · v0.17.2] Cohesion + no static dust.** The dust is one continuous
+  *breath* per particle (no separate inward/burst/drift beats), turning at its own
+  staggered time through an **annulus** — never the centre — so it no longer piles
+  into a static central clot, and a constant drift keeps every particle moving. The
+  flash starts earlier + lingers and the orbs dissolve into it, so the beats
+  overlap rather than pop. The splash is now captured to a looping GIF for the
+  README (`npm run capture:splash`).
 - **[done · v0.17.1] No black void at the cut + pre-warm.** The dust drifts
   gaseously and fades *through* the crossfade (a constant per-particle angular
   drift means nothing is ever momentarily static), so space stays populated as the

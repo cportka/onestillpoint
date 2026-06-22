@@ -130,11 +130,11 @@ canvas {
     opacity: 1;
   }
   84% {
-    transform: rotate(calc(var(--a) + 630deg)) translateX(2.5vmin) scale(0.9);
-    opacity: 1;
-  }
+    transform: rotate(calc(var(--a) + 630deg)) translateX(2.5vmin) scale(0.82);
+    opacity: 0.55;
+  } /* begin dissolving into the flash, so the orbs hand off rather than vanish */
   100% {
-    transform: rotate(calc(var(--a) + 730deg)) translateX(0) scale(0.4);
+    transform: rotate(calc(var(--a) + 730deg)) translateX(0) scale(0.3);
     opacity: 0;
   }
 }
@@ -150,7 +150,9 @@ canvas {
   background: radial-gradient(circle, #fff 0%, #fff1d6 22%, rgba(255, 200, 120, 0.45) 46%, transparent 70%);
   opacity: 0;
   transform: scale(0.2);
-  animation: osp-flash 0.34s ease-out 0.22s forwards;
+  /* Starts as the orbs close in and lingers, so it bridges the inspiral into the
+     ring/streak burst rather than popping as a separate beat. */
+  animation: osp-flash 0.44s ease-out 0.16s forwards;
 }
 @keyframes osp-flash {
   0% {
