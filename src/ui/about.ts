@@ -98,7 +98,7 @@ export function createAboutButton(): { button: HTMLButtonElement; toggle: () => 
           <span>Donate Venmo</span><span class="osp-about__val">@portka&nbsp;↗</span>
         </a>
         <a class="osp-about__row osp-about__privacy" href="${PRIVACY}" target="_blank" rel="noopener noreferrer">
-          <span>Privacy</span><span class="osp-about__val">we don't want your data&nbsp;↗</span>
+          <span>Privacy</span><span class="osp-about__val">PRIVACY.md&nbsp;↗</span>
         </a>
       </div>
     </div>`;
