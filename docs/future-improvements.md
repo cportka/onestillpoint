@@ -66,22 +66,19 @@ of each tier.
    (the generation boundary). *Touches: `src/core/TimeController.ts`, a scrub-bar
    component.*
 
-6. **Shrink the bundle further (M).** *Progressed in v0.18.0* — the control panel
-   (lil-gui + `Controls` and friends) is now a **lazy `import()`** (its own ~52 kB
-   chunk, mounted at idle after the splash), trimming the initial bundle and
-   un-janking the load. The bulk that remains is **three.js/WebGPU** (~860 kB); the
-   next wins are lazy-loading the opt-in **GPU physics** path and pruning unused
-   Three add-ons. *Touches: dynamic `import()` in `src/main.ts` /
-   `PhysicsController.ts`, `vite.config.ts`.*
-
-7. **A richer perf overlay behind Advanced (S–M).** The HUD is now just an FPS
-   number. A small frame-time graph (and the current resolution scale) behind the
-   Advanced toggle would make regressions like the intro stutter visible without
-   a screen recording. *Touches: `src/ui/hud.ts`, `src/ui/Controls.ts`.*
+6. **Shrink the bundle further (M).** *Progressed in v0.18.0–0.19.0* — the control
+   panel (lil-gui + `Controls`) and the opt-in **GPU physics** are both lazy
+   `import()`s now (their own chunks, out of the initial bundle). The bulk that
+   remains is **three.js/WebGPU** (~860 kB); the real lever left is tree-shaking /
+   trimming unused Three add-ons, or splitting the WebGL2 fallback path. *Touches:
+   `vite.config.ts`, `three` import surface.*
 
 > **Shipped from Tier 2:** the scrub-bar **history foundation** (zero-GC ring
-> buffer + tests, v0.18.0) · control-panel **code-split** (v0.18.0) · **UI smoke
-> tests** — jsdom keybindings coverage + a History suite (v0.18.0).
+> buffer + tests, v0.18.0) · control-panel + GPU-physics **code-splits** (v0.18.0–
+> 0.19.0) · **UI smoke tests** (v0.18.0) · the **rich HUD** — lower-left frame-time
+> graph + resolution + debug detail, with Advanced toggles (v0.19.0). Also v0.19.0:
+> full **settings persistence** (one localStorage profile), a **Share** button, the
+> **moment-of-creation** intro beat, and a privacy statement.
 
 ---
 

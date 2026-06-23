@@ -6,6 +6,23 @@ The intro is driven by `src/core/FormationSequence.ts` (camera dolly + the
 with `u.formation`), and the per-body `appearFor` curve in
 `src/render/bodyUniforms.ts` (the staggered swoosh).
 
+## The beats (each a distinct, overlapping mechanism)
+
+The intro is **three deliberately overlapping beats** — each a separate mechanism,
+each handing off to the next mid-stride so it reads as one continuous birth.
+Timings are targets we tune against recordings.
+
+| beat | window | what | mechanism (distinct on purpose) | overlaps |
+| ---- | ------ | ---- | ------------------------------- | -------- |
+| **0 · Moment of creation** | 0.00–~0.18s | A full-screen "firework": a flash of light, neon beams sweeping out, reverberating shock rings. The instant, device-consistent birth. | Pure CSS, **no canvas / JS loop** (`#osp-creation` in `index.html` + `style.css`) — as cheap as possible so it's identical everywhere and never lags. Started on the first painted frame (`--go`). | with beat 1 (0.10–0.18s) |
+| **1 · The splash** | ~0.10–~0.75s | The binary-merger: warm orbs spiral together through drifting dust, flash + merge, neon shock-ring burst, the event horizon settles inside a warm accretion ring. | CSS keyframes + **one canvas** dust layer (`#osp-splash`, `window.__ospSplash`). Starts ~0.1s into the creation (the inline `__ospIntro` schedules it); the creation fades out as it takes over. | with beat 0 (start) and beat 2 (end) |
+| **2 · Engine takeover** | ~0.6s onward → 6.5s | The live WebGPU scene crossfades up under the splash — disk igniting, stars/planets swooshing in, camera dolly settling home. | The real renderer + `FormationSequence`. Pre-warmed (`compileAsync`) so it's lit before reveal; `MIN_SPLASH_MS` + a gentle opacity crossfade overlap it with the fading splash rings/dust. | with beat 1 (the crossfade) |
+
+The guiding rule (see "the overlap" below): **adjacent beats share silhouette,
+colour and motion at the seam**, so no beat ever "pops" — they dissolve into one
+another. Tune the seam timings (`__ospIntro`'s 100ms offset, `MIN_SPLASH_MS`, the
+crossfade duration) against each new recording.
+
 **Defaults today:** a **load splash** (≈0.6 s, JS-free CSS + one canvas — see
 below) hands off to the WebGPU formation, whose duration is **6.5 s** (2.6 s under
 reduced motion): camera dollies from **2.6× the home distance → home** on an
@@ -67,6 +84,11 @@ for how "formed"/close the hole is at the handoff.*
 
 ## Tuning log & targets
 
+- **[done · v0.19.0] Beat 0 — moment of creation.** A new, separate full-screen
+  CSS firework (`#osp-creation`) opens the intro (~0–0.18s), overlapping the splash
+  from ~0.1s; the three beats are now documented explicitly above. **[open]** dial
+  the seam timings (creation→splash 100ms offset; splash→engine crossfade) on the
+  next recording.
 - **[done · v0.17.2] Cohesion + no static dust.** The dust is one continuous
   *breath* per particle (no separate inward/burst/drift beats), turning at its own
   staggered time through an **annulus** — never the centre — so it no longer piles

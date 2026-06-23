@@ -137,16 +137,17 @@ src/
     integrators.ts     velocity-Verlet + Newtonian accelerations
     GPUPhysicsEngine.ts  opt-in WebGPU compute N-body (storage buffers + kernels)
   ui/
-    Controls.ts        lil-gui panel: Filter / Speed / Bodies up front, deep tuning behind Advanced
+    Controls.ts        lil-gui panel (lazy-loaded, mounted at idle off the splash); also the persistence wiring
+    settings.ts        one localStorage profile — every control auto-saves / auto-loads
     keybindings.ts     keyboard shortcuts (Esc About · ? help · Space Pause · ←/→ Step · ↑/↓ Speed · R/C/F)
     shortcuts.ts       the "?" keyboard-shortcuts cheat-sheet overlay
     presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
-    prefs.ts           remembered UI prefs (advanced on/off, tap-outside-close) via localStorage
     stepper.ts         the Bodies "− N +" add/remove rows (✓/✗ flash)
-    about.ts           the About modal (author, project link, donations, animated logo)
+    about.ts           the About modal (author, project link, donations, privacy, animated logo)
+    share.ts           the Share button: capture the view → OS share sheet / clipboard
     touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
-    hud.ts             corner FPS readout, toggled by "Display FPS"
+    hud.ts             lower-left HUD: FPS + frame-time graph + resolution + debug detail
   render/
     uniforms.ts        the shared uniform "bus" (camera, time, background, resolution)
     RaymarchPass.ts    fullscreen quad + node material (the colour node plugs in here)
@@ -164,7 +165,7 @@ src/
       bodies.ts        segment–sphere / stretched-ellipsoid tests for companions
       starfield.ts     procedural lensed star field
       background.ts    selectable sky (Stars / Nebula / Filaments / Lattice), all lensed
-index.html             also hosts the inline, instant-paint load splash (window.__ospSplash)
+index.html             also hosts the instant-paint intro: the "moment of creation" + the load splash (window.__ospIntro)
 scripts/
   validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
   capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash

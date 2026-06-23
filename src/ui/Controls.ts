@@ -16,7 +16,8 @@ import type { Hud } from './hud';
 import { createAboutButton } from './about';
 import { attachKeybindings } from './keybindings';
 import { createShortcutsOverlay } from './shortcuts';
-import { loadPrefs, savePrefs } from './prefs';
+import { createShareButton } from './share';
+import { loadSettings, saveSettings } from './settings';
 import { PRESETS } from './presets';
 import { createStepper, type Stepper } from './stepper';
 import { attachTouchTooltips } from './touchTooltips';
@@ -52,11 +53,17 @@ export function createControls(ctx: {
   bgLook: { brightness: { value: number }; saturation: { value: number }; tint: { value: number } };
   /** Rebuild + replay the load splash (the binary-merger formation). */
   replaySplash: () => void;
+  /** Render + read back the current view as a PNG (for the Share button). */
+  captureFrame: () => Promise<Blob | null>;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background, bgLook, replaySplash } = ctx;
+  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureFrame } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
-  const prefs = loadPrefs();
+  // The single persisted blob (localStorage). Defaults here; saved values are
+  // applied control-by-control at the end (so a stored value overrides a preset).
+  // Advanced settings default OFF.
+  const settings = loadSettings();
+  const prefs = { advanced: false, tapOutsideClose: true, showFps: false };
 
   // --- Filter (named looks; formerly "Preset") ---
   const filterProxy = { preset: 'Physical' };
@@ -253,7 +260,7 @@ export function createControls(ctx: {
   // --- Advanced, in order: GPU physics, Display FPS, Step, Click-outside, then tuning ---
   const gpuAvailable = backend === 'webgpu';
   const gpuCtrl = gui.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
-    physics.setGPU(v);
+    void physics.setGPU(v); // async: lazily loads the compute engine on first enable
   });
   if (!gpuAvailable) gpuCtrl.disable();
   tip(
@@ -274,19 +281,30 @@ export function createControls(ctx: {
   );
   fpsCtrl.onChange((v: boolean) => {
     hud.setVisible(v);
-    savePrefs(prefs);
   });
   // Named so the F key can toggle it too; setValue updates the checkbox + fires onChange.
   const toggleFps = (): void => {
     fpsCtrl.setValue(!prefs.showFps);
   };
 
+  // HUD rich-overlay rows (augment the corner FPS readout) — debug niceties.
+  const hudOpts = { graph: true, resolution: true, detail: false };
+  hud.setOptions(hudOpts);
+  const hudCtrls = [
+    tip(
+      gui.add(hudOpts, 'graph').name('HUD · frame-time'),
+      'Show a live frame-time sparkline in the HUD (green = smooth, amber/red = slow frames).',
+    ),
+    tip(gui.add(hudOpts, 'resolution').name('HUD · resolution'), 'Show the current adaptive render-resolution scale (%) in the HUD.'),
+    tip(gui.add(hudOpts, 'detail').name('HUD · detail'), 'Show body count · time scale · CPU/GPU physics in the HUD.'),
+  ];
+  hudCtrls.forEach((c) => c.onChange(() => hud.setOptions(hudOpts)));
+
   // Last of the first batch of Advanced toggles: click/tap outside to collapse.
   const tapOutsideCtrl = tip(
     gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
     'Clicking or tapping the scene outside this panel collapses it. On by default.',
   );
-  tapOutsideCtrl.onChange(() => savePrefs(prefs));
 
   // --- Advanced: deep tuning folders ---
   const look = gui.addFolder('Look');
@@ -436,6 +454,7 @@ export function createControls(ctx: {
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
     gpuCtrl,
     fpsCtrl,
+    ...hudCtrls,
     tapOutsideCtrl,
     look,
     anim,
@@ -447,18 +466,42 @@ export function createControls(ctx: {
     advanced.forEach((x) => (on ? x.show() : x.hide()));
   };
   applyAdvanced(prefs.advanced);
-  advCtrl.onChange((v: boolean) => {
-    applyAdvanced(v);
-    savePrefs(prefs);
-  });
+  advCtrl.onChange((v: boolean) => applyAdvanced(v));
   tip(advCtrl, 'Reveal GPU physics, Display FPS, and the deeper tuning folders. Remembered for next time.');
+
+  // --- Persistence: auto-save every value control, auto-load on start ---------
+  // One profile, no logins: load whatever is stored and save on any change. Every
+  // non-action controller is keyed by `property#occurrence` in build order, which
+  // is stable as long as the controls aren't reordered (bump settings.KEY if they
+  // are). Saved values are applied in build order, so a stored Look/Background
+  // slider overrides the preset its Filter/Background dropdown just loaded.
+  const persist = new Map<string, Controller>();
+  const seen: Record<string, number> = {};
+  for (const c of gui.controllersRecursive()) {
+    if (typeof c.getValue() === 'function') continue; // Pause/Step/Replay/Clear are actions, not settings
+    const i = (seen[c.property] = (seen[c.property] ?? -1) + 1);
+    persist.set(`${c.property}#${i}`, c);
+  }
+  for (const [key, c] of persist) {
+    if (key in settings) {
+      try {
+        c.setValue(settings[key]); // fires onChange → applies the side effects (preset, hud, etc.)
+      } catch {
+        /* a stored value no longer fits this control — skip it */
+      }
+    }
+  }
+  gui.onChange(() => {
+    for (const [key, c] of persist) settings[key] = c.getValue();
+    saveSettings(settings);
+  });
 
   // Top row — About button + click-to-copy version chip — pinned above the
   // folders; the panel starts collapsed.
   const about = createAboutButton();
   const topRow = document.createElement('div');
   topRow.className = 'osp-toprow';
-  topRow.append(about.button, createVersionBadge(VERSION));
+  topRow.append(about.button, createShareButton(captureFrame), createVersionBadge(VERSION));
   gui.$children.prepend(topRow);
   gui.close();
 
