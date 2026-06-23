@@ -9,7 +9,7 @@
  *   ↑ / ↓        double / halve the Speed
  *   R            Replay intro
  *   C            Clear companions
- *   F            toggle the FPS readout
+ *   F            toggle the HUD
  *
  * Text entry is never hijacked. The action keys also defer to a focused
  * button/slider (so they don't double-fire or fight a control the user is

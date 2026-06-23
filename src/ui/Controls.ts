@@ -55,9 +55,11 @@ export function createControls(ctx: {
   replaySplash: () => void;
   /** Render + read back the current view as a PNG (for the Share button). */
   captureFrame: () => Promise<Blob | null>;
+  /** Cap the render rate (0 = uncapped). Drives the optional cinematic frame cap. */
+  setMaxFps: (fps: number) => void;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureFrame } = ctx;
+  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureFrame, setMaxFps } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   // The single persisted blob (localStorage). Defaults here; saved values are
   // applied control-by-control at the end (so a stored value overrides a preset).
@@ -273,32 +275,32 @@ export function createControls(ctx: {
           'CPU (exact, and fine for a handful of bodies).',
   );
 
+  // HUD: a collapsible section (collapsed by default). "Display HUD" toggles the
+  // lower-left overlay (frame rate + resolution); the child checkboxes pick the
+  // extra rows it shows.
+  const hudFolder = gui.addFolder('HUD');
   hud.setVisible(prefs.showFps);
+  const hudOpts = { graph: true, detail: false };
+  hud.setOptions(hudOpts);
   const fpsCtrl = tip(
-    gui.add(prefs, 'showFps').name('Display FPS'),
-    'Show a small frame-rate readout in the corner (it fades + pulses in/out so it is easy to ' +
-      'spot). Toggle with the F key.',
+    hudFolder.add(prefs, 'showFps').name('Display HUD'),
+    'Show the lower-left HUD — frame rate + resolution, plus any child rows ticked below. It fades ' +
+      '+ pulses in/out so it is easy to spot. Toggle with the F key.',
   );
-  fpsCtrl.onChange((v: boolean) => {
-    hud.setVisible(v);
-  });
+  fpsCtrl.onChange((v: boolean) => hud.setVisible(v));
   // Named so the F key can toggle it too; setValue updates the checkbox + fires onChange.
   const toggleFps = (): void => {
     fpsCtrl.setValue(!prefs.showFps);
   };
-
-  // HUD rich-overlay rows (augment the corner FPS readout) — debug niceties.
-  const hudOpts = { graph: true, resolution: true, detail: false };
-  hud.setOptions(hudOpts);
   const hudCtrls = [
     tip(
-      gui.add(hudOpts, 'graph').name('HUD · frame-time'),
-      'Show a live frame-time sparkline in the HUD (green = smooth, amber/red = slow frames).',
+      hudFolder.add(hudOpts, 'graph').name('Frame-time graph'),
+      'A live frame-time sparkline (green = smooth, amber/red = slow frames).',
     ),
-    tip(gui.add(hudOpts, 'resolution').name('HUD · resolution'), 'Show the current adaptive render-resolution scale (%) in the HUD.'),
-    tip(gui.add(hudOpts, 'detail').name('HUD · detail'), 'Show body count · time scale · CPU/GPU physics in the HUD.'),
+    tip(hudFolder.add(hudOpts, 'detail').name('Detail'), 'Show body count · time scale · CPU/GPU physics · render backend.'),
   ];
   hudCtrls.forEach((c) => c.onChange(() => hud.setOptions(hudOpts)));
+  hudFolder.close(); // collapsed by default
 
   // Last of the first batch of Advanced toggles: click/tap outside to collapse.
   const tapOutsideCtrl = tip(
@@ -411,11 +413,22 @@ export function createControls(ctx: {
     'Automatically lower the render resolution to hold a smooth frame rate, then raise ' +
       'it when there is headroom. Off = always render at full resolution.',
   );
-  tip(
-    quality.add(scaler, 'targetFps', 30, 60, 1).name('Target FPS'),
-    'The frame rate auto-resolution aims to hold. Lower = it drops resolution sooner to stay ' +
-      'smooth on slower devices; higher = sharper but may stutter. 50 is a good balance.',
+  const fpsCap = { cap: false };
+  const targetFpsCtrl = tip(
+    quality.add(scaler, 'targetFps', 24, 60, 1).name('Target FPS'),
+    'The frame rate the app aims for. Auto-resolution trades sharpness to hold it; with "Cap ' +
+      'frame rate" on it also becomes a hard cinematic cap. Lower (24–30) = a calmer, film-like feel ' +
+      'with more GPU headroom (so it can stay at full resolution); 60 = the smoothest motion.',
   );
+  const capCtrl = tip(
+    quality.add(fpsCap, 'cap').name('Cap frame rate'),
+    'Render at most "Target FPS" — a cinematic cap (try 24 or 30) that frees GPU headroom and ' +
+      'stays consistent across devices. The achieved rate locks to the nearest display divisor (24 ' +
+      'on a 120Hz screen, ~20 on 60Hz) to keep the pacing even. Off = render at the display rate.',
+  );
+  const applyCap = (): void => setMaxFps(fpsCap.cap ? scaler.targetFps : 0);
+  targetFpsCtrl.onChange(applyCap);
+  capCtrl.onChange(applyCap);
   tip(
     quality.add(scaler, 'minScale', 0.3, 1, 0.05).name('Min resolution'),
     'Lowest resolution auto-scaling may drop to. Lower = smoother but softer when busy; ' +
@@ -453,8 +466,7 @@ export function createControls(ctx: {
   // then the deeper tuning folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
     gpuCtrl,
-    fpsCtrl,
-    ...hudCtrls,
+    hudFolder,
     tapOutsideCtrl,
     look,
     anim,

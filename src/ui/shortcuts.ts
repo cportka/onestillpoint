@@ -12,7 +12,7 @@ const SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
   ['↑ ↓', 'Speed ×2 / ÷2'],
   ['R', 'Replay intro'],
   ['C', 'Clear companions'],
-  ['F', 'Toggle FPS readout'],
+  ['F', 'Toggle HUD'],
 ];
 
 export interface ShortcutsOverlay {

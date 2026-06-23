@@ -46,7 +46,7 @@ N-body simulator.
 Drag to orbit · pinch / scroll to zoom · open the panel (top-right) to add bodies,
 change the sky, scrub time, and tune the look. Keyboard (press **?** for the full
 list): **Esc** About · **Space** Pause/Resume · **← / →** Step back / forward ·
-**↑ / ↓** double / halve Speed · **R** Replay · **C** Clear · **F** FPS.
+**↑ / ↓** double / halve Speed · **R** Replay · **C** Clear · **F** HUD.
 
 ## Splash
 

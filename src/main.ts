@@ -146,6 +146,9 @@ async function main(): Promise<void> {
       bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
       bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
       replaySplash, captureFrame,
+      setMaxFps: (fps: number) => {
+        loop.maxFps = fps;
+      },
     });
   };
   const scheduleControls = (): void => {

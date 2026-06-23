@@ -10,11 +10,11 @@ export interface HudInfo {
   gpu?: boolean;
 }
 
-/** Which optional rows the HUD shows (driven by Advanced-settings toggles). */
+/** Which optional rows the HUD shows (driven by the Display-HUD child toggles).
+ *  The resolution always shows next to the FPS, so it isn't an option. */
 export interface HudOptions {
   graph: boolean; // the frame-time sparkline
-  resolution: boolean; // res % + draw size
-  detail: boolean; // bodies · speed · CPU/GPU
+  detail: boolean; // bodies · speed · CPU/GPU · backend
 }
 
 export interface Hud {
@@ -34,28 +34,29 @@ const TARGET_MS = 1000 / 60;
 
 /**
  * A small, beautiful debug HUD pinned to the **lower-left**. Always shows the live
- * frame rate + backend; optionally a **frame-time sparkline**, the current
- * **resolution scale**, and a **detail** line (bodies · speed · CPU/GPU) — each
- * toggled from Advanced settings. Hidden by default; revealed (with a fade + pop)
- * by "Display FPS". Augments the old single-number readout.
+ * frame rate + the current **resolution scale** (right of the FPS); optionally a
+ * **frame-time sparkline** and a **detail** line (bodies · speed · CPU/GPU ·
+ * backend) — toggled by the Display-HUD child checkboxes. Hidden by default;
+ * revealed (with a fade + pop) by "Display HUD".
  */
 export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
   const el = document.createElement('div');
   el.className = 'hud';
   el.innerHTML =
-    `<div class="hud__top"><span class="hud__fps">— fps</span><span class="hud__be">${backend === 'webgpu' ? 'WebGPU' : 'WebGL2'}</span></div>` +
+    `<div class="hud__top"><span class="hud__fps">— fps</span><span class="hud__res">—</span></div>` +
     `<canvas class="hud__graph" width="${GRAPH_W}" height="${GRAPH_H}"></canvas>` +
-    `<div class="hud__ft">—</div><div class="hud__res">—</div><div class="hud__detail">—</div>`;
+    `<div class="hud__ft">—</div><div class="hud__detail">—</div>`;
   document.body.appendChild(el);
 
+  const beName = backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
   const fpsEl = el.querySelector<HTMLElement>('.hud__fps')!;
-  const ftEl = el.querySelector<HTMLElement>('.hud__ft')!;
   const resEl = el.querySelector<HTMLElement>('.hud__res')!;
+  const ftEl = el.querySelector<HTMLElement>('.hud__ft')!;
   const detailEl = el.querySelector<HTMLElement>('.hud__detail')!;
   const canvas = el.querySelector<HTMLCanvasElement>('.hud__graph')!;
   const g = canvas.getContext('2d');
 
-  const opts: HudOptions = { graph: true, resolution: true, detail: false };
+  const opts: HudOptions = { graph: true, detail: false };
   const times = new Float32Array(SAMPLES); // ring of recent frame times (ms)
   let head = 0;
   let frames = 0;
@@ -66,7 +67,6 @@ export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
   const applyOptions = (): void => {
     canvas.style.display = opts.graph ? '' : 'none';
     ftEl.style.display = opts.graph ? '' : 'none';
-    resEl.style.display = opts.resolution ? '' : 'none';
     detailEl.style.display = opts.detail ? '' : 'none';
   };
   applyOptions();
@@ -96,14 +96,13 @@ export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
         frames = 0;
         acc = 0;
         fpsEl.textContent = `${fps} fps`;
+        // Resolution always sits to the right of the FPS (replacing the backend).
+        resEl.textContent = info?.resScale !== undefined ? `${Math.round(info.resScale * 100)}%` : '';
         if (opts.graph) ftEl.textContent = `${lastMs.toFixed(1)} ms`;
-        if (opts.resolution && info?.resScale !== undefined) {
-          resEl.textContent = `res ${Math.round(info.resScale * 100)}%`;
-        }
         if (opts.detail && info) {
           const speed = info.timeScale ?? 1;
           const speedStr = speed >= 1 ? `×${Math.round(speed)}` : `×1/${Math.round(1 / speed)}`;
-          detailEl.textContent = `${info.bodies ?? 0} bodies · ${speedStr} · ${info.gpu ? 'GPU' : 'CPU'}`;
+          detailEl.textContent = `${info.bodies ?? 0} bodies · ${speedStr} · ${info.gpu ? 'GPU' : 'CPU'} · ${beName}`;
         }
       }
       if (opts.graph) drawGraph();
