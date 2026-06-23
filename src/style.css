@@ -559,10 +559,8 @@ canvas {
   color: #fff;
   font-weight: 600;
 }
-.hud__be {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+.hud__res {
+  color: rgba(255, 255, 255, 0.6); /* sits to the right of the FPS */
 }
 .hud__graph {
   display: block;
@@ -573,7 +571,6 @@ canvas {
   background: rgba(0, 0, 0, 0.28);
 }
 .hud__ft,
-.hud__res,
 .hud__detail {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.55);

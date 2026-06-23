@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.19.x — moment of creation, settings, share, rich HUD
 
+- **0.19.1** — **Cinematic frame cap**: a new **Cap frame rate** toggle + the
+  **Target FPS** slider now reaching **24** (Advanced → Quality) render at most that
+  rate, locking to the nearest display divisor so the pacing stays even (full
+  evaluation, incl. the 24-on-60Hz judder caveat, in
+  [`docs/perf-frame-rate.md`](docs/perf-frame-rate.md); default stays uncapped).
+  The **moment of creation** now overlaps the splash **earlier** (splash starts at
+  ~0.05s). HUD: **"Display FPS" → "Display HUD"**, now a **collapsible HUD section**
+  (collapsed by default) with the child toggles inside; the **resolution shows next
+  to the FPS** (where the backend was), the backend moved into the detail line, and
+  the redundant "HUD resolution" toggle is gone.
 - **0.19.0** (Phase 19) — A new **"moment of creation"** opens the intro (beat 0,
   ~0–0.18s): a full-screen CSS firework — flash, neon beams, reverberating shock
   rings — that's a *separate, deliberately cheap* mechanism from the splash (no

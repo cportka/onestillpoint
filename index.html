@@ -209,8 +209,8 @@
           }
           requestAnimationFrame(function () {
             if (cr) cr.classList.add('osp-creation--go'); // 0.00s: the burst
-            window.setTimeout(function () { window.__ospSplash(); }, 100); // 0.10s: splash overlaps
-            window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, 200); // fade creation out
+            window.setTimeout(function () { window.__ospSplash(); }, 50); // 0.05s: splash overlaps (earlier)
+            window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, 220); // fade creation out
           });
         } catch (e) {
           window.__ospSplash(); // never let the intro break the page
