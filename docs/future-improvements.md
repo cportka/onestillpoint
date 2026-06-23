@@ -24,13 +24,19 @@ of each tier.
    tilt would seal it. Dial against each new recording. *Touches: `index.html`,
    `src/style.css`, `src/core/FormationSequence.ts`.*
 
-2. **Verify the pre-warm actually flattened the stutter (S).** v0.17.1
-   `compileAsync`-compiles the raymarch WGSL under the splash (Tier 1.1, the bulk
-   of it) and the splash hides the rest. Worth a fresh recording to confirm the
-   ~24 fps fresh-load dip is gone; if a residual hitch remains it's likely the
-   bloom post-chain's first compile — pre-warm that too (an off-screen `post`
-   render already runs; may need one more, or a compile hook). *Touches:
-   `src/main.ts`, `src/render/PostPipeline.ts`.*
+2. **Fresh-load smoothness — and a video-splash fallback (S now, M later).** A
+   recording put the *live* splash at ~21 fps vs a steady 25 fps for the captured
+   GIF: the CSS+canvas splash competes with the bundle parse, WebGPU init and the
+   lil-gui DOM build for the main thread. **Done now (v0.18.0):** the heavy panel
+   is a lazy `import()` mounted at idle (off the splash) and the initial bundle is
+   smaller; `compileAsync` (v0.17.1) already hides the shader compile. **If that
+   isn't enough, the longer-term plan:** play the *already-smooth* captured splash
+   as a **`<video>`/WebM** (hardware-decoded, off the main thread — exactly why the
+   GIF is smooth), with the instant CSS splash as the first-paint poster, then
+   crossfade CSS → video → engine. The capture system (`npm run capture:splash`)
+   can emit the WebM. Fallback levers if even that lags: move physics to a Worker,
+   lazy-load GPU physics, trim the splash's CSS-filter cost. *Touches: `src/main.ts`,
+   `index.html`, `scripts/capture-splash.mjs`.*
 
 3. **A captured *scene* clip for the README (S).** v0.17.2 added a captured,
    looping **splash** GIF (`assets/splash.gif`, via `npm run capture:splash`) and
@@ -50,32 +56,32 @@ of each tier.
 
 ## Tier 2 — medium-term (features & foundations)
 
-5. **A true timeline / scrub bar, superseding Step back's limits (M).** Step
-   back (v0.16.5) reverses the orbits exactly (velocity-Verlet is time-reversible)
-   but **cannot un-happen irreversible events** — an absorbed or removed body
-   stays gone, the one-shot intro doesn't rewind, and a *very* long reverse scrub
-   accumulates floating-point drift. A small **state-history ring buffer**
-   (snapshot positions/velocities + the body set every frame, say ~10 s worth)
-   would give a proper draggable scrub bar with exact reversal *including*
-   add/remove, and a cheap "reset to T". *Touches: `src/core/TimeController.ts`,
-   `src/scene/Scene.ts`, a new history buffer + UI slider.*
+5. **A true timeline / scrub bar, superseding Step back's limits (M).**
+   *Foundation laid in v0.18.0* — [`src/core/History.ts`](../src/core/History.ts)
+   is a bounded, zero-allocation ring buffer that records the bodies' kinematics
+   each frame (with a generation tag so a restore is only valid while the body set
+   matches), unit-tested, and the loop now records into it. **Remaining:** the UI —
+   a draggable scrub bar that calls `history.restore()` (and pauses the sim while
+   scrubbing), plus deciding how to present scrubbing *across* a body-set change
+   (the generation boundary). *Touches: `src/core/TimeController.ts`, a scrub-bar
+   component.*
 
-6. **Shrink the bundle (M).** Every build warns that the main chunk is ~900 kB
-   (~250 kB gzip). The splash hides most of the cost, but code-splitting the
-   heavy bits (lazy-load `lil-gui`, defer non-critical Three add-ons) would cut
-   time-to-interactive on slow links. *Touches: `vite.config.ts`, dynamic
-   `import()` in `src/main.ts`.*
+6. **Shrink the bundle further (M).** *Progressed in v0.18.0* — the control panel
+   (lil-gui + `Controls` and friends) is now a **lazy `import()`** (its own ~52 kB
+   chunk, mounted at idle after the splash), trimming the initial bundle and
+   un-janking the load. The bulk that remains is **three.js/WebGPU** (~860 kB); the
+   next wins are lazy-loading the opt-in **GPU physics** path and pruning unused
+   Three add-ons. *Touches: dynamic `import()` in `src/main.ts` /
+   `PhysicsController.ts`, `vite.config.ts`.*
 
 7. **A richer perf overlay behind Advanced (S–M).** The HUD is now just an FPS
    number. A small frame-time graph (and the current resolution scale) behind the
    Advanced toggle would make regressions like the intro stutter visible without
    a screen recording. *Touches: `src/ui/hud.ts`, `src/ui/Controls.ts`.*
 
-8. **UI-module smoke tests (S–M).** Physics is well-tested; the UI glue
-   (`keybindings.ts`, `Controls.ts`, `stepper.ts`) is not. A jsdom test
-   environment for a few high-value cases (a key dispatches the right action and
-   ignores text fields; the speed keys double/halve and clamp) would lock in the
-   behaviour. *Touches: `vitest` config + `src/ui/*.test.ts`.*
+> **Shipped from Tier 2:** the scrub-bar **history foundation** (zero-GC ring
+> buffer + tests, v0.18.0) · control-panel **code-split** (v0.18.0) · **UI smoke
+> tests** — jsdom keybindings coverage + a History suite (v0.18.0).
 
 ---
 
@@ -114,10 +120,18 @@ of each tier.
 
 ---
 
-## Standing tooling note
+## Notes
 
-Headless verification of the **CSS/canvas splash** works (Chromium screenshots),
-but headless *virtual-time* does **not** advance compositor CSS animations — use a
-Web-Animations `currentTime` freeze (or real wall-clock) to capture keyframes.
-The canvas (main-thread rAF) does advance under virtual time. Worth remembering
-for the next splash tweak.
+**Testing structure (reviewed v0.18.0).** The suite is lean — no cruft found.
+Physics/maths is the deepest coverage (`integrators` incl. reversibility, `Scene`,
+`TimeController`, `GPUPhysicsEngine` packing, `FormationSequence`, `ResolutionScaler`,
+`quality`, `bodyUniforms`), with `tagline` guarding the README mirror. v0.18.0 added
+the first **UI smoke test** (`keybindings`, jsdom) and a **History** suite. Default
+env is Node (fast); DOM tests opt in per-file with `// @vitest-environment jsdom`,
+so the physics tests stay quick. Next gaps worth covering: `stepper` add/remove
+caps and the `Controls` speed/clamp math (currently only exercised via keybindings).
+
+**Headless splash capture.** Headless *virtual-time* does **not** advance compositor
+CSS animations — freeze them with a Web-Animations `currentTime` (the canvas, on
+main-thread rAF, *does* advance under virtual time). `scripts/capture-splash.mjs`
+relies on this two-pass trick; remember it for the next splash tweak.

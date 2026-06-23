@@ -1,6 +1,7 @@
 import { CameraRig } from './core/CameraRig';
 import { prefersReducedMotion } from './core/device';
 import { FormationSequence } from './core/FormationSequence';
+import { History } from './core/History';
 import { Loop } from './core/Loop';
 import { createRenderer } from './core/Renderer';
 import { detectQualityTier, QUALITY_TIERS, type QualityTier } from './core/quality';
@@ -14,7 +15,6 @@ import { RaymarchPass } from './render/RaymarchPass';
 import { createBlackHoleNode } from './render/tsl/raymarch';
 import { createUniforms } from './render/uniforms';
 import { Scene } from './scene/Scene';
-import { createControls } from './ui/Controls';
 import { createHud, showFatalError } from './ui/hud';
 
 declare global {
@@ -121,12 +121,29 @@ async function main(): Promise<void> {
     window.requestAnimationFrame(dismissAfterPlayed); // wait for the new first paint, then play out
   };
 
-  createControls({
-    blackHole, scene, physics, time, formation, backend, renderer, scaler,
-    bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
-    bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
-    replaySplash,
-  });
+  // Build the control panel *lazily, off the critical path*. lil-gui + the panel
+  // are a heavy, synchronous DOM build that isn't needed during the intro — doing
+  // it under the splash was janking the fresh-load animation. Code-split it (a
+  // dynamic import → its own chunk, out of the initial bundle) and mount it when
+  // the main thread is next idle, after the merger has played.
+  const mountControls = async (): Promise<void> => {
+    const { createControls } = await import('./ui/Controls');
+    createControls({
+      blackHole, scene, physics, time, formation, backend, renderer, scaler,
+      bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
+      bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
+      replaySplash,
+    });
+  };
+  const scheduleControls = (): void => {
+    if (window.requestIdleCallback) window.requestIdleCallback(() => void mountControls(), { timeout: 2500 });
+    else window.setTimeout(() => void mountControls(), 400);
+  };
+
+  // Records the bodies' kinematics each running frame — the foundation for a
+  // future timeline / scrub bar (no UI yet). Cheap + zero-allocation; the
+  // time-reversible integrator means a recorded frame can be replayed exactly.
+  const history = new History();
 
   // Hold the splash until a few frames have rendered — the WebGPU pipeline
   // finishes compiling over the first frames, which is the fresh-load hitch, so
@@ -143,6 +160,7 @@ async function main(): Promise<void> {
     uniforms.timeBlur.value = t.timeBlur;
     physics.timeScale = t.orbitMul;
     if (t.fd !== 0) physics.step(t.fd); // fd < 0 when stepping back (orbits reverse)
+    if (t.fd > 0) history.record(scene.bodies); // build the scrub timeline on forward progress
 
     updateBodyUniforms(bodyUniforms, scene, formation.progress);
     // The intro drives the camera (controls disabled) until it settles home.
@@ -170,10 +188,11 @@ async function main(): Promise<void> {
   await new Promise((resolve) => requestAnimationFrame(resolve));
   post.render();
   loop.start();
+  scheduleControls(); // mount the panel once the main thread is idle (after the splash)
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler },
+    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history },
   });
 }
 

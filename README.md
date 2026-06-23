@@ -122,6 +122,7 @@ src/
     CameraRig.ts       PerspectiveCamera + OrbitControls → camera uniforms; intro dolly driver
     Loop.ts            requestAnimationFrame driver → real frame delta
     TimeController.ts  decouples sim time from wall-clock: scale / pause / step ± / crossfade
+    History.ts         zero-alloc ring buffer of body states — foundation for a scrub bar
     FormationSequence.ts  the intro: camera dolly + disk "ignition" (skip / replay / reduced-motion)
     ResolutionScaler.ts  adaptive drawing-buffer scale from frame time
     quality.ts         device-tier auto-detect (resolution / dust step / DPR cap)
