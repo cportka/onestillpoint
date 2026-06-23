@@ -7,7 +7,6 @@ import { createRenderer } from './core/Renderer';
 import { detectQualityTier, QUALITY_TIERS, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
 import { TimeController } from './core/TimeController';
-import { GPUPhysicsEngine } from './physics/GPUPhysicsEngine';
 import { PhysicsController } from './physics/PhysicsController';
 import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
 import { createPostPipeline } from './render/PostPipeline';
@@ -22,6 +21,10 @@ declare global {
     /** Builds (and on later calls, rebuilds) the load splash; defined inline in
      *  index.html so it paints before this bundle loads. */
     __ospSplash?: () => void;
+    /** Plays the whole intro from the top: the "moment of creation" burst, then
+     *  the splash overlapping from ~0.1s. The initial-load entry point and what
+     *  "Replay intro" re-runs. */
+    __ospIntro?: () => void;
     /** Timestamp (performance.now) of the splash's first *painted* frame, set by
      *  the inline script. The crossfade waits MIN_PLAY past this so the merger is
      *  always seen — even when a heavy mobile load defers the first paint. */
@@ -53,14 +56,14 @@ async function main(): Promise<void> {
   const post = createPostPipeline(renderer, pass.scene, pass.camera);
   const loop = new Loop(renderer);
   const time = new TimeController();
-  const physics = new PhysicsController(scene, new GPUPhysicsEngine(renderer));
+  const physics = new PhysicsController(scene, renderer);
   // Default to the CPU integrator. It is exact and trivially cheap for this app's
   // body counts (≤14), and — crucially — it avoids the GPU path's per-frame
   // position+velocity read-back, which forces a CPU↔GPU sync every frame and
   // stalls the pipeline. The GPU compute kernel stays an opt-in (Advanced → GPU
   // physics): a scaling foundation for many bodies, not a win for a handful.
   const scaler = new ResolutionScaler();
-  const hud = createHud();
+  const hud = createHud(backend);
 
   // The art-directed intro: dolly in from far while the disk ignites.
   const formation = new FormationSequence(rig, uniforms.formation, {
@@ -117,8 +120,10 @@ async function main(): Promise<void> {
     window.setTimeout(dismissSplash, Math.max(0, started + MIN_SPLASH_MS - performance.now()));
   };
   const replaySplash = (): void => {
-    window.__ospSplash?.(); // rebuild + restart (instant-show over the live scene); renderer is warm
-    window.requestAnimationFrame(dismissAfterPlayed); // wait for the new first paint, then play out
+    window.__ospIntro?.(); // replay both beats: creation burst → splash (instant-show; renderer is warm)
+    // The splash starts ~0.1s into the intro and refreshes __ospSplashStart; wait
+    // past that, then play it out (dismissAfterPlayed reads the fresh start time).
+    window.setTimeout(dismissAfterPlayed, 160);
   };
 
   // Build the control panel *lazily, off the critical path*. lil-gui + the panel
@@ -126,13 +131,21 @@ async function main(): Promise<void> {
   // it under the splash was janking the fresh-load animation. Code-split it (a
   // dynamic import → its own chunk, out of the initial bundle) and mount it when
   // the main thread is next idle, after the merger has played.
+  // Capture the current view to a PNG (for the Share button). Render once so the
+  // canvas has a fresh frame, wait for it to present, then read it back.
+  const captureFrame = async (): Promise<Blob | null> => {
+    post.render();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const canvas = renderer.domElement as HTMLCanvasElement;
+    return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
+  };
   const mountControls = async (): Promise<void> => {
     const { createControls } = await import('./ui/Controls');
     createControls({
       blackHole, scene, physics, time, formation, backend, renderer, scaler,
       bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
       bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
-      replaySplash,
+      replaySplash, captureFrame,
     });
   };
   const scheduleControls = (): void => {
@@ -167,7 +180,12 @@ async function main(): Promise<void> {
     if (formation.done) rig.update();
     else formation.update(frameDelta);
     post.render();
-    hud.update(frameDelta);
+    hud.update(frameDelta, {
+      resScale: scaler.scale,
+      bodies: scene.companions.length,
+      timeScale: time.timeScale,
+      gpu: physics.useGPU,
+    });
 
     if (warmFrames < WARM_FRAMES) {
       warmFrames += 1;

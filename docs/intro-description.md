@@ -9,7 +9,14 @@ whenever the intro changes substantially, and always record the version.
 > + an iOS **Safari** recording (1170×2532), default scene / **Stars** / **Physical**.
 > Analysed with the Portka `video-bug-analysis` workflow (contact sheets).
 
-## What actually happens — the splash (~0–0.7 s)
+## What actually happens — the moment of creation (~0–0.18 s)
+
+0. **A full-screen burst** (beat 0, v0.19.0): a white-hot flash, neon beams
+   sweeping to the edges, and reverberating white → cyan → pink shock rings. It's a
+   separate, deliberately cheap pure-CSS mechanism (no canvas) so it's instant and
+   identical on every device, and it overlaps the splash from ~0.1 s.
+
+## What actually happens — the splash (~0.1–0.75 s)
 
 1. **Two warm orbs** (a white-gold + an amber twin) twirl together in an
    accelerating inspiral, surrounded by **warm dust** already spiralling inward and

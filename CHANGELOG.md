@@ -3,6 +3,23 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.19.x — moment of creation, settings, share, rich HUD
+
+- **0.19.0** (Phase 19) — A new **"moment of creation"** opens the intro (beat 0,
+  ~0–0.18s): a full-screen CSS firework — flash, neon beams, reverberating shock
+  rings — that's a *separate, deliberately cheap* mechanism from the splash (no
+  canvas), so it's instant and consistent on every device; the splash overlaps it
+  from ~0.1s. The three intro **beats** are now documented explicitly. **Settings
+  persistence**: every panel control (Filter, Background, Speed, all Look /
+  Animation / Bloom / Quality / HUD knobs, toggles) now auto-saves to one
+  `localStorage` profile and auto-loads on start; **Advanced settings defaults
+  off**. New **Share** button (top row): captures the view and throws to the OS
+  share sheet on mobile, or copies the image to the clipboard (✓) on desktop. A
+  rich lower-left **HUD** — frame-time graph + resolution % + a bodies/speed/physics
+  detail line, with Advanced toggles — augments the FPS readout. A witty
+  [**privacy statement**](PRIVACY.md) linked from About. Bundle: **GPU physics**
+  lazy-loads now too.
+
 ## 0.18.x — load smoothness + Tier-2 foundations
 
 - **0.18.0** (Phase 18) — **Fresh-load smoothness**: a recording put the live splash
@@ -170,3 +187,4 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 | 15–16 | CPU-physics perf pass + load splash; spaghettification + background controls |
 | 17 | Intro robustness (mobile first-paint splash) + Tier-1 polish (shortcuts, hero) |
 | 18 | Load smoothness (lazy panel / code-split) + Tier-2 foundations (history buffer, UI tests) |
+| 19 | Moment-of-creation intro beat; full settings persistence; Share button; rich HUD |

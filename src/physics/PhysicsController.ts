@@ -1,3 +1,4 @@
+import type { WebGPURenderer } from 'three/webgpu';
 import type { Scene } from '../scene/Scene';
 import type { GPUPhysicsEngine } from './GPUPhysicsEngine';
 
@@ -20,15 +21,19 @@ import type { GPUPhysicsEngine } from './GPUPhysicsEngine';
  */
 export class PhysicsController {
   useGPU = false;
+  /** Created lazily on the first switch to GPU — its compute kernels (and their
+   *  Three TSL deps) are then code-split out of the initial bundle. */
+  private gpu: GPUPhysicsEngine | null = null;
+  private gpuTimeScale = 80;
 
   constructor(
     private readonly scene: Scene,
-    private readonly gpu: GPUPhysicsEngine,
+    private readonly renderer: WebGPURenderer,
   ) {}
 
   step(frameDelta: number): void {
-    if (this.useGPU) this.gpu.step(frameDelta);
-    else this.scene.step(frameDelta);
+    if (this.useGPU && this.gpu) this.gpu.step(frameDelta);
+    else this.scene.step(frameDelta); // CPU until the GPU engine has finished loading
     // Advance absorption fades and free any companion that escaped or finished
     // merging into the centre; rebuild the GPU buffers for the smaller set. These
     // are one-way wall-clock animations, so they always advance forward — even
@@ -37,14 +42,22 @@ export class PhysicsController {
     if (this.scene.prune(Math.abs(frameDelta))) this.syncBodies();
   }
 
-  setGPU(on: boolean): void {
+  async setGPU(on: boolean): Promise<void> {
     this.useGPU = on;
-    if (on) this.gpu.setBodies(this.scene.bodies);
+    if (!on) return;
+    if (!this.gpu) {
+      // Lazy import: keeps the WebGPU compute kernels out of the initial bundle
+      // (the CPU integrator is the default and wins for the body counts here).
+      const { GPUPhysicsEngine } = await import('./GPUPhysicsEngine');
+      this.gpu = new GPUPhysicsEngine(this.renderer);
+      this.gpu.timeScale = this.gpuTimeScale;
+    }
+    this.gpu.setBodies(this.scene.bodies);
   }
 
   /** Rebuild GPU buffers after a body was added/removed (no-op on CPU). */
   syncBodies(): void {
-    if (this.useGPU) this.gpu.setBodies(this.scene.bodies);
+    if (this.useGPU && this.gpu) this.gpu.setBodies(this.scene.bodies);
   }
 
   get timeScale(): number {
@@ -53,6 +66,7 @@ export class PhysicsController {
 
   set timeScale(value: number) {
     this.scene.physics.timeScale = value;
-    this.gpu.timeScale = value;
+    this.gpuTimeScale = value;
+    if (this.gpu) this.gpu.timeScale = value;
   }
 }

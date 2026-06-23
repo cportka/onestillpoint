@@ -33,6 +33,100 @@ canvas {
   touch-action: none;
 }
 
+/* --- The "moment of creation" (intro beat 0, ~0.0–0.18s). A separate, cheap
+   mechanism from the splash: pure CSS (no canvas / JS loop), GPU-composited
+   transforms + gradients only (no blur), so it's instant and identical on every
+   device. A full-screen burst of light, neon beams and reverberating rings. The
+   inline script adds --go on the first painted frame, then --hide as the splash
+   takes over (overlapping from ~0.1s). Kept smooth, not strobing. --- */
+#osp-creation {
+  position: fixed;
+  inset: 0;
+  z-index: 2100; /* above the splash (2000) until it fades out */
+  background: #05060a; /* same as the splash, so the cross-fade reveals it seamlessly */
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+#osp-creation.osp-creation--hide {
+  opacity: 0;
+}
+.osp-cr {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation-play-state: paused; /* held until --go on the first painted frame */
+  animation-fill-mode: forwards;
+}
+.osp-creation--go .osp-cr {
+  animation-play-state: running;
+}
+/* The white-hot seed at the centre. */
+.osp-cr-core {
+  width: 7vmax;
+  height: 7vmax;
+  margin: -3.5vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff6e0 38%, transparent 72%);
+  animation: osp-cr-core 0.18s ease-out;
+}
+@keyframes osp-cr-core {
+  0% { transform: scale(0); opacity: 0; }
+  28% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.18); opacity: 0; }
+}
+/* Full-screen flashes of light. */
+.osp-cr-flash {
+  width: 30vmax;
+  height: 30vmax;
+  margin: -15vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c, #fff) 0%, rgba(255, 255, 255, 0.28) 30%, transparent 62%);
+  animation: osp-cr-flash 0.2s ease-out var(--d, 0s);
+}
+@keyframes osp-cr-flash {
+  0% { transform: scale(0.04); opacity: 0; }
+  22% { opacity: 0.95; }
+  100% { transform: scale(8); opacity: 0; }
+}
+/* Neon beams sweeping out to the edges. */
+.osp-cr-ray {
+  width: 150vmax;
+  height: 0.7vmax;
+  margin: -0.35vmax 0 0 0;
+  transform-origin: 0 50%;
+  border-radius: 1vmax;
+  background: linear-gradient(90deg, #fff 0%, var(--c, #fff) 16%, transparent 72%);
+  animation: osp-cr-ray 0.22s cubic-bezier(0.1, 0.7, 0.3, 1) var(--d, 0s);
+}
+@keyframes osp-cr-ray {
+  0% { transform: rotate(var(--a, 0deg)) scaleX(0.02); opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { transform: rotate(var(--a, 0deg)) scaleX(1); opacity: 0; }
+}
+/* Reverberating shock rings. */
+.osp-cr-ring {
+  width: 12vmax;
+  height: 12vmax;
+  margin: -6vmax;
+  border-radius: 50%;
+  border: 0.5vmax solid var(--c, #fff);
+  animation: osp-cr-ring 0.28s ease-out var(--d, 0s);
+}
+@keyframes osp-cr-ring {
+  0% { transform: scale(0.1); opacity: 0; }
+  18% { opacity: 0.85; }
+  100% { transform: scale(13); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .osp-cr {
+    animation-duration: 0.01s;
+  }
+}
+
 /* --- Load splash (Phase 15): an instant, JS-free black-and-white "formation"
    that paints before the WebGPU shader compiles, then crossfades to the live
    scene. A cluster of bodies spirals inward (accretion) and merges into the
@@ -436,14 +530,17 @@ canvas {
   left: max(12px, env(safe-area-inset-left));
   bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 10;
-  padding: 3px 8px;
-  border-radius: 7px;
-  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: rgba(255, 255, 255, 0.7);
+  padding: 6px 9px 7px;
+  border-radius: 8px;
+  background: rgba(16, 17, 22, 0.62);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: rgba(255, 255, 255, 0.72);
   letter-spacing: 0.04em;
   pointer-events: none;
   user-select: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   /* Hidden until toggled; a tasteful fade + slide, with a one-shot highlight
      pulse on appear so it's easy to spot where the readout lives. */
   opacity: 0;
@@ -451,6 +548,35 @@ canvas {
   transition:
     opacity 0.3s ease,
     transform 0.34s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.hud__top {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.hud__fps {
+  color: #fff;
+  font-weight: 600;
+}
+.hud__be {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.hud__graph {
+  display: block;
+  width: 124px;
+  height: 26px;
+  margin: 4px 0 2px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.hud__ft,
+.hud__res,
+.hud__detail {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
 }
 .hud.hud--on {
   opacity: 1;
@@ -666,20 +792,21 @@ canvas {
   }
 }
 
-/* Top row: About button on the left, version chip filling the rest. */
+/* Top row: About + Share buttons on the left, version chip filling the rest. */
 .osp-toprow {
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .osp-toprow .osp-version {
-  flex: 1 1 50%;
+  flex: 1 1 38%;
   border-bottom: 0;
 }
-.osp-about-btn {
-  flex: 1 1 50%;
+.osp-about-btn,
+.osp-share-btn {
+  flex: 1 1 31%;
   text-align: center;
-  padding: 7px 12px;
+  padding: 7px 10px;
   border: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
@@ -690,9 +817,17 @@ canvas {
   color: rgba(255, 255, 255, 0.5);
   transition: color 0.15s, background 0.15s;
 }
-.osp-about-btn:hover {
+.osp-about-btn:hover,
+.osp-share-btn:hover {
   color: rgba(255, 255, 255, 0.92);
   background: rgba(255, 255, 255, 0.05);
+}
+.osp-share-btn.is-busy {
+  color: rgba(255, 255, 255, 0.4);
+}
+.osp-share-btn.is-done {
+  color: #7CFFB0; /* confirmed: "copied ✓" / "shared ✓" */
+  background: rgba(80, 220, 140, 0.12);
 }
 
 /* About modal. */

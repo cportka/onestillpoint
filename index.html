@@ -27,6 +27,25 @@
          a tilted jet, colour plumes and reverberating shock rings burst forth,
          and the dark event horizon settles into the final circle. Paints on first
          paint (static markup + a tiny synchronous generator), so it can't be late. -->
+    <!-- The "moment of creation" (beat 0: ~0.0–0.18s). A separate, deliberately
+         *cheap* mechanism from the splash below: pure CSS (no canvas, no JS loop) —
+         a full-screen burst of light, beams and reverberating rings that paints on
+         first paint and is the same on every device. The splash overlaps it from
+         ~0.1s; the creation fades out as the splash takes over. -->
+    <div id="osp-creation" aria-hidden="true">
+      <i class="osp-cr osp-cr-core"></i>
+      <i class="osp-cr osp-cr-flash" style="--d:0s;--c:#fff7e8"></i>
+      <i class="osp-cr osp-cr-flash" style="--d:.05s;--c:#ffd9a0"></i>
+      <i class="osp-cr osp-cr-ray" style="--a:14deg;--c:#ffe0a0;--d:.01s"></i>
+      <i class="osp-cr osp-cr-ray" style="--a:79deg;--c:#ff3cc0;--d:.04s"></i>
+      <i class="osp-cr osp-cr-ray" style="--a:142deg;--c:#36e0ff;--d:.02s"></i>
+      <i class="osp-cr osp-cr-ray" style="--a:206deg;--c:#fff2d6;--d:.05s"></i>
+      <i class="osp-cr osp-cr-ray" style="--a:268deg;--c:#ffae4f;--d:.03s"></i>
+      <i class="osp-cr osp-cr-ray" style="--a:331deg;--c:#b06aff;--d:.06s"></i>
+      <i class="osp-cr osp-cr-ring" style="--c:#fff2d6;--d:0s"></i>
+      <i class="osp-cr osp-cr-ring" style="--c:#36e0ff;--d:.07s"></i>
+      <i class="osp-cr osp-cr-ring" style="--c:#ff6aa0;--d:.13s"></i>
+    </div>
     <div id="osp-splash" aria-hidden="true"><div class="osp-splash__stage"></div></div>
     <!-- Build the whole splash synchronously (before the module bundle) so it
          paints on first paint. Exposed as window.__ospSplash so "Replay intro"
@@ -177,7 +196,27 @@
           /* the splash is non-essential — never let it break the page */
         }
       };
-      window.__ospSplash();
+      // The intro's first two beats, sequenced off the *first painted frame* (so a
+      // deferred mobile paint still plays them in full): beat 0 — the cheap
+      // full-screen "moment of creation" — then, overlapping from ~0.1s, beat 1 —
+      // the binary-merger splash. The creation fades out as the splash takes over.
+      window.__ospIntro = function () {
+        try {
+          var cr = document.getElementById('osp-creation');
+          if (cr) {
+            cr.className = 'osp-creation'; // reset for replay (drop --go / --hide)
+            void cr.offsetWidth; // force reflow so the CSS animations restart
+          }
+          requestAnimationFrame(function () {
+            if (cr) cr.classList.add('osp-creation--go'); // 0.00s: the burst
+            window.setTimeout(function () { window.__ospSplash(); }, 100); // 0.10s: splash overlaps
+            window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, 200); // fade creation out
+          });
+        } catch (e) {
+          window.__ospSplash(); // never let the intro break the page
+        }
+      };
+      window.__ospIntro();
     </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
