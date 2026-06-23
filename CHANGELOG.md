@@ -3,6 +3,21 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.18.x — load smoothness + Tier-2 foundations
+
+- **0.18.0** (Phase 18) — **Fresh-load smoothness**: a recording put the live splash
+  at ~21 fps vs the captured GIF's steady 25 — the CSS+canvas splash was competing
+  with the bundle parse and the **lil-gui panel build** for the main thread. The
+  control panel is now a **lazy `import()`** (its own ~52 kB chunk) **mounted at idle
+  after the splash**, so the heavy DOM build is off the critical path and the initial
+  bundle is smaller. A documented **longer-term plan** (a hardware-decoded
+  `<video>`/WebM splash) is in [`docs/future-improvements.md`](docs/future-improvements.md)
+  if that isn't enough. **Tier-2 foundations**: a zero-allocation **history ring
+  buffer** ([`src/core/History.ts`](src/core/History.ts)) records the bodies each
+  frame — the groundwork for a scrub bar (no UI yet). **Tests**: first **UI smoke
+  test** (jsdom `keybindings`) + a `History` suite; the suite was reviewed (lean, no
+  cruft) — 50 tests.
+
 ## 0.17.x — intro robustness + Tier-1 polish
 
 - **0.17.2** — Splash cohesion: the dust is now one **continuous breath** per
@@ -154,3 +169,4 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 | 12–14 | Body steppers + caps + About; selectable backgrounds; background revamp |
 | 15–16 | CPU-physics perf pass + load splash; spaghettification + background controls |
 | 17 | Intro robustness (mobile first-paint splash) + Tier-1 polish (shortcuts, hero) |
+| 18 | Load smoothness (lazy panel / code-split) + Tier-2 foundations (history buffer, UI tests) |
