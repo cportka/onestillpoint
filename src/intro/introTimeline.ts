@@ -36,18 +36,22 @@ export const INTRO_BEATS = [
 
 /**
  * The intro's timing constants (milliseconds). The inline boot script in
- * `index.html` mirrors `blackMs`, `splashOffsetMs` and `creationHideMs` verbatim —
+ * `index.html` mirrors `blackMs`, `splashPrebuildMs` and `creationHideMs` verbatim —
  * change them here *and there together* (the inline-sync test enforces it).
  */
 export const INTRO_TIMING = {
   /** Beat A: how long the screen holds pure black before anything paints. */
-  blackMs: 250,
+  blackMs: 500,
   /** Beat B: the test pattern is a literal single painted frame (held one rAF). */
   flashFrames: 1,
-  /** Beat D: the splash starts this long *after* the test pattern / creation burst. */
-  splashOffsetMs: 50,
-  /** Creation fades out this long after its burst begins (it hands off to the splash). */
-  creationHideMs: 220,
+  /** The splash is **prebuilt** this far into the black hold — on an idle thread,
+   *  hidden under the opaque creation — so it can play *instantly* at the burst (no
+   *  build hitch, no black gap). It then plays on the same frame as the creation burst
+   *  (`--go`), crossfading straight out of it. */
+  splashPrebuildMs: 300,
+  /** Creation fades out this long after its burst begins, straight into the now-playing
+   *  splash merger (short, because the splash is already up — no void to bridge). */
+  creationHideMs: 180,
   /** Replay: the live view "melts" inward toward the One Still Point for this long
    *  before the intro replays from the black screen. */
   meltMs: 2000,
@@ -56,7 +60,8 @@ export const INTRO_TIMING = {
 /**
  * When (ms after the intro starts) the splash is reliably *covering* the screen with
  * its opaque backdrop — i.e. the first moment it's safe to un-melt the engine canvas
- * underneath, and to start counting down the splash's minimum on-screen time. A
- * generous margin past the black hold + the one-frame flash + the splash offset.
+ * underneath, and to start counting down the splash's minimum on-screen time. The
+ * splash plays on the burst's frame (~blackMs + a couple frames), so a generous margin
+ * past the black hold covers it.
  */
-export const SPLASH_COVERS_AT_MS = INTRO_TIMING.blackMs + INTRO_TIMING.splashOffsetMs + 150;
+export const SPLASH_COVERS_AT_MS = INTRO_TIMING.blackMs + 200;

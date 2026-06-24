@@ -15,17 +15,21 @@ describe('intro timeline', () => {
     expect(fps.engine).toBe(0); // 0 = the physics model's own (cappable) rate
   });
 
-  it('holds black for 0.25s and flashes the test pattern for a single frame', () => {
-    expect(INTRO_TIMING.blackMs).toBe(250);
+  it('holds black for 0.5s and flashes the test pattern for a single frame', () => {
+    expect(INTRO_TIMING.blackMs).toBe(500);
     expect(INTRO_TIMING.flashFrames).toBe(1);
+  });
+
+  it('prebuilds the splash during the black hold (before the burst)', () => {
+    expect(INTRO_TIMING.splashPrebuildMs).toBeLessThan(INTRO_TIMING.blackMs);
   });
 
   it('melts inward for 2s before replaying', () => {
     expect(INTRO_TIMING.meltMs).toBe(2000);
   });
 
-  it('only un-melts / dismisses once the splash is covering (past the black hold + offset)', () => {
-    expect(SPLASH_COVERS_AT_MS).toBeGreaterThan(INTRO_TIMING.blackMs + INTRO_TIMING.splashOffsetMs);
+  it('only un-melts / dismisses once the splash is covering (past the black hold)', () => {
+    expect(SPLASH_COVERS_AT_MS).toBeGreaterThan(INTRO_TIMING.blackMs);
   });
 });
 
@@ -37,8 +41,9 @@ describe('inline index.html boot script stays in sync', () => {
   it('uses blackMs for the black-hold setTimeout', () => {
     expect(html).toMatch(new RegExp(`\\}, ${INTRO_TIMING.blackMs}\\);`));
   });
-  it('uses splashOffsetMs for the splash overlap', () => {
-    expect(html).toMatch(new RegExp(`__ospSplash\\(\\); \\}, ${INTRO_TIMING.splashOffsetMs}\\)`));
+  it('prebuilds the splash during the black hold, then plays it at the burst', () => {
+    expect(html).toMatch(new RegExp(`__ospSplash\\(true\\); \\}, ${INTRO_TIMING.splashPrebuildMs}\\)`));
+    expect(html).toContain('window.__ospSplashPlay()'); // played on the creation-burst frame
   });
   it('uses creationHideMs for the creation fade-out', () => {
     expect(html).toMatch(new RegExp(`osp-creation--hide'\\); \\}, ${INTRO_TIMING.creationHideMs}\\)`));
