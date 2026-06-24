@@ -85,11 +85,17 @@ canvas.osp-melting {
   top: 50%;
   opacity: 0;
   will-change: transform, opacity;
-  animation-play-state: paused; /* held until --go on the first painted frame */
   animation-fill-mode: forwards;
 }
-.osp-creation--go .osp-cr {
-  animation-play-state: running;
+/* Hold the ENTIRE burst paused until the black hold + test pattern have played and the
+   inline script adds --go. This rule needs **higher specificity** than the per-element
+   `animation:` shorthands below — the shorthand resets `animation-play-state` to its
+   initial `running`, which is the bug that made the burst fire on page-load (before the
+   black). `#osp-creation:not(--go) .osp-cr` (id + 2 classes) beats `.osp-cr-core` (1
+   class), so the burst genuinely waits; once --go lands, :not stops matching and each
+   element's own `running` resumes it from 0%. */
+#osp-creation:not(.osp-creation--go) .osp-cr {
+  animation-play-state: paused;
 }
 /* The white-hot seed at the centre. */
 .osp-cr-core {

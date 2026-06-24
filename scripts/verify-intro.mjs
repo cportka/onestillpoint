@@ -85,12 +85,33 @@ writeFileSync(
     `<body style="margin:0;background:#000">${creationMarkup}${harness}</body></html>`,
 );
 
+// A second harness — the **cascade guard**. WITHOUT freezing anything, read the
+// computed animation-play-state of burst elements before and after --go. The burst
+// MUST be `paused` until --go: a high-specificity rule has to beat the per-element
+// `animation:` shorthands (which reset play-state to `running` — the bug that fired
+// the whole burst on page-load, *before* the black hold). Computed synchronously so
+// --dump-dom captures it without waiting for a frame.
+const psFile = join(ROOT, '__intro_playstate.html');
+writeFileSync(
+  psFile,
+  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/style.css"></head>` +
+    `<body style="margin:0;background:#000">${creationMarkup}<pre id="r">pending</pre><script>` +
+    `var cr=document.getElementById('osp-creation');` +
+    `var core=document.querySelector('.osp-cr-core'),ring=document.querySelector('.osp-cr-ring');` +
+    `var b=getComputedStyle(core).animationPlayState+'/'+getComputedStyle(ring).animationPlayState;` +
+    `cr.classList.add('osp-creation--go');` +
+    `var a=getComputedStyle(core).animationPlayState+'/'+getComputedStyle(ring).animationPlayState;` +
+    `document.getElementById('r').textContent='BEFORE='+b+' AFTER='+a;` +
+    `</script></body></html>`,
+);
+
 const PORT = 8137;
 spawnSync('pkill', ['-f', `http.server ${PORT}`]);
 const httpd = spawn('python3', ['-m', 'http.server', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
 const cleanup = () => {
   httpd.kill('SIGKILL');
   rmSync(file, { force: true });
+  rmSync(psFile, { force: true });
 };
 process.on('exit', cleanup);
 const base = `http://localhost:${PORT}`;
@@ -141,12 +162,25 @@ const lines = meanLuma(png.lines);
 const linesCol = sampleColumn(png.lines, 12);
 const creation = meanLuma(png.creation);
 
+// Cascade guard: read the computed play-state from the second harness via --dump-dom.
+const psDump =
+  spawnSync(CHROME, [...headlessFlag, '--no-sandbox', '--disable-gpu', '--dump-dom', `${base}/__intro_playstate.html`], {
+    timeout: 30000,
+    maxBuffer: 1e7,
+    encoding: 'utf8',
+  }).stdout || '';
+const ps = psDump.match(/BEFORE=([^\s<]+) AFTER=([^\s<]+)/);
+const [psBefore, psAfter] = ps ? [ps[1], ps[2]] : ['(none)', '(none)'];
+
 const checks = [
   ['black hold is ~pure black', black <= 12, `mean luma ${black}`],
   ['test pattern is ~half-bright', lines >= 70 && lines <= 185, `mean luma ${lines}`],
   ['test pattern has white+black bands', Math.max(...linesCol) >= 200 && Math.min(...linesCol) <= 55,
     `rows ${Math.min(...linesCol)}…${Math.max(...linesCol)}`],
   ['creation burst paints over black', creation > black + 8, `mean luma ${creation} vs black ${black}`],
+  // The crucial one the last two patches lacked: the burst must NOT play on page-load.
+  ['burst is PAUSED before --go (waits for the black)', psBefore === 'paused/paused', `before=${psBefore}`],
+  ['burst RUNS after --go', psAfter === 'running/running', `after=${psAfter}`],
 ];
 
 console.log('verify-intro:');
