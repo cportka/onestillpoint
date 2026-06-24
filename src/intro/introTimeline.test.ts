@@ -15,11 +15,16 @@ describe('intro timeline', () => {
     expect(fps.engine).toBe(0); // 0 = the physics model's own (cappable) rate
   });
 
-  it('holds black for 0.5s and the test pattern briefly over the ramping burst', () => {
+  it('holds black for 0.5s, then a split-second of black before the burst', () => {
     expect(INTRO_TIMING.blackMs).toBe(500);
-    // Held long enough to cover the burst's fade-in, but still a quick flash.
-    expect(INTRO_TIMING.patternHoldMs).toBeGreaterThan(16);
-    expect(INTRO_TIMING.patternHoldMs).toBeLessThan(100);
+    // A real but tiny black beat between the interference pattern and the creation.
+    expect(INTRO_TIMING.blackSplitMs).toBeGreaterThan(16);
+    expect(INTRO_TIMING.blackSplitMs).toBeLessThan(160);
+  });
+
+  it('plays the splash only as the creation fades (its own beat, orbs visible)', () => {
+    // creationHideMs is a real beat-length, not an instant hand-off.
+    expect(INTRO_TIMING.creationHideMs).toBeGreaterThan(200);
   });
 
   it('prebuilds the splash during the black hold (before the burst)', () => {
@@ -43,15 +48,16 @@ describe('inline index.html boot script stays in sync', () => {
   it('uses blackMs for the black-hold setTimeout', () => {
     expect(html).toMatch(new RegExp(`\\}, ${INTRO_TIMING.blackMs}\\);`));
   });
-  it('prebuilds the splash during the black hold, then plays it at the burst', () => {
+  it('prebuilds the splash during the black hold (played later, at the creation fade)', () => {
     expect(html).toMatch(new RegExp(`__ospSplash\\(true\\); \\}, ${INTRO_TIMING.splashPrebuildMs}\\)`));
-    expect(html).toContain('window.__ospSplashPlay()'); // played on the creation-burst frame
+    expect(html).toContain('window.__ospSplashPlay()');
   });
-  it('lifts the test pattern after patternHoldMs (so the burst is lit, no black gap)', () => {
-    expect(html).toMatch(new RegExp(`osp-lines--on'\\); \\}, ${INTRO_TIMING.patternHoldMs}\\)`));
+  it('waits blackSplitMs (the tiny black) between the pattern and the burst', () => {
+    expect(html).toMatch(new RegExp(`\\}, ${INTRO_TIMING.blackSplitMs}\\);`));
   });
-  it('uses creationHideMs for the creation fade-out', () => {
-    expect(html).toMatch(new RegExp(`osp-creation--hide'\\); \\}, ${INTRO_TIMING.creationHideMs}\\)`));
+  it('plays the splash as the creation fades, after creationHideMs', () => {
+    expect(html).toMatch(new RegExp(`osp-creation--hide`));
+    expect(html).toMatch(new RegExp(`__ospSplashPlay\\(\\);\\s*\\}, ${INTRO_TIMING.creationHideMs}\\)`));
   });
   it('resets __ospSplashStart at the start of every intro', () => {
     expect(html).toContain('window.__ospSplashStart = undefined');

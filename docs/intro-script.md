@@ -217,6 +217,15 @@ turning, for as long as you want to watch.
 
 ## Tuning log & targets
 
+- **[done · v0.20.6] Separate the beats: tiny black → creation → splash (orbs visible).**
+  v0.20.5 over-merged them — the moment of creation blurred into the splash and the
+  **twirling orbs were hidden** (the splash played *under* the burst, so the orbs
+  finished off-screen). Corrected to distinct beats: the interference pattern → a
+  **deliberate split-second of black** (`blackSplitMs`) → the **moment of creation as
+  its own beat** (`creationHideMs` ≈ 0.34s) → *then* the prebuilt splash is played **as
+  the creation fades**, so the orbs play fresh and **visible** rather than under the
+  burst. (Earlier "start the splash way earlier" guidance reversed per the next
+  recording — separation reads better than maximal overlap.)
 - **[done · v0.20.5] Test pattern hands *directly* to the lit burst (no black flash).**
   A recording: black + test pattern looked great, but then it briefly **went back to
   black** before the creation. Cause: the burst was fired *as* the pattern was removed,

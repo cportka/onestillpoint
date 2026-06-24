@@ -5,6 +5,14 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.6** — **Separate the beats; bring back the twirling orbs.** v0.20.5 over-merged
+  the moment of creation into the splash — they blurred together and the splash's
+  **twirling orbs were hidden** (the splash played *under* the burst, so they finished
+  off-screen). Now the beats are distinct: interference pattern → a deliberate
+  **split-second of black** → the **moment of creation as its own beat** (~0.34s) →
+  *then* the prebuilt splash plays **as the creation fades**, so the orbs play fresh and
+  **visible**. (Reverses the "start the splash way earlier" overlap from 0.20.4–0.20.5 —
+  separation reads better.)
 - **0.20.5** — **Test pattern hands straight to the lit creation (no black flash).** A
   recording showed the black + test pattern looking great, but then briefly going **back
   to black** before the moment of creation — because the burst was fired *as* the pattern

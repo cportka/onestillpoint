@@ -36,24 +36,25 @@ export const INTRO_BEATS = [
 
 /**
  * The intro's timing constants (milliseconds). The inline boot script in
- * `index.html` mirrors `blackMs`, `splashPrebuildMs`, `patternHoldMs` and `creationHideMs` —
+ * `index.html` mirrors `blackMs`, `splashPrebuildMs`, `blackSplitMs` and `creationHideMs` —
  * change them here *and there together* (the inline-sync test enforces it).
  */
 export const INTRO_TIMING = {
   /** Beat A: how long the screen holds pure black before anything paints. */
   blackMs: 500,
-  /** Beat B: the test pattern is held this long over the *ramping* creation burst (the
-   *  opaque bands hide the burst's ~50ms fade-in), then lifted to reveal an already-lit
-   *  creation — so the pattern hands straight to the burst with no black gap. */
-  patternHoldMs: 45,
-  /** The splash is **prebuilt** this far into the black hold — on an idle thread,
-   *  hidden under the opaque creation — so it can play *instantly* at the burst (no
-   *  build hitch, no black gap). It then plays on the same frame as the creation burst
-   *  (`--go`), crossfading straight out of it. */
+  /** Beat B → C: after the interference pattern flashes off, a deliberate *split-second*
+   *  of black, then the moment of creation fires — the pattern leads into a tiny black,
+   *  then straight into the burst. */
+  blackSplitMs: 70,
+  /** The splash is **prebuilt** this far into the black hold — on an idle thread, hidden
+   *  under the opaque creation — so it can play *instantly* later (no build hitch). It's
+   *  played as the creation *fades* (see creationHideMs), so the twirling orbs play fresh
+   *  and visible. */
   splashPrebuildMs: 300,
-  /** Creation fades out this long after its burst begins, straight into the now-playing
-   *  splash merger (short, because the splash is already up — no void to bridge). */
-  creationHideMs: 180,
+  /** The creation burst plays this long as its **own distinct beat**, then fades — and the
+   *  splash is played at that fade, so the orbs read as a *separate*, visible beat instead
+   *  of being hidden under the burst. */
+  creationHideMs: 340,
   /** Replay: the live view "melts" inward toward the One Still Point for this long
    *  before the intro replays from the black screen. */
   meltMs: 2000,
