@@ -149,3 +149,7 @@ __cap_*.html
 # Intro-verify scratch (npm run verify:intro)
 .intro-verify/
 __intro_*.html
+
+# Creation-capture scratch (npm run capture:creation)
+.creation-capture/
+__cre_*.html
