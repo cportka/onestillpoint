@@ -46,7 +46,8 @@ export function createHudFolder(gui: GUI, hud: Hud, prefs: { showFps: boolean },
   box.setAttribute('aria-label', 'Display HUD');
   box.addEventListener('click', (e) => e.stopPropagation()); // tick the box without toggling the folder
   box.addEventListener('change', () => showCtrl.setValue(box.checked));
-  folder.$title.prepend(box);
+  folder.$title.classList.add('osp-hud-title'); // flex, so the checkbox sits at the right
+  folder.$title.append(box); // to the *right* of the label (after the caret + text)
   folder.$title.title =
     'Show the lower-left HUD — frame rate + resolution, plus the child rows below. ' +
     'Tick this box to toggle it (the F key does too); the row arrow expands its options.';

@@ -153,3 +153,6 @@ __intro_*.html
 # Creation-capture scratch (npm run capture:creation)
 .creation-capture/
 __cre_*.html
+
+# Video-bug-analyzer frame extraction (Portka Tools)
+.frames/

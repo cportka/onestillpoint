@@ -763,12 +763,17 @@ canvas.osp-melting {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* Compact "Display HUD" toggle: a checkbox injected into the folder *title* (between
-   lil-gui's caret and the label). Clicking it toggles the HUD without expanding the
-   folder — the input stops click propagation (see ui/hudFolder.ts). */
+/* Compact "Display HUD" toggle: a checkbox injected into the folder *title*, sitting
+   at the **right** edge (after the caret + label). Clicking it toggles the HUD without
+   expanding the folder — the input stops click propagation (see ui/hudFolder.ts). The
+   flex + margin-left:auto pushes it right; scoped to this title so other folders are
+   untouched. */
+.lil-gui .lil-title.osp-hud-title {
+  display: flex;
+  align-items: center;
+}
 .lil-gui .lil-title .osp-hud-titlebox {
-  margin: 0 6px 0 2px;
-  vertical-align: middle;
+  margin: 0 2px 0 auto; /* auto-left margin → flush to the right edge of the title */
   accent-color: #7ee787; /* the app's confirm-green */
   cursor: pointer;
 }

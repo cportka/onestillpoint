@@ -196,6 +196,15 @@
             else { ctx.clearRect(0, 0, W, H); splash.__raf = 0; splash.__hideAt = 0; }
           }
           splash.__raf = requestAnimationFrame(draw);
+          // The splash is now built and covering the screen, so load the heavy engine
+          // bundle *under* it. It's deferred from page load (see __ospBoot at the
+          // bottom) so the cheap CSS prelude ran on an unstarved main thread — keeping
+          // the beats in order and closing the black gap that opened when the 860KB
+          // parse + WebGPU compile competed with the prelude's timers + first paint.
+          if (window.__ospBoot && !window.__ospBooted) {
+            window.__ospBooted = true;
+            window.__ospBoot();
+          }
         } catch (e) {
           /* the splash is non-essential — never let it break the page */
         }
@@ -235,12 +244,31 @@
               });
             }, 250);
           });
+          // Safety net: the splash is best-effort, so guarantee the engine still loads
+          // even if the splash path never reaches its __ospBoot() call.
+          window.setTimeout(function () {
+            if (window.__ospBoot && !window.__ospBooted) {
+              window.__ospBooted = true;
+              window.__ospBoot();
+            }
+          }, 1200);
         } catch (e) {
           window.__ospSplash(); // never let the intro break the page
         }
       };
       window.__ospIntro();
     </script>
-    <script type="module" src="/src/main.ts"></script>
+    <!-- Defer the heavy engine bundle. Rather than a static `<script src>` that parses
+         + executes the moment the HTML is done — starving the cheap CSS prelude's
+         timers and the splash's first paint, which reordered the beats and opened a
+         black gap before the merger — expose it as a dynamic import and let the inline
+         splash call window.__ospBoot() once it's built + covering. The ~860KB parse +
+         WebGPU compile then happen *under* the splash. (Vite code-splits main.ts into
+         its own chunk and resolves this path in the build.) -->
+    <script type="module">
+      window.__ospBoot = function () {
+        return import('/src/main.ts');
+      };
+    </script>
   </body>
 </html>

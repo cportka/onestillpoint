@@ -17,7 +17,7 @@ import type { GPUPhysicsEngine } from './GPUPhysicsEngine';
  * `MAX_BODIES` is 14. So there is no count ≤ the current cap where flipping it on
  * helps; it's left a manual toggle. *If* a future "swarm/galaxy" mode raises the
  * cap into the hundreds, auto-enable above ~256 (and add a `manual` flag so the
- * auto-selector doesn't fight the user's toggle). See docs/perf-audit-v0.15.md.
+ * auto-selector doesn't fight the user's toggle). See docs/archive.md (perf audit).
  */
 export class PhysicsController {
   useGPU = false;

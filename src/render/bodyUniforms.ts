@@ -41,7 +41,7 @@ const smoothstep = (a: number, b: number, x: number): number => {
  * later just appear immediately).
  */
 // ⟳ Intro look: these windows time the bodies' swoosh-in during the intro.
-// Changing them substantially → refresh docs/intro-description.md (note the version).
+// Changing them substantially → update docs/intro-script.md (the master beats + tuning log).
 export function appearFor(type: BodyType, progress: number): number {
   return type === 'star' ? smoothstep(0.03, 0.2, progress) : smoothstep(0.2, 0.52, progress);
 }

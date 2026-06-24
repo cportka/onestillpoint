@@ -5,6 +5,19 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.2** — **Intro fix + tuning + docs de-cruft.** A screen recording (analysed
+  with the Portka `video-bug-analysis` workflow) caught the live intro playing its
+  beats **out of order** — the creation burst on the very first frame, the test pattern
+  *after* it, then a **~0.5 s black void** before the splash — because the 860 kB engine
+  bundle parsed on the main thread *during* the cheap CSS prelude, starving its timers
+  and the splash's first paint. The bundle is now **deferred behind a dynamic `import()`
+  (`window.__ospBoot`)** that the splash calls once it's covering, so the prelude runs
+  **unstarved** (black is first again, beats in order, no black gap) and the heavy parse
+  + WebGPU compile happen under the splash (verified: the built site is uniform black at
+  150 ms, content only after). The **"Display HUD"** title checkbox moved to the
+  **right** of its label. Docs **de-crufted**: four stale point-in-time notes
+  (`intro-description`, `perf-audit-v0.15`, two `video-findings`) compressed into one
+  [`docs/archive.md`](docs/archive.md), and Tier 1 of the roadmap refreshed.
 - **0.20.1** — The README now shows the **moment of creation** as a looping GIF
   ([`assets/creation.gif`](assets/creation.gif)), a sibling to the splash GIF. It's
   captured straight from the running CSS burst by the new `npm run capture:creation`
@@ -146,7 +159,7 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 - **0.15.1** — Splash sized in `vmin` so the forming horizon lines up with the
   real shadow; varied body/dust sizes. About logo full-width then moved below the
   byline. GPU auto-switch investigated and documented
-  ([`docs/perf-audit-v0.15.md`](docs/perf-audit-v0.15.md)): not worth it below
+  ([`docs/archive.md`](docs/archive.md)): not worth it below
   ~150–300 bodies, so it stays a manual toggle.
 - **0.15.0** (Phase 15) — **N-body sim back on the CPU by default** (the GPU
   compute path's per-frame read-back stalled the pipeline for ≤14 bodies); removed
@@ -161,11 +174,11 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
   **velocities** back (not just positions), so an add no longer re-seeds bodies
   onto wrong orbits; a readback↔rebuild race is closed; substep size is bounded.
   Animated **About logo**; deeper-orange Nebula. See
-  [`docs/video-findings-v0.14.5.md`](docs/video-findings-v0.14.5.md).
+  [`docs/archive.md`](docs/archive.md).
 - **0.14.5** — Adds rate-limited to 1/s; removing a body **plunges** it into the
   centre with the absorption fade. Fixed an **all-black-screen** bug (a non-finite
   body position poisoning the lensing uniforms, never pruned) — see
-  [`docs/video-findings-v0.14.4.md`](docs/video-findings-v0.14.4.md). Longer ✓/✗
+  [`docs/archive.md`](docs/archive.md). Longer ✓/✗
   flash; Nebula reverted to its punchy orange.
 - **0.14.4** — A 4th black hole only when nothing else orbits; added bodies last
   longer (exact radius + softened circular speed); absorbed bodies fade rather than
@@ -177,8 +190,8 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 - **0.14.1** — Nebula re-tuned for punch; About gains a BTC donation + the shared
   tagline; escaped/merged companions are pruned (and GPU buffers disposed).
 - **0.14.0** (Phase 14) — Background revamp: Eagle-palette **Nebula**, cosmic-web
-  **Filaments**, finer **Lattice**. Intro *reality* doc
-  ([`docs/intro-description.md`](docs/intro-description.md)) beside the *ideal*
+  **Filaments**, finer **Lattice**. Intro *reality* doc (since folded into
+  [`docs/archive.md`](docs/archive.md)) beside the *ideal*
   ([`docs/intro-script.md`](docs/intro-script.md)).
 
 ## 0.5–0.13 — foundations
