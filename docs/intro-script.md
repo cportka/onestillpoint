@@ -216,6 +216,17 @@ turning, for as long as you want to watch.
 
 ## Tuning log & targets
 
+- **[done · v0.20.2] Defer the engine bundle so the prelude isn't starved.** A recording
+  (analysed with the Portka `video-bug-analysis` workflow) showed the live intro playing
+  the beats **out of order** — the creation burst on the very first frame, the test
+  pattern *after* it, then a **~0.5 s black void** before the splash. Root cause: the
+  static `<script type="module" src="main.ts">` parsed + executed the 860 kB bundle on
+  the main thread *during* the prelude, starving the black-hold/test-pattern timers and
+  the splash's first canvas paint. Fix: the bundle is now a **dynamic `import()` behind
+  `window.__ospBoot`**, which the splash calls only once it's built + covering — so the
+  cheap CSS prelude runs unstarved (verified: the built site is **uniform black at
+  150 ms**, content only after), and the heavy parse + WebGPU compile happen under the
+  splash. (Re-confirmed by the headless dist check + the inline-sync deferral guard.)
 - **[done · v0.20.0] A black hold + a 1-frame test pattern; 200 fps story; melt replay.**
   The intro now opens on **0.25 s of black** (the opaque creation layer with its burst
   paused), then a **single painted frame** of 40 px white/black bands (`.osp-lines`),

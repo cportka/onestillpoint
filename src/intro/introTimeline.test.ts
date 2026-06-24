@@ -46,4 +46,13 @@ describe('inline index.html boot script stays in sync', () => {
   it('resets __ospSplashStart at the start of every intro', () => {
     expect(html).toContain('window.__ospSplashStart = undefined');
   });
+  // The heavy engine bundle must be *deferred* (loaded by the splash via __ospBoot),
+  // not a static eager <script src> — an eager bundle parses during the prelude and
+  // starves its timers / the splash's first paint, reordering the beats and opening a
+  // black gap before the merger. Guard the deferral.
+  it('defers the engine bundle behind window.__ospBoot (no eager <script src=main>)', () => {
+    expect(html).not.toMatch(/<script[^>]*\bsrc=["'][^"']*main\.ts["']/);
+    expect(html).toContain('window.__ospBoot');
+    expect(html).toMatch(/__ospBoot\(\)/); // the splash actually calls it
+  });
 });

@@ -71,7 +71,7 @@ export class Scene {
    *  stars (the load-in swoosh) + inner retrograde planets (the reverse swoosh).
    *  Used both for the default load and by `reseed` (Replay intro).
    *  ⟳ Intro look: the counts/radii here shape the load intro — changing them
-   *  substantially → refresh docs/intro-description.md (note the version). */
+   *  substantially → update docs/intro-script.md (the master beats + tuning log). */
   private seed(stars: number, planets: number, holes: number): void {
     for (let i = 0; i < stars; i++) this.addStar(28 + i * 9);
     for (let i = 0; i < planets; i++) this.addPlanet(22 + i * 5);

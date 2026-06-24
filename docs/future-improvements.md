@@ -24,19 +24,19 @@ of each tier.
    tilt would seal it. Dial against each new recording. *Touches: `index.html`,
    `src/style.css`, `src/core/FormationSequence.ts`.*
 
-2. **Fresh-load smoothness — and a video-splash fallback (S now, M later).** A
-   recording put the *live* splash at ~21 fps vs a steady 25 fps for the captured
-   GIF: the CSS+canvas splash competes with the bundle parse, WebGPU init and the
-   lil-gui DOM build for the main thread. **Done now (v0.18.0):** the heavy panel
-   is a lazy `import()` mounted at idle (off the splash) and the initial bundle is
-   smaller; `compileAsync` (v0.17.1) already hides the shader compile. **If that
-   isn't enough, the longer-term plan:** play the *already-smooth* captured splash
-   as a **`<video>`/WebM** (hardware-decoded, off the main thread — exactly why the
-   GIF is smooth), with the instant CSS splash as the first-paint poster, then
-   crossfade CSS → video → engine. The capture system (`npm run capture:splash`)
-   can emit the WebM. Fallback levers if even that lags: move physics to a Worker,
-   lazy-load GPU physics, trim the splash's CSS-filter cost. *Touches: `src/main.ts`,
-   `index.html`, `scripts/capture-splash.mjs`.*
+2. **Fresh-load smoothness — largely handled; video-splash fallback only if needed
+   (mostly done).** A recording once put the *live* splash at ~21 fps vs a steady
+   25 fps for the captured GIF: the CSS+canvas prelude competed with the 860 kB
+   bundle parse, WebGPU init and the lil-gui DOM build for the main thread.
+   **Shipped:** the heavy panel is a lazy `import()` mounted at idle (v0.18.0);
+   `compileAsync` hides the shader compile (v0.17.1); and **v0.20.2 defers the whole
+   engine bundle** — `index.html` exposes it as a dynamic `import()` (`window.__ospBoot`)
+   that the splash calls only once it's built + covering, so the prelude (black →
+   test pattern → creation → splash) now runs on an **unstarved main thread**, in
+   order, with no black gap (this fixed a recording where the beats were reordered).
+   **Only if a recording still shows a dip:** play the captured splash as a
+   hardware-decoded **`<video>`/WebM** (CSS poster → video → engine), or move physics
+   to a Worker. *Touches: `index.html`, `src/main.ts`, `scripts/capture-splash.mjs`.*
 
 3. **A captured *scene* clip for the README (S).** v0.17.2 added a captured,
    looping **splash** GIF (`assets/splash.gif`, via `npm run capture:splash`) and
@@ -45,12 +45,15 @@ of each tier.
    `scripts/capture-splash.mjs` is splash-specific (deterministic freeze); a live
    clip needs a real-time screen grab instead. *Touches: `README.md`, `assets/`.*
 
-> **Shipped from Tier 1:** captured looping splash GIF + capture system (v0.17.2) ·
-> the bulk of pre-warm (`compileAsync`, v0.17.1) · splash→engine dust bridge / no
-> black void (v0.17.1) · Replay-intro alignment (v0.17) · keyboard-shortcuts
-> overlay → top-left panel + R/C/F + `?`/`/` (v0.17–0.17.1) · README hero +
-> About-style framing (v0.17–0.17.1). The mobile "splash never plays" bug
-> (first-paint gating) also shipped in v0.17.
+> **Shipped from Tier 1:** **engine-bundle deferral** so the prelude runs unstarved
+> (v0.20.2) · the **black-hold + test-pattern** intro prelude, a **200 fps** intro
+> target, and the **melt-inward Replay** (v0.20.0) · captured looping **splash GIF**
+> (v0.17.2) and **moment-of-creation GIF** (v0.20.1) + their capture systems · the
+> bulk of pre-warm (`compileAsync`, v0.17.1) · splash→engine dust bridge / no black
+> void (v0.17.1) · Replay-intro alignment (v0.17) · keyboard-shortcuts overlay →
+> top-left panel + R/C/F + `?`/`/` (v0.17–0.17.1) · README hero + About-style framing
+> (v0.17–0.17.1). The mobile "splash never plays" bug (first-paint gating) shipped in
+> v0.17.
 
 ---
 
@@ -103,7 +106,7 @@ of each tier.
 
 12. **"Swarm / galaxy" mode → GPU physics auto-enable (M–L).** `MAX_BODIES` is
     14 and the CPU integrator wins at that scale, so GPU physics stays a manual
-    toggle (see [`perf-audit-v0.15.md`](./perf-audit-v0.15.md)). A mode that
+    toggle (see [`archive.md`](./archive.md) → perf audit). A mode that
     raises the cap into the hundreds would finally make the GPU path pay off —
     auto-enable it above ~256 bodies, with a `manual` flag so the auto-selector
     doesn't fight the user's toggle. *Touches: `src/physics/PhysicsController.ts`,

@@ -1,5 +1,5 @@
 // ⟳ Intro look: the duration, pull-back, and easing below shape the load intro.
-// Changing them substantially → refresh docs/intro-description.md (note the version).
+// Changing them substantially → update docs/intro-script.md (the master beats + tuning log).
 const DURATION = 6.5; // seconds of intro
 const FAR_FACTOR = 2.6; // how far back the dolly starts, in units of the home distance
 
