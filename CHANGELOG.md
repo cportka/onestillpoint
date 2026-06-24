@@ -5,6 +5,17 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.4** — **Longer black + a seamless creation→splash crossfade.** The black hold
+  is now **0.5 s** (was 0.25 s), and the splash **starts way earlier**: it's **prebuilt
+  during the black hold** (on an idle thread, hidden under the opaque creation) and then
+  **plays on the very frame the creation burst fires**, so it crossfades straight out of
+  the moment of creation with **no black gap** (a recording showed the splash arriving
+  ~0.3 s after the creation had already faded to black). This required fixing the **same
+  `animation-play-state` shorthand-cascade bug on the splash** that the burst had in
+  0.20.3 (`#osp-splash:not(--go) .osp-splash__stage > *`), so a prebuilt splash stays
+  frozen until it's played. `__ospSplash(true)` prebuilds; `__ospSplashPlay()` plays.
+  Verified by computed-style guards (creation *and* splash paused-before-`--go`) plus a
+  prebuild/play integration check.
 - **0.20.3** — **The actual intro-order fix (a CSS cascade bug).** The black still
   wasn't going first: the moment-of-creation burst played the instant the page loaded,
   *then* the screen went black. Root cause (missed in 0.20.1–0.20.2): each burst

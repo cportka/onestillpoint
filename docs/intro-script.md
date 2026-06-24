@@ -35,8 +35,9 @@ noted as `(+x)`.
 
 | beat | t (s) | frame | fps | element / transient | mechanism | motion | radius (from ⊙) | opacity / fade | colour | overlap |
 | ---- | ----- | ----- | --- | ------------------- | --------- | ------ | --------------- | -------------- | ------ | ------- |
-| **A · Black** | 0.00–0.25 | 0–50 | 200 | the void (opaque creation layer, burst paused) | CSS layer `#osp-creation` | `·⊙·` hold | full screen | flat, 1.0 | `#05060a` | → B |
-| **B · Lines** | ~0.25 | 50 | 200 | test pattern — full-width 40 px white/black bands | CSS `.osp-lines`, **one painted frame** | `·⊙·` full field | full screen | 0→**1**→0 (1 frame) | `#fff` / `#000` | → C |
+| **A · Black** | 0.00–0.50 | 0–100 | 200 | the void (opaque creation layer, burst paused) | CSS layer `#osp-creation` | `·⊙·` hold | full screen | flat, 1.0 | `#05060a` | → B |
+| **· Splash prebuild** | ~0.30 | 60 | — | the merger is *built but frozen* (hidden under the creation) so it can play instantly | `<canvas>` + CSS, **paused** (no `--go`) | (assembled, not moving) | off-screen / behind | 0 (frozen) | — | ready for D |
+| **B · Lines** | ~0.50 | 100 | 200 | test pattern — full-width 40 px white/black bands | CSS `.osp-lines`, **one painted frame** | `·⊙·` full field | full screen | 0→**1**→0 (1 frame) | `#fff` / `#000` | → C |
 | **C · Creation — seed** | 0.28 | 56 | 200 | white-hot core at ⊙ | CSS `.osp-cr-core` | `⊙` born, then `→⊙` collapse | 0 (at ⊙) | 0→1→0 | white→`#fff6e0` | over B end |
 | **C · Creation — flash** | 0.28–0.48 | 56–96 | 200 | full-screen light flashes (×2) | CSS `.osp-cr-flash` | `⊙→` bloom out | 0 → 8× | 0→.95→0 | `#fff7e8` / `#ffd9a0` | with seed |
 | **C · Creation — rays** | 0.29–0.50 | 58–100 | 200 | 6 neon beams sweeping to the edges | CSS `.osp-cr-ray` (rotate + scaleX) | `⊙→` radial | 0 → 150 vmax | 0→.9→0 | gold·magenta·cyan·violet | with rings |
@@ -216,6 +217,17 @@ turning, for as long as you want to watch.
 
 ## Tuning log & targets
 
+- **[done · v0.20.4] Longer black + a seamless creation→splash crossfade.** Black hold
+  to **0.5 s**, and the **splash now prebuilds during the black hold** (idle thread,
+  hidden under the opaque creation) and **plays on the same frame as the creation
+  burst** — so it crossfades straight out of the moment of creation with **no black gap**
+  (a recording showed the splash arriving ~0.3 s *after* the creation faded to black).
+  This needed the **same CSS-cascade fix on the splash** as the burst got in 0.20.3
+  (`#osp-splash:not(--go) .osp-splash__stage > * { animation-play-state: paused }`), so a
+  prebuilt splash stays frozen until `__ospSplashPlay()`. Verified by computed-style
+  guards (creation *and* splash paused-before-`--go`) and a prebuild/play integration
+  check. **[open]** dial how much of the orbs' inspiral should read *before* vs *under*
+  the creation fade (`creationHideMs`, the prebuild lead).
 - **[done · v0.20.3] The real fix: a CSS-cascade bug kept the burst from waiting.**
   The black still wasn't first — the creation burst played on page-load, *then* black.
   Cause: every `.osp-cr-*` element sets the `animation:` **shorthand**, which resets

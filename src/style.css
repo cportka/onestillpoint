@@ -196,15 +196,16 @@ canvas.osp-melting {
   pointer-events: none;
   transition: opacity 0.45s ease; /* gentle, so the live disk/stars overlap the fading rings + dust */
 }
-/* Hold the merger choreography until the first *painted* frame (the inline script
-   adds --go on its first rAF), so it plays in full even when the browser defers
-   painting during a heavy mobile load — and stays in lockstep with the canvas
-   dust (which starts on the same frame). */
-.osp-splash__stage > * {
+/* Hold the merger choreography paused until --go (added on the splash's first canvas
+   frame). This must out-specify the per-element `animation:` shorthands below — the
+   shorthand resets animation-play-state to its initial `running` (the same cascade bug
+   the creation burst had), which would let the merger play the instant the stage is
+   built. `#osp-splash:not(--go)` (id + 2 classes) beats `.osp-splash__orb` (1 class),
+   so the splash can be **prebuilt during the black hold yet stay frozen** until it's
+   played — that's what lets it crossfade seamlessly out of the moment of creation with
+   no black gap. */
+#osp-splash:not(.osp-splash--go) .osp-splash__stage > * {
   animation-play-state: paused;
-}
-.osp-splash--go .osp-splash__stage > * {
-  animation-play-state: running;
 }
 /* The binary-merger choreography (sized in vmin so the final event horizon lines
    up with the real shadow at the crossfade; tune --core-d against a recording).
