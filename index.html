@@ -249,17 +249,26 @@
             window.setTimeout(function () { window.__ospSplash(true); }, 300);
             // beat A — hold pure black to 0.5s.
             window.setTimeout(function () {
-              // beats B + C fire together: the test pattern flashes on, and *behind it*
-              // (the opaque bands cover the centre) the creation burst + the prebuilt
-              // splash start ramping up. Holding the pattern over the burst's ~50ms
-              // fade-in, then lifting it once the burst is lit, makes the interference
-              // pattern hand *directly* to a bright moment of creation — no black gap
-              // while the burst ramps from zero.
-              if (lines) lines.classList.add('osp-lines--on'); // beat B: the test pattern
-              if (cr) cr.classList.add('osp-creation--go'); // beat C: the burst, ramping behind the pattern
-              window.__ospSplashPlay(); // beat D: the prebuilt merger plays under it all
-              window.setTimeout(function () { if (lines) lines.classList.remove('osp-lines--on'); }, 45); // lift → lit burst
-              window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, 180);
+              // beat B — the interference pattern: a brief flash over the black.
+              if (lines) lines.classList.add('osp-lines--on');
+              requestAnimationFrame(function () { // frame 1: the pattern is painted
+                requestAnimationFrame(function () { // frame 2: drop the pattern → a split-second of black
+                  if (lines) lines.classList.remove('osp-lines--on');
+                  // ...a tiny moment of black after the interference, then straight into:
+                  window.setTimeout(function () {
+                    // beat C — the moment of creation, as its *own* distinct beat.
+                    if (cr) cr.classList.add('osp-creation--go');
+                    // beat D — once the creation has had its moment, fade it *into* the splash:
+                    // play the prebuilt merger as the creation fades (it boots the engine too),
+                    // so the twirling orbs play fresh and *visible* — a separate beat, not hidden
+                    // under the burst.
+                    window.setTimeout(function () {
+                      if (cr) cr.classList.add('osp-creation--hide');
+                      window.__ospSplashPlay();
+                    }, 340);
+                  }, 70);
+                });
+              });
             }, 500);
           });
           // Safety net: the splash is best-effort, so guarantee the engine still loads
