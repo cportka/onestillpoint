@@ -5,6 +5,18 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.3** — **The actual intro-order fix (a CSS cascade bug).** The black still
+  wasn't going first: the moment-of-creation burst played the instant the page loaded,
+  *then* the screen went black. Root cause (missed in 0.20.1–0.20.2): each burst
+  element uses the `animation:` **shorthand**, which resets `animation-play-state` to
+  its initial **`running`** — overriding the `paused` on `.osp-cr`, so the burst never
+  actually waited for `--go`. Fixed with a higher-specificity rule
+  (`#osp-creation:not(.osp-creation--go) .osp-cr { animation-play-state: paused }`) that
+  beats the shorthand, so the burst genuinely holds until the black hold + test pattern
+  have played. Now verifiable for real: `npm run verify:intro` reads the **computed
+  play-state** (paused before `--go`, running after) — a guard the earlier screenshot
+  checks couldn't catch (headless virtual-time doesn't advance CSS animations, so they
+  looked black either way). Order is finally **black → test pattern → creation → splash**.
 - **0.20.2** — **Intro fix + tuning + docs de-cruft.** A screen recording (analysed
   with the Portka `video-bug-analysis` workflow) caught the live intro playing its
   beats **out of order** — the creation burst on the very first frame, the test pattern

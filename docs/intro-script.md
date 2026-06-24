@@ -216,6 +216,17 @@ turning, for as long as you want to watch.
 
 ## Tuning log & targets
 
+- **[done · v0.20.3] The real fix: a CSS-cascade bug kept the burst from waiting.**
+  The black still wasn't first — the creation burst played on page-load, *then* black.
+  Cause: every `.osp-cr-*` element sets the `animation:` **shorthand**, which resets
+  `animation-play-state` to its initial **`running`**, overriding the `paused` on
+  `.osp-cr` — so `--go` never gated anything (this defeated both 0.20.0's black hold
+  and 0.20.2's bundle deferral). Fixed with a higher-specificity rule,
+  `#osp-creation:not(.osp-creation--go) .osp-cr { animation-play-state: paused }`.
+  **Lesson for verification:** headless *virtual-time* doesn't advance CSS animations,
+  so a screenshot shows black whether the burst is paused *or* running-but-not-advanced
+  — useless for this bug. `verify:intro` now reads the **computed `animation-play-state`**
+  (paused before `--go`, running after), which catches it deterministically.
 - **[done · v0.20.2] Defer the engine bundle so the prelude isn't starved.** A recording
   (analysed with the Portka `video-bug-analysis` workflow) showed the live intro playing
   the beats **out of order** — the creation burst on the very first frame, the test
