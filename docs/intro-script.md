@@ -1,134 +1,266 @@
 # The intro — visual script
 
-A living storyboard of the formation intro, so we can tune timing deliberately.
-The intro is driven by `src/core/FormationSequence.ts` (camera dolly + the
-`formation` ignition factor), `src/render/tsl/raymarch.ts` (the dust fades in
-with `u.formation`), and the per-body `appearFor` curve in
+A living storyboard of the opening, so we can tune it deliberately. Everything is
+oriented toward **⊙, the One Still Point** — the centre of the screen, where the
+event horizon settles. Each beat moves *toward* ⊙ or *away from* ⊙, brightens or
+fades, and hands off to the next mid-stride so the whole thing reads as one
+continuous birth.
+
+**What drives it.** The *intro story* — the black hold, the test pattern, the moment
+of creation, the splash — is a cheap, JS-free-ish overlay (inline CSS + one `<canvas>`)
+that paints before the bundle parses (`index.html`, `style.css`, `src/intro/*`). The
+*physics model* underneath is the real renderer: `src/core/FormationSequence.ts`
+(camera dolly + the `formation` ignition factor), `src/render/tsl/raymarch.ts` (the
+disk fades in with `u.formation`), and the per-body `appearFor` curve in
 `src/render/bodyUniforms.ts` (the staggered swoosh).
 
-## The beats (each a distinct, overlapping mechanism)
+**Frame rates (per section).** The intro story is rendered **uncapped** and we target
+**200 FPS** — past the limit of human flicker detection, so it's as smooth as the
+display can show (a 60/120/240 Hz panel simply can't draw all 200; the single-frame
+test pattern therefore lasts 5 ms at 200 Hz but ~16.7 ms at 60 Hz). The physics model
+renders at its own rate and is the one thing the optional **cinematic frame cap**
+(Quality → Cap frame rate) may throttle. The source of truth for the timings is
+`src/intro/introTimeline.ts` (the inline boot script mirrors it; a test guards the two
+against drifting).
 
-The intro is **three deliberately overlapping beats** — each a separate mechanism,
-each handing off to the next mid-stride so it reads as one continuous birth.
-Timings are targets we tune against recordings.
+---
 
-| beat | window | what | mechanism (distinct on purpose) | overlaps |
-| ---- | ------ | ---- | ------------------------------- | -------- |
-| **0 · Moment of creation** | 0.00–~0.18s | A full-screen "firework": a flash of light, neon beams sweeping out, reverberating shock rings. The instant, device-consistent birth. | Pure CSS, **no canvas / JS loop** (`#osp-creation` in `index.html` + `style.css`) — as cheap as possible so it's identical everywhere and never lags. Started on the first painted frame (`--go`). | with beat 1 (0.05–0.18s) |
-| **1 · The splash** | ~0.05–~0.75s | The binary-merger: warm orbs spiral together through drifting dust, flash + merge, neon shock-ring burst, the event horizon settles inside a warm accretion ring. | CSS keyframes + **one canvas** dust layer (`#osp-splash`, `window.__ospSplash`). Starts ~0.05s into the creation (the inline `__ospIntro` schedules it); the creation fades out (~0.22s) as it takes over. | with beat 0 (start) and beat 2 (end) |
-| **2 · Engine takeover** | ~0.6s onward → 6.5s | The live WebGPU scene crossfades up under the splash — disk igniting, stars/planets swooshing in, camera dolly settling home. | The real renderer + `FormationSequence`. Pre-warmed (`compileAsync`) so it's lit before reveal; `MIN_SPLASH_MS` + a gentle opacity crossfade overlap it with the fading splash rings/dust. | with beat 1 (the crossfade) |
+## 1 · Moment by moment (the master table)
 
-The guiding rule (see "the overlap" below): **adjacent beats share silhouette,
-colour and motion at the seam**, so no beat ever "pops" — they dissolve into one
-another. Tune the seam timings (`__ospIntro`'s 100ms offset, `MIN_SPLASH_MS`, the
-crossfade duration) against each new recording.
+Every transient, tied to a time + frame marker. `t` is seconds from the first painted
+frame; **frame** is the design-target frame at that section's FPS. **Motion** is
+relative to ⊙ (`→⊙` inward, `⊙→` outward, `·⊙·` holding at/around it). Splash-internal
+animations are offset by the splash's own start (~0.33 s); their splash-local time is
+noted as `(+x)`.
 
-**Defaults today:** a **load splash** (≈0.6 s, JS-free CSS + one canvas — see
-below) hands off to the WebGPU formation, whose duration is **6.5 s** (2.6 s under
-reduced motion): camera dollies from **2.6× the home distance → home** on an
-ease-out-cubic, the disk now **ignites fast** (formed by ~0.6 s, over the first
-~10% — `formationCurve`) and then holds with a gentle late bloom while the camera
-settles, and the default scene seeds **3 stars (prograde, outer) + 3 planets
-(retrograde, inner)**.
+| beat | t (s) | frame | fps | element / transient | mechanism | motion | radius (from ⊙) | opacity / fade | colour | overlap |
+| ---- | ----- | ----- | --- | ------------------- | --------- | ------ | --------------- | -------------- | ------ | ------- |
+| **A · Black** | 0.00–0.25 | 0–50 | 200 | the void (opaque creation layer, burst paused) | CSS layer `#osp-creation` | `·⊙·` hold | full screen | flat, 1.0 | `#05060a` | → B |
+| **B · Lines** | ~0.25 | 50 | 200 | test pattern — full-width 40 px white/black bands | CSS `.osp-lines`, **one painted frame** | `·⊙·` full field | full screen | 0→**1**→0 (1 frame) | `#fff` / `#000` | → C |
+| **C · Creation — seed** | 0.28 | 56 | 200 | white-hot core at ⊙ | CSS `.osp-cr-core` | `⊙` born, then `→⊙` collapse | 0 (at ⊙) | 0→1→0 | white→`#fff6e0` | over B end |
+| **C · Creation — flash** | 0.28–0.48 | 56–96 | 200 | full-screen light flashes (×2) | CSS `.osp-cr-flash` | `⊙→` bloom out | 0 → 8× | 0→.95→0 | `#fff7e8` / `#ffd9a0` | with seed |
+| **C · Creation — rays** | 0.29–0.50 | 58–100 | 200 | 6 neon beams sweeping to the edges | CSS `.osp-cr-ray` (rotate + scaleX) | `⊙→` radial | 0 → 150 vmax | 0→.9→0 | gold·magenta·cyan·violet | with rings |
+| **C · Creation — rings** | 0.28–0.56 | 56–112 | 200 | 3 reverberating shock rings | CSS `.osp-cr-ring` | `⊙→` expand | 0 → 13× | 0→.85→0 | warm·cyan·pink | → D (fades 0.50) |
+| **D · Splash — dust** | 0.33–2.0 | 67+ | 200 | hundreds of warm dust points | `<canvas>` field | `→⊙` inspiral to an **annulus**, then `⊙→` gaseous drift | r₀ 22–54 → annulus 7–20 → out | quick in, hold, gentle fade | warm golds (few cool sparkles) | with C + E |
+| **D · Splash — twins** | (+0)–(+0.3) | — | 200 | two orbs twirl together | CSS `.osp-splash__orb` | `→⊙` accelerating inspiral (~2 turns) | 27 vmin → 0 | 0→1→0 (dissolve into flash) | white-gold + amber | hands to flash |
+| **D · Splash — merger** | (+0.16)–(+0.6) | — | 200 | flash · tilted jet · gas plumes | CSS `__flash`/`__jet`/`__plume` | `⊙→` burst | 0 → 2–24 vmin | 0→.95→0 | warm white / gold | bridges twins→rings |
+| **D · Splash — neon burst** | (+0.24)–(+0.7) | — | 200 | shock rings + streaks, hue-shifted | CSS `__shock`/`__streak` + `osp-hue` | `⊙→` radial waves | 0.12× → 7× | 0→.95→0 | neon (cycles spectrum) | the one colour splurge |
+| **D · Splash — disk** | (+0.14)→hold | — | 200 | warm accretion ring forms + **holds** | CSS `.osp-splash__disk` | `·⊙·` settle around ⊙ | ~16 vmin, tilted flat | 0→.95→.8 (holds) | warm amber | bridge to real disk |
+| **D · Splash — horizon** | (+0)–(+0.56) | — | 200 | event horizon holds at ⊙, expands to final circle | CSS `.osp-splash__core` | `·⊙·` → slight overshoot → settle | 0 → `--core-d` (28 vmin) | opaque (a hole in the light) | matches real shadow |
+| **E · Engine** | 0.6 → 6.5 | — | engine | the live model crossfades up: disk ignites, stars/planets swoosh, camera dollies home | WebGPU + `FormationSequence` | camera `→⊙` then `·⊙·` rest; bodies swoosh in | dolly 2.6× home → home | splash crossfades −0.45 s | lit hole + igniting disk | under fading D |
 
-## The opening ~0.6 second (Phase 15–17)
+**The guiding rule:** adjacent beats **share silhouette, colour and motion at the
+seam**, so nothing ever "pops." Black dissolves into the seed; the seed's collapse
+rhymes with the twins' inspiral; the splash's warm horizon + accretion ring rhyme
+with the engine's lit hole + igniting disk. Tune the seams (`INTRO_TIMING`,
+`MIN_SPLASH_MS`, the crossfade duration) against each recording.
 
-Goal: *something beautiful on screen instantly*, before the heavy raymarch shader
-compiles, **blending into the real scene** — see "the overlap" below. The whole
-merger now plays in **~0.6 s** (compressed from ~1 s), warm and elegant, with the
-neon reserved for the brief ring/streak burst.
+---
 
-| time (≈, from first paint) | what you see | how |
-| --- | --- | --- |
-| 0–~0.26 s | **Two warm orbs** (a white-gold + an amber twin — *no pink/blue*) **twirl together** (accelerating inspiral) while a few bigger bodies + small **spiral in** and **hundreds of warm dust** points **spiral inward from the very first frame**. | Static `#osp-splash` markup + a tiny **inline script**: a few CSS bodies and a **canvas particle field** (sprite `drawImage`, capped backing res). Orb keyframes rotate < 180°/step (a WebKit matrix-decomposition quirk made them fly apart). Dust uses ease-**out** so it moves at once (ease-in read as static). |
-| ~0.14 s+ | A **warm accretion ring** forms early and **holds** around the forming horizon — the gas/dust ring, tilted nearly disk-flat. | `.osp-splash__disk` (forms at 0.14 s, settles + holds via `forwards`). |
-| ~0.22–0.4 s | **Merger**: a warm-white **flash**, a warm **jet**, warm **plumes**, then **neon streaks** fire radially and **reverberating shock rings** expand — both **hue-shifted** so they shimmer through the spectrum. | `__flash` / `__jet` / `__plume` (warm) + `__streak` + `__shock` (neon `--rc` + `osp-hue`), transform/opacity only. |
-| ~0.3–0.6 s | Dust **bursts back outward**; the dark **event horizon** grows back out (overshoot → settle) to the final circle + a warm photon ring (`--core-d ≈ 28vmin`, to match the real shadow). The warm disk ring persists. | canvas burst phase + `.osp-splash__core`. |
-| ~0.6 s+ | Dust enters a **gaseous drift** (keeps expanding + rotating, fading) so the field never empties to black; the **crossfade** reveals the live scene — already pre-warmed, so its disk is lit and its stars are up — *under* the still-drifting dust + fading rings. | dust drift phase + a gentle **0.45 s** opacity crossfade beginning ~0.6 s; the formation continues to `t = 1`. |
+## 2 · The screenplay (the dance of creation)
 
-**Start-on-first-paint (Phase 17).** The CSS choreography is held
-(`animation-play-state: paused`) until the inline script adds `.osp-splash--go`
-on its **first `requestAnimationFrame`** — i.e. the first painted frame — and the
-canvas `t0` starts on that same frame. Mobile Safari often defers the first paint
-past the short splash, so a parse-time timeline meant **the merger was never seen
-on mobile**; this guarantees it plays in full, and keeps the CSS + canvas in
-lockstep. `main.ts` then holds the crossfade until `MIN_SPLASH_MS` (700 ms) past
-that first paint, and until a few frames have rendered (so the shader-compile
-hitch hides under the splash).
+> Read it as a film. ⊙ is the One Still Point at the centre of frame — the place
+> everything falls toward and is flung from.
 
-### The overlap (always plan for it)
+```
+FADE IN FROM BLACK — hold.
 
-The splash and the real engine **co-exist across the crossfade** — both are on
-screen for ~0.3 s — so they should rhyme, not cut. The vocabulary to keep aligned
-(inward/outward motion · dust · gas · swirls · fractals · beams of light · vibrant
-neon): the splash ends on a *warm hole + warm accretion ring*, and the engine
-opens on a *lit hole + igniting disk*. Tune so the splash's last ½-second and the
-engine's first ½-second share silhouette, ring orientation, and warmth.
+INT. BEFORE ANYTHING — A QUARTER-SECOND OF NIGHT
 
-*Warm elegance + neon-only-in-the-burst lives here (the rest of the app stays
-tasteful). Fuzzy by design — dial against a recording. Levers: orb twirl/timing,
-the warm `__disk` (when the gas ring forms), shock/streak neon + `osp-hue`
-(`index.html` + `style.css`), `--core-d` (final circle size), `MIN_SPLASH_MS`
-(`main.ts`, 700 ms) + crossfade (0.3 s); ignition speed (`t/0.1`) and `FAR_FACTOR`
-for how "formed"/close the hole is at the handoff.*
+Pure black, edge to edge. No stars. No sound but the sound of a screen
+deciding to exist. A full quarter second — long enough to notice you are
+waiting for something.
 
-## Timeline — the settle (progress = elapsed / duration)
+                         THE VOID
+              (not moving, because there is
+               nowhere yet to move)
+              Wait.
 
-| time (≈) | progress | what you see |
+A SINGLE FRAME — gone almost before it lands — of horizontal bands,
+white and black, forty pixels each, top to bottom. A test card. A struck
+match held to the lens. The machine clearing its throat.
+
+                         THE SIGNAL
+              (one frame, all at once)
+              Here.
+
+And then, at the exact centre of the dark — ⊙ —
+
+INT. THE CENTRE OF THE SCREEN — THE INSTANT OF CREATION
+
+A white-hot SEED ignites at ⊙ and, in the same breath, throws everything
+outward: two flashes of light bloom past the edges, six neon beams sweep
+to the corners, three shock rings reverberate out and dissolve. It is
+loud and it is over in a third of a second. Nobody is strobed; it breathes.
+
+                         THE STILL POINT
+              I'm the only thing that holds still.
+              Everything else is going to fall
+              toward me. Watch.
+
+EXT. AROUND THE STILL POINT — THE MERGER
+
+Out of the fading burst, warm DUST — hundreds of motes — spirals inward
+toward ⊙, never quite reaching it, settling into a turning ring. Two ORBS,
+a white-gold and an amber, find each other and twirl down the drain of
+gravity, two full turns, faster and faster.
+
+                         THE TWINS
+              (closing the distance)
+              Closer — closer — now —
+
+They touch. A warm FLASH, a tilted JET, plumes of gas — and from the seam
+a burst of NEON shock rings and streaks shimmers through the whole spectrum
+and races outward.
+
+                         THE DUST
+              (flung back out, still turning)
+              Out we go again — but turning,
+              always turning. Nothing here is
+              ever truly still except —
+
+A warm ACCRETION RING forms and *holds*, tilted nearly flat, encircling ⊙.
+Inside it, a perfect dark CIRCLE grows outward, overshoots, settles: the
+EVENT HORIZON, taking its final size — the shadow that matches the real one.
+
+                         THE HORIZON
+              (opaque, calm, exactly centred)
+              Now I am here. A hole in all that
+              light. Hello.
+
+DISSOLVE TO:
+
+INT. THE LIVING MODEL — THE SETTLE
+
+The real thing fades up *underneath* the cooling splash — its disk already
+lit, its first stars already swooshing in — so the two are the same picture
+for half a second. The camera, which had been far away this whole time,
+glides home toward ⊙ and eases to rest. The dust drifts off. The rings
+cool. The disk churns and the inner edge begins to sparkle.
+
+                         THE STILL POINT
+              (as control returns to the audience)
+              Told you. Everything falls toward
+              the still point. Stay as long as
+              you like.
+
+HOLD on the turning disk.
+```
+
+---
+
+## 3 · The settle — engine timeline
+
+The physics model's own arc, once it crossfades up (progress = elapsed / duration;
+**6.5 s**, or 2.6 s under reduced motion). Camera dollies from **2.6× the home
+distance → home** on an ease-out-cubic; the disk **ignites fast** (formed by ~0.6 s,
+over the first ~10% — `formationCurve`); the default scene seeds **3 stars (prograde,
+outer) + 3 planets (retrograde, inner)**.
+
+| t (≈) | progress | what you see |
 | --- | --- | --- |
 | 0.0 s | 0.00 | (Under the splash.) Camera far back; ignition beginning. |
-| 0.0–0.6 s | 0.00–0.10 | The **disk ignites** to formed (masked by / blending with the splash); the photon ring forms. |
-| 0.0–1.3 s | 0.00–0.20 | Camera rushes inward (fast early). The **outer stars fade + swoosh** in (prograde). The lensed starfield begins to streak. |
-| 1.3–3.4 s | 0.20–0.52 | The **inner planets fade + swoosh the opposite way** (retrograde) — the two-direction choreography. |
-| 5–6.5 s | 0.80–1.00 | Camera **eases to rest** at home; the disk is fully formed; the inner edge **sparkles** (Doppler-beamed turbulence). Control hands back to the user. |
+| 0.0–0.6 s | 0.00–0.10 | The **disk ignites** to formed (masked by the splash); the photon ring forms. |
+| 0.0–1.3 s | 0.00–0.20 | Camera rushes inward (fast early). **Outer stars fade + swoosh** in (prograde). The lensed starfield streaks. |
+| 1.3–3.4 s | 0.20–0.52 | **Inner planets fade + swoosh the opposite way** (retrograde) — the two-direction choreography. |
+| 5–6.5 s | 0.80–1.00 | Camera **eases to rest** at ⊙; the disk is fully formed; the inner edge **sparkles** (Doppler-beamed turbulence). Control returns. |
+
+---
+
+## 4 · Replay — the melt inward
+
+**Replay intro** (the panel button or **R**) is now a deliberate gesture, not a cut:
+
+1. **Melt (2 s).** The whole live view *collapses toward ⊙* — the engine canvas scales
+   and spins down to a point, blurring and fading to black (CSS `canvas.osp-melting`,
+   driven by `src/intro/melt.ts`; the duration is `INTRO_TIMING.meltMs`). The universe
+   falls back into the singularity.
+2. **Replay from black.** Once melted, the scene quietly re-seeds onto fresh orbits and
+   the formation restarts (hidden behind the black), and the **whole intro replays from
+   the top** — the black hold, the test pattern, the creation burst, the splash — via
+   the same `window.__ospIntro` the first load uses. The canvas is un-melted under the
+   covering splash, so the snap-back is invisible; the crossfade then reveals the
+   re-formed model.
+
+`__ospIntro` resets `window.__ospSplashStart` each run, so `main.ts` waits for the
+*fresh* splash's first painted frame before playing it out — a replay never reads a
+stale start and cuts the merger short. Verified by `src/intro/melt.test.ts`,
+`introTimeline.test.ts`, and the headless `npm run verify:intro` (below).
+
+---
+
+## 5 · The short story (the summary)
+
+> *One Still Point — the birth, in plain words.*
+
+First there is nothing: a black screen, a quarter of a second of patience. Then, for
+a single flicker, a striped test card — the projector finding its focus.
+
+In the middle of the dark, a spark catches. It flares once, hard — light, beams, and
+ringing circles thrown out to every edge — and just as fast it folds back in.
+
+Out of that flare, warm dust comes spiralling inward, and two glowing orbs chase each
+other down toward the centre, turning faster and faster until they merge in a flash.
+The collision rings out in neon, a warm ring of gas settles into place, and inside it
+a round, perfect darkness opens up and holds its size: a black hole, exactly where the
+spark had been.
+
+As the splash cools, the real thing is already there underneath it — the disk lit, the
+first stars sweeping in — and the camera, which had been watching from far away, drifts
+home and comes to rest. The dust thins, the rings fade, the disk keeps turning.
+
+Everything fell toward one still point in the middle of the screen. Now it stays there,
+turning, for as long as you want to watch.
+
+---
 
 ## Tuning log & targets
 
-- **[done · v0.19.0] Beat 0 — moment of creation.** A new, separate full-screen
-  CSS firework (`#osp-creation`) opens the intro (~0–0.18s), overlapping the splash
-  from ~0.1s; the three beats are now documented explicitly above. **[open]** dial
-  the seam timings (creation→splash 100ms offset; splash→engine crossfade) on the
-  next recording.
-- **[done · v0.17.2] Cohesion + no static dust.** The dust is one continuous
-  *breath* per particle (no separate inward/burst/drift beats), turning at its own
-  staggered time through an **annulus** — never the centre — so it no longer piles
-  into a static central clot, and a constant drift keeps every particle moving. The
-  flash starts earlier + lingers and the orbs dissolve into it, so the beats
-  overlap rather than pop. The splash is now captured to a looping GIF for the
-  README (`npm run capture:splash`).
-- **[done · v0.17.1] No black void at the cut + pre-warm.** The dust drifts
-  gaseously and fades *through* the crossfade (a constant per-particle angular
-  drift means nothing is ever momentarily static), so space stays populated as the
-  engine's stars take over; the live disk is revealed slightly earlier over a
-  gentler 0.45 s fade so it overlaps the expanding splash rings; the heavy raymarch
-  WGSL is `compileAsync`-compiled under the splash. **[open]** ring-orientation
-  match at the cut (splash rings head-on vs the disk's near-edge-on band).
-- **[done · v0.17] Mobile first-paint + overlap.** Splash animations start on the
-  first painted frame (`--go`), fixing "the splash doesn't play on mobile"; the
-  warm gas/dust ring forms early and holds to bridge to the real disk.
-- **[done · v0.16] Warm, neon, shorter.** Orbs → warm white-gold + amber (no
-  pink/blue); neon moved into the hue-shifted shock rings + new streaks; merger
-  compressed to ~0.6 s; dust spirals from the first frame; Replay shows the splash
-  instantly (no fade-in over the old scene). See the CHANGELOG.
-- **[done · v0.15] Instant load splash + fast ignition.** A JS-free CSS splash
-  (bodies spiralling in → forming hole) paints before the shader compiles and
-  crossfades out on the first real frame; the disk now ignites by ~0.6 s so the
-  handoff lands on a lit hole.
-- **[done · v0.13] More early company.** Default scene seeded with 3 stars + 3
-  planets (was 2 + 2) and the entrance pulled earlier (stars in by ~1.3 s,
-  planets start ~1.3 s) — addressing "the first body only appears ~0:05–0:06."
-- **[open] Sparkles earlier.** The inner-edge counter-clockwise sparkle reads
-  late (≈0:21 in the v0.12 recording — really a steady-state effect). To pull it
-  into the intro window: a steeper early `formationCurve` (disk bright sooner), a
-  brief intro boost to `rotationSpeed`, and/or a closer camera arrival so the
-  inner edge is legible earlier. **Wants a video pass to dial in.**
-- **[open] Distance vs. visibility.** Bodies *appear* early but stay small/far
-  until the camera arrives (~5 s). Lowering `FAR_FACTOR` or reshaping the dolly
-  ease would surface them sooner without changing the choreography.
+- **[done · v0.20.0] A black hold + a 1-frame test pattern; 200 fps story; melt replay.**
+  The intro now opens on **0.25 s of black** (the opaque creation layer with its burst
+  paused), then a **single painted frame** of 40 px white/black bands (`.osp-lines`),
+  before the creation burst. The intro story targets **200 fps** (uncapped; the engine
+  keeps its own rate). **Replay** melts the live view inward to ⊙ over **2 s**, then
+  replays from black. New unit + headless visual tests cover each part. **[open]** dial
+  the test-pattern dwell + the black-hold length on a recording (is 0.25 s the right
+  pause? is one frame perceptible enough on a 60 Hz screen?).
+- **[done · v0.19.0] Beat 0 — moment of creation.** A separate full-screen CSS firework
+  (`#osp-creation`) opens the intro, overlapping the splash. The beats are documented
+  explicitly above.
+- **[done · v0.17.2] Cohesion + no static dust.** The dust is one continuous *breath*
+  per particle (no separate inward/burst/drift beats), turning through an **annulus** —
+  never ⊙ itself — so it never piles into a static central clot, with a constant drift
+  keeping every particle moving. The splash is captured to a looping GIF for the README
+  (`npm run capture:splash`).
+- **[done · v0.17.1] No black void at the cut + pre-warm.** The dust drifts gaseously
+  and fades *through* the crossfade; the live disk is revealed slightly earlier over a
+  gentler 0.45 s fade; the heavy raymarch WGSL is `compileAsync`-compiled under the
+  splash. **[open]** ring-orientation match at the cut (splash rings head-on vs the
+  disk's near-edge-on band).
+- **[done · v0.17] Mobile first-paint + overlap.** Splash animations start on the first
+  painted frame (`--go`), fixing "the splash doesn't play on mobile"; the warm gas/dust
+  ring forms early and holds to bridge to the real disk.
+- **[done · v0.16] Warm, neon, shorter.** Orbs → warm white-gold + amber; neon moved
+  into the hue-shifted shock rings + streaks; merger compressed to ~0.6 s.
+- **[open] Sparkles earlier.** The inner-edge sparkle reads late (a steady-state
+  effect). To pull it into the intro window: a steeper early `formationCurve`, a brief
+  intro boost to `rotationSpeed`, and/or a closer camera arrival. **Wants a video pass.**
+- **[open] Distance vs. visibility.** Bodies appear early but stay small/far until the
+  camera arrives (~5 s). Lowering `FAR_FACTOR` or reshaping the dolly ease would surface
+  them sooner without changing the choreography.
 
-## How to grab frames for tuning
+## How to verify / grab frames for tuning
 
-The Portka Tools `video-bug-analyzer` plugin does this; the same effect by hand:
+```bash
+# Headless visual integration test of the new prelude beats (black / test pattern /
+# creation) — asserts the pixels and writes a contact sheet to .intro-verify/.
+npm run verify:intro
+
+# Capture the splash as a looping GIF for the README.
+npm run capture:splash
+```
+
+By hand, with the Portka Tools `video-bug-analyzer` plugin or raw ffmpeg:
 
 ```bash
 # overview contact sheet (1 fps, timestamped)

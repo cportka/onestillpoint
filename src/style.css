@@ -33,6 +33,33 @@ canvas {
   touch-action: none;
 }
 
+/* Replay's "melt inward" (src/intro/melt.ts): the live engine canvas collapses
+   toward the One Still Point at the centre of the screen — scaling + spinning down
+   to a point, blurring and fading to black — over 2s (== INTRO_TIMING.meltMs),
+   before the intro replays from the black screen. forwards holds it melted-away
+   (black) through the black-hold beat; melt.restore() clears it under the splash. */
+canvas.osp-melting {
+  animation: osp-melt 2s cubic-bezier(0.6, 0, 0.9, 0.35) forwards;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+@keyframes osp-melt {
+  0% {
+    transform: scale(1) rotate(0deg);
+    filter: blur(0);
+    opacity: 1;
+  }
+  60% {
+    filter: blur(5px);
+    opacity: 0.92;
+  }
+  100% {
+    transform: scale(0.012) rotate(150deg);
+    filter: blur(26px);
+    opacity: 0;
+  }
+}
+
 /* --- The "moment of creation" (intro beat 0, ~0.0–0.18s). A separate, cheap
    mechanism from the splash: pure CSS (no canvas / JS loop), GPU-composited
    transforms + gradients only (no blur), so it's instant and identical on every
@@ -125,6 +152,21 @@ canvas {
   .osp-cr {
     animation-duration: 0.01s;
   }
+}
+/* Beat B — the single-frame test pattern: full-screen horizontal bands 40px tall,
+   alternating white/black. The inline script shows it for exactly one painted frame
+   (no transition — a literal 1-frame flash), above the still-paused creation burst.
+   A deliberate "sync frame" / academy-leader strobe between the black and the birth. */
+.osp-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 10; /* above the burst children within #osp-creation */
+  background: repeating-linear-gradient(180deg, #fff 0 40px, #000 40px 80px);
+  opacity: 0;
+  pointer-events: none;
+}
+.osp-lines.osp-lines--on {
+  opacity: 1;
 }
 
 /* --- Load splash (Phase 15): an instant, JS-free black-and-white "formation"
@@ -719,6 +761,16 @@ canvas {
 .lil-controller.osp-section .lil-name {
   font-weight: 700;
   color: rgba(255, 255, 255, 0.95);
+}
+
+/* Compact "Display HUD" toggle: a checkbox injected into the folder *title* (between
+   lil-gui's caret and the label). Clicking it toggles the HUD without expanding the
+   folder — the input stops click propagation (see ui/hudFolder.ts). */
+.lil-gui .lil-title .osp-hud-titlebox {
+  margin: 0 6px 0 2px;
+  vertical-align: middle;
+  accent-color: #7ee787; /* the app's confirm-green */
+  cursor: pointer;
 }
 
 /* Pause: a real toggle button whose colour matches the action — a red "Pause"

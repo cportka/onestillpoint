@@ -3,6 +3,8 @@ import { prefersReducedMotion } from './core/device';
 import { FormationSequence } from './core/FormationSequence';
 import { History } from './core/History';
 import { Loop } from './core/Loop';
+import { meltInward } from './intro/melt';
+import { INTRO_TIMING, SPLASH_COVERS_AT_MS } from './intro/introTimeline';
 import { createRenderer } from './core/Renderer';
 import { detectQualityTier, QUALITY_TIERS, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
@@ -21,13 +23,14 @@ declare global {
     /** Builds (and on later calls, rebuilds) the load splash; defined inline in
      *  index.html so it paints before this bundle loads. */
     __ospSplash?: () => void;
-    /** Plays the whole intro from the top: the "moment of creation" burst, then
-     *  the splash overlapping from ~0.1s. The initial-load entry point and what
-     *  "Replay intro" re-runs. */
+    /** Plays the whole intro from the top: a black hold, a single-frame test pattern,
+     *  the "moment of creation" burst, then the splash overlapping. The initial-load
+     *  entry point and what the melt-then-replay path re-runs. */
     __ospIntro?: () => void;
-    /** Timestamp (performance.now) of the splash's first *painted* frame, set by
-     *  the inline script. The crossfade waits MIN_PLAY past this so the merger is
-     *  always seen — even when a heavy mobile load defers the first paint. */
+    /** Timestamp (performance.now) of the splash's first *painted* frame, set by the
+     *  inline script and reset to undefined at the start of each __ospIntro. The
+     *  crossfade waits MIN_SPLASH_MS past this so the merger is always seen — even
+     *  when a heavy mobile load defers the first paint, or on replay. */
     __ospSplashStart?: number;
   }
 }
@@ -115,15 +118,39 @@ async function main(): Promise<void> {
   // longer fade (see style.css), so the live disk + background overlap the
   // expanding splash rings/dust rather than cutting to a black void.
   const MIN_SPLASH_MS = 600;
+  // Play the splash out once the merger has had its minimum time on screen, measured
+  // from its first *painted* frame (window.__ospSplashStart). That frame is now ~0.3s
+  // into the intro (after the black hold + test pattern), and __ospIntro resets the
+  // marker to undefined at the start of every run — so wait for the *fresh* value
+  // before counting down, else a replay would read a stale start and cut the merger
+  // short. The reveal is a touch earlier than the merger's full end + a longer fade
+  // (see style.css) so the live disk/background overlap the splash rather than cutting.
   const dismissAfterPlayed = (): void => {
-    const started = window.__ospSplashStart ?? performance.now();
+    const started = window.__ospSplashStart;
+    if (started === undefined) {
+      requestAnimationFrame(dismissAfterPlayed); // splash hasn't painted yet — re-check next frame
+      return;
+    }
     window.setTimeout(dismissSplash, Math.max(0, started + MIN_SPLASH_MS - performance.now()));
   };
-  const replaySplash = (): void => {
-    window.__ospIntro?.(); // replay both beats: creation burst → splash (instant-show; renderer is warm)
-    // The splash starts ~0.1s into the intro and refreshes __ospSplashStart; wait
-    // past that, then play it out (dismissAfterPlayed reads the fresh start time).
-    window.setTimeout(dismissAfterPlayed, 160);
+  // "Replay intro": melt the live view inward toward the One Still Point (~2s), then
+  // replay the whole intro from the black screen. onReplay (re-seed + restart the
+  // formation) runs *after* the melt, hidden under the black/splash; the canvas is
+  // un-melted once the splash covers it, just before the crossfade plays it out.
+  const replaySplash = (onReplay?: () => void): void => {
+    const canvas = renderer.domElement;
+    const melt = meltInward(
+      canvas,
+      () => {
+        onReplay?.();
+        window.__ospIntro?.(); // black hold → test pattern → creation → splash
+        window.setTimeout(() => {
+          melt.restore(); // un-melt under the now-covering splash (the snap-back is invisible)
+          dismissAfterPlayed(); // the fresh splash start is set by now; play it out
+        }, SPLASH_COVERS_AT_MS);
+      },
+      { durationMs: INTRO_TIMING.meltMs },
+    );
   };
 
   // Build the control panel *lazily, off the critical path*. lil-gui + the panel

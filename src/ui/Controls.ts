@@ -14,6 +14,7 @@ import type { BlackHole } from '../scene/BlackHole';
 import { bodyCap, type Scene } from '../scene/Scene';
 import type { Hud } from './hud';
 import { createAboutButton } from './about';
+import { createHudFolder } from './hudFolder';
 import { attachKeybindings } from './keybindings';
 import { createShortcutsOverlay } from './shortcuts';
 import { createShareButton } from './share';
@@ -51,8 +52,9 @@ export function createControls(ctx: {
   applyQuality: (tier: QualityTier) => void;
   background: { value: number };
   bgLook: { brightness: { value: number }; saturation: { value: number }; tint: { value: number } };
-  /** Rebuild + replay the load splash (the binary-merger formation). */
-  replaySplash: () => void;
+  /** Melt the live view inward, then replay the whole intro from the black screen.
+   *  `onReplay` runs after the melt, under the black/splash (re-seed + restart). */
+  replaySplash: (onReplay?: () => void) => void;
   /** Render + read back the current view as a PNG (for the Share button). */
   captureFrame: () => Promise<Blob | null>;
   /** Cap the render rate (0 = uncapped). Drives the optional cinematic frame cap. */
@@ -210,19 +212,23 @@ export function createControls(ctx: {
   };
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
 
-  // --- Replay intro (re-seed the current line-up on fresh orbits, then replay) ---
-  // Named so the R key can trigger it too (see attachKeybindings below).
+  // --- Replay intro (melt inward → replay everything from the black screen) ---
+  // Named so the R key can trigger it too (see attachKeybindings below). The re-seed
+  // + restart run *after* the 2s melt (passed as the callback), under the black/splash
+  // — so the live view collapses inward before the scene re-forms.
   const replayIntro = (): void => {
-    replaySplash(); // re-show the load splash over the re-forming scene
-    scene.reseed(); // fresh orbits for the current composition
-    physics.syncBodies(); // rebuild GPU buffers for the new bodies
-    refreshAll(); // update counts + ± limits
-    formation.restart();
+    replaySplash(() => {
+      scene.reseed(); // fresh orbits for the current composition
+      physics.syncBodies(); // rebuild GPU buffers for the new bodies
+      refreshAll(); // update counts + ± limits
+      formation.restart();
+    });
   };
   tip(
     gui.add({ replay: replayIntro }, 'replay').name('Replay intro'),
-    'Replay the formation intro with the current bodies — re-seeded onto fresh orbits, so it ' +
-      'looks like a clean page-load for the same line-up (identical for the default 3 + 3). [R]',
+    'Melt the current view inward toward the centre (~2s), then replay the whole intro from the ' +
+      'black screen — re-seeded onto fresh orbits, so it looks like a clean page-load for the same ' +
+      'line-up (identical for the default 3 + 3). [R]',
   );
 
   // --- Pause + Step (last basic controls, right before the Advanced toggle) ---
@@ -259,7 +265,7 @@ export function createControls(ctx: {
   const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
   advCtrl.domElement.classList.add('osp-section'); // bold label + a stronger divider
 
-  // --- Advanced, in order: GPU physics, Display FPS, Step, Click-outside, then tuning ---
+  // --- Advanced, in order: GPU physics, Display HUD, Step, Click-outside, then tuning ---
   const gpuAvailable = backend === 'webgpu';
   const gpuCtrl = gui.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
     void physics.setGPU(v); // async: lazily loads the compute engine on first enable
@@ -275,32 +281,10 @@ export function createControls(ctx: {
           'CPU (exact, and fine for a handful of bodies).',
   );
 
-  // HUD: a collapsible section (collapsed by default). "Display HUD" toggles the
-  // lower-left overlay (frame rate + resolution); the child checkboxes pick the
-  // extra rows it shows.
-  const hudFolder = gui.addFolder('HUD');
-  hud.setVisible(prefs.showFps);
-  const hudOpts = { graph: true, detail: false };
-  hud.setOptions(hudOpts);
-  const fpsCtrl = tip(
-    hudFolder.add(prefs, 'showFps').name('Display HUD'),
-    'Show the lower-left HUD — frame rate + resolution, plus any child rows ticked below. It fades ' +
-      '+ pulses in/out so it is easy to spot. Toggle with the F key.',
-  );
-  fpsCtrl.onChange((v: boolean) => hud.setVisible(v));
-  // Named so the F key can toggle it too; setValue updates the checkbox + fires onChange.
-  const toggleFps = (): void => {
-    fpsCtrl.setValue(!prefs.showFps);
-  };
-  const hudCtrls = [
-    tip(
-      hudFolder.add(hudOpts, 'graph').name('Frame-time graph'),
-      'A live frame-time sparkline (green = smooth, amber/red = slow frames).',
-    ),
-    tip(hudFolder.add(hudOpts, 'detail').name('Detail'), 'Show body count · time scale · CPU/GPU physics · render backend.'),
-  ];
-  hudCtrls.forEach((c) => c.onChange(() => hud.setOptions(hudOpts)));
-  hudFolder.close(); // collapsed by default
+  // "Display HUD": a compact collapsible folder whose *title carries the on/off
+  // checkbox* (off + collapsed by default); its children — Frame-time graph + Detail
+  // — are on by default, so the first time the HUD is turned on it shows everything.
+  const { folder: hudFolder, toggle: toggleFps } = createHudFolder(gui, hud, prefs, tip);
 
   // Last of the first batch of Advanced toggles: click/tap outside to collapse.
   const tapOutsideCtrl = tip(
@@ -462,7 +446,7 @@ export function createControls(ctx: {
   // Each tuning folder starts collapsed when Advanced is first shown.
   [look, anim, post, quality, bgFolder].forEach((f) => f.close());
 
-  // Everything revealed by the Advanced toggle: GPU / FPS / Click-outside first,
+  // Everything revealed by the Advanced toggle: GPU / HUD / Click-outside first,
   // then the deeper tuning folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
     gpuCtrl,
@@ -479,7 +463,7 @@ export function createControls(ctx: {
   };
   applyAdvanced(prefs.advanced);
   advCtrl.onChange((v: boolean) => applyAdvanced(v));
-  tip(advCtrl, 'Reveal GPU physics, Display FPS, and the deeper tuning folders. Remembered for next time.');
+  tip(advCtrl, 'Reveal GPU physics, the HUD, and the deeper tuning folders. Remembered for next time.');
 
   // --- Persistence: auto-save every value control, auto-load on start ---------
   // One profile, no logins: load whatever is stored and save on any change. Every
@@ -518,7 +502,7 @@ export function createControls(ctx: {
   gui.close();
 
   // Keyboard shortcuts (see keybindings.ts): Esc About · ? this list · Space
-  // Pause · ←/→ Step · ↑/↓ Speed · R Replay · C Clear · F FPS.
+  // Pause · ←/→ Step · ↑/↓ Speed · R Replay · C Clear · F HUD.
   const shortcuts = createShortcutsOverlay();
   attachKeybindings({
     onEscape: () => (shortcuts.isOpen() ? shortcuts.close() : about.toggle()),

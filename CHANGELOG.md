@@ -3,6 +3,24 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.20.x — the intro prelude (black → test pattern → birth)
+
+- **0.20.0** (Phase 20) — A new two-beat **prelude** opens the intro: **0.25 s of
+  black**, then a **single frame** of 40 px white/black **test-pattern bands**, before
+  the moment-of-creation burst and the splash. The **intro story** (everything but the
+  live physics model) now targets **200 fps** — uncapped, past the limit of human
+  flicker detection. **Replay intro** is reborn: the live view **melts inward** toward
+  the One Still Point over ~2 s (scaling + spinning down to a point, blurring to black),
+  then replays the whole intro from the black screen. The **HUD** section is more
+  compact: the **"Display HUD"** *folder title itself* now carries the on/off checkbox
+  (off + collapsed by default), with **Frame-time graph** + **Detail** as children that
+  are **on by default** — so the first time you turn the HUD on it shows everything. The
+  intro is fully storyboarded — a master moment-by-moment table, a **screenplay**, and a
+  short story — in [`docs/intro-script.md`](docs/intro-script.md), with shared timing in
+  `src/intro/introTimeline.ts`. New unit tests (melt · timeline · HUD folder · an inline
+  drift-guard) plus a **headless visual test** of the prelude beats
+  (`npm run verify:intro`).
+
 ## 0.19.x — moment of creation, settings, share, rich HUD
 
 - **0.19.1** — **Cinematic frame cap**: a new **Cap frame rate** toggle + the
