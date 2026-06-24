@@ -75,6 +75,7 @@ requestAnimationFrame(function(){ requestAnimationFrame(function(){
   var freezeAt = 0; // black + lines: burst held at frame 0 (opacity 0 → invisible)
   if (beat === 'lines') lines.classList.add('osp-lines--on');
   if (beat === 'creation') { cr.classList.add('osp-creation--go'); freezeAt = 110; } // mid-burst
+  if (beat === 'reveal') { cr.classList.add('osp-creation--go'); freezeAt = 45; } // the moment the pattern lifts
   document.getAnimations().forEach(function(a){ try { a.currentTime = freezeAt; a.pause(); } catch(e){} });
 }); });
 </script>`;
@@ -147,7 +148,7 @@ const sampleColumn = (png, h) => [
     .stdout,
 ];
 
-const beats = ['black', 'lines', 'creation'];
+const beats = ['black', 'lines', 'creation', 'reveal'];
 const png = Object.fromEntries(beats.map((b) => [b, join(TMP, `${b}.png`)]));
 for (const b of beats) {
   shot(b, png[b]);
@@ -161,6 +162,7 @@ const black = meanLuma(png.black);
 const lines = meanLuma(png.lines);
 const linesCol = sampleColumn(png.lines, 12);
 const creation = meanLuma(png.creation);
+const reveal = meanLuma(png.reveal); // burst brightness at the instant the pattern lifts
 
 // Cascade guard: read the computed play-state from the second harness via --dump-dom.
 const psDump =
@@ -178,6 +180,8 @@ const checks = [
   ['test pattern has white+black bands', Math.max(...linesCol) >= 200 && Math.min(...linesCol) <= 55,
     `rows ${Math.min(...linesCol)}…${Math.max(...linesCol)}`],
   ['creation burst paints over black', creation > black + 8, `mean luma ${creation} vs black ${black}`],
+  // No black gap: when the test pattern lifts (at patternHoldMs), the burst is already lit.
+  ['burst is lit when the pattern lifts (no black gap)', reveal > 18, `mean luma ${reveal} at ~45ms`],
   // The crucial one the last two patches lacked: the burst must NOT play on page-load.
   ['burst is PAUSED before --go (waits for the black)', psBefore === 'paused/paused', `before=${psBefore}`],
   ['burst RUNS after --go', psAfter === 'running/running', `after=${psAfter}`],

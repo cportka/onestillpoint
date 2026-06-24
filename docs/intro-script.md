@@ -217,6 +217,14 @@ turning, for as long as you want to watch.
 
 ## Tuning log & targets
 
+- **[done · v0.20.5] Test pattern hands *directly* to the lit burst (no black flash).**
+  A recording: black + test pattern looked great, but then it briefly **went back to
+  black** before the creation. Cause: the burst was fired *as* the pattern was removed,
+  so its ~50ms fade-in (the core/flash/rays ramp from 0) read as a black gap. Fix: fire
+  `--go` **while the pattern is still up** — the opaque bands hide the burst's fade-in —
+  then lift the pattern (`patternHoldMs` ≈ 45ms) once it's lit, so the pattern hands
+  straight to a bright moment of creation. `verify:intro` now also freezes the burst at
+  the lift instant and asserts it's lit (luma ≫ black), guarding the gap shut.
 - **[done · v0.20.4] Longer black + a seamless creation→splash crossfade.** Black hold
   to **0.5 s**, and the **splash now prebuilds during the black hold** (idle thread,
   hidden under the opaque creation) and **plays on the same frame as the creation
