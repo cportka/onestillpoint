@@ -55,14 +55,11 @@ list): **Esc** About · **Space** Pause/Resume · **← / →** Step back / forw
   <img src="assets/creation.gif" alt="The moment of creation: a white-hot seed ignites at the centre and throws out flashes of light, neon beams and reverberating shock rings, then folds back to black" width="400" />
 </p>
 
-Just before the splash — after a quarter-second of black and a single frame of
-white/black test-pattern bands — the intro opens on the **moment of creation**: a
-white-hot seed ignites at the One Still Point and, in the same breath, throws
-everything outward as flashes of light, neon beams and reverberating shock rings,
-before folding back to black. It's pure CSS (no canvas), so it's instant and
+The intro opens on the **moment of creation**: a seed ignites at a still point and
+everything outward before folding back to black. Pure CSS (no canvas), instant and
 identical on every device.
 
-Captured straight from the running burst by
+Captured from:
 [`scripts/capture-creation.mjs`](scripts/capture-creation.mjs) (`npm run
 capture:creation`) — re-run it whenever the burst changes to refresh
 [`assets/creation.gif`](assets/creation.gif).
@@ -73,18 +70,15 @@ capture:creation`) — re-run it whenever the burst changes to refresh
   <img src="assets/splash.gif" alt="The load-splash: two warm orbs spiral together and merge into a black hole ringed by neon shock waves, then settle" width="400" />
 </p>
 
-The app opens on a quarter-second of **black**, a single **frame of white/black
-test-pattern bands**, a **moment-of-creation** burst, and then a tiny, art-directed
-**binary-merger splash** — all painting *instantly*, before the WebGPU shader even
-compiles, so there's never a blank screen. Two warm stars spiral together through a
-field of drifting dust, flash and merge, and the new event horizon settles inside an
-accretion ring as neon shock waves reverberate outward — then it crossfades into the
-live, formed black hole. It's plain CSS + one `<canvas>` layer (no engine), targets
-200 fps, and starts on the first painted frame so it plays in full on mobile too. The
+A tiny, art-directed **binary-merger splash** — all painting before WebGPU, no blank
+screen. Two warm stars spiral together through a field of drifting dust, flash and merge,
+and the new event horizon settles inside an accretion ring as neon shock waves reverberate
+outward — crossfade to the live, formed black hole. Plain CSS + one `<canvas>` layer (no engine),
+targets 200 fps, and starts on the first painted frame so plays in full on mobile. The
 full beat-by-beat storyboard (and the screenplay) lives in
 [`docs/intro-script.md`](docs/intro-script.md).
 
-The animation above is captured straight from the running splash by
+Captured from:
 [`scripts/capture-splash.mjs`](scripts/capture-splash.mjs) (`npm run
 capture:splash`) — re-run it whenever the splash changes to refresh
 [`assets/splash.gif`](assets/splash.gif).
