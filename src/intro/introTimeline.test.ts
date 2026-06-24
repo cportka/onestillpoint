@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { INTRO_BEATS, INTRO_STORY_FPS, INTRO_TIMING, SPLASH_COVERS_AT_MS } from './introTimeline';
+import { INTRO_BEATS, INTRO_DIALS, INTRO_STORY_FPS, MELT_MS, SPLASH_COVERS_AT_MS } from './introTimeline';
 
-describe('intro timeline', () => {
+describe('intro dials', () => {
   it('orders the beats black → lines → creation → splash → engine', () => {
     expect(INTRO_BEATS.map((b) => b.id)).toEqual(['black', 'lines', 'creation', 'splash', 'engine']);
   });
@@ -16,59 +16,61 @@ describe('intro timeline', () => {
   });
 
   it('holds black for 0.5s, then a split-second of black before the burst', () => {
-    expect(INTRO_TIMING.blackMs).toBe(500);
-    // A real but tiny black beat between the interference pattern and the creation.
-    expect(INTRO_TIMING.blackSplitMs).toBeGreaterThan(16);
-    expect(INTRO_TIMING.blackSplitMs).toBeLessThan(160);
+    expect(INTRO_DIALS.initialBlackMs).toBe(500);
+    expect(INTRO_DIALS.splitBlackMs).toBeGreaterThan(16);
+    expect(INTRO_DIALS.splitBlackMs).toBeLessThan(160);
   });
 
-  it('plays the splash only as the creation fades (its own beat, orbs visible)', () => {
-    // creationHideMs is a real beat-length, not an instant hand-off.
-    expect(INTRO_TIMING.creationHideMs).toBeGreaterThan(200);
+  it('plays the creation as its own beat, then overlaps the splash (no black gap)', () => {
+    expect(INTRO_DIALS.creationBeatMs).toBeGreaterThan(200); // a real beat-length
+    expect(INTRO_DIALS.creationToSplashMs).toBeLessThan(0); // negative = overlap, default −80
   });
 
-  it('prebuilds the splash during the black hold (before the burst)', () => {
-    expect(INTRO_TIMING.splashPrebuildMs).toBeLessThan(INTRO_TIMING.blackMs);
+  it('keeps creation/splash speeds as positive multipliers (1 = as authored)', () => {
+    expect(INTRO_DIALS.creationSpeed).toBeGreaterThan(0);
+    expect(INTRO_DIALS.splashSpeed).toBeGreaterThan(0);
   });
 
   it('melts inward for 2s before replaying', () => {
-    expect(INTRO_TIMING.meltMs).toBe(2000);
+    expect(MELT_MS).toBe(2000);
   });
 
-  it('only un-melts / dismisses once the splash is covering (past the black hold)', () => {
-    expect(SPLASH_COVERS_AT_MS).toBeGreaterThan(INTRO_TIMING.blackMs);
+  it('only un-melts / dismisses once the screen is covered (past the prelude)', () => {
+    expect(SPLASH_COVERS_AT_MS).toBeGreaterThan(INTRO_DIALS.initialBlackMs);
   });
 });
 
-// The inline boot script in index.html paints before the bundle, so it can't import
-// this module — it hard-codes the same numbers. This guard keeps the two in lockstep.
-describe('inline index.html boot script stays in sync', () => {
+// The inline boot script paints before the bundle, so it can't import this module — it
+// hard-codes the same dials on window.__ospDials. This guard keeps the two in lockstep.
+describe('inline window.__ospDials mirrors INTRO_DIALS', () => {
   const html = readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
-  it('uses blackMs for the black-hold setTimeout', () => {
-    expect(html).toMatch(new RegExp(`\\}, ${INTRO_TIMING.blackMs}\\);`));
+  it('defines window.__ospDials', () => {
+    expect(html).toContain('window.__ospDials = {');
   });
-  it('prebuilds the splash during the black hold (played later, at the creation fade)', () => {
-    expect(html).toMatch(new RegExp(`__ospSplash\\(true\\); \\}, ${INTRO_TIMING.splashPrebuildMs}\\)`));
-    expect(html).toContain('window.__ospSplashPlay()');
+
+  for (const [key, value] of Object.entries(INTRO_DIALS)) {
+    it(`mirrors ${key} = ${value}`, () => {
+      expect(html).toMatch(new RegExp(`${key}:\\s*${value}(?![0-9])`));
+    });
+  }
+
+  it('drives the timing from the dials (not magic numbers)', () => {
+    expect(html).toContain('var D = window.__ospDials');
+    expect(html).toMatch(/__ospSplash\(true\)/); // prebuild
+    expect(html).toContain('window.__ospSplashPlay');
+    expect(html).toMatch(/D\.creationBeatMs \+ D\.creationToSplashMs/); // the overlap maths
   });
-  it('waits blackSplitMs (the tiny black) between the pattern and the burst', () => {
-    expect(html).toMatch(new RegExp(`\\}, ${INTRO_TIMING.blackSplitMs}\\);`));
-  });
-  it('plays the splash as the creation fades, after creationHideMs', () => {
-    expect(html).toMatch(new RegExp(`osp-creation--hide`));
-    expect(html).toMatch(new RegExp(`__ospSplashPlay\\(\\);\\s*\\}, ${INTRO_TIMING.creationHideMs}\\)`));
-  });
+
   it('resets __ospSplashStart at the start of every intro', () => {
     expect(html).toContain('window.__ospSplashStart = undefined');
   });
-  // The heavy engine bundle must be *deferred* (loaded by the splash via __ospBoot),
-  // not a static eager <script src> — an eager bundle parses during the prelude and
-  // starves its timers / the splash's first paint, reordering the beats and opening a
-  // black gap before the merger. Guard the deferral.
+
+  // The heavy engine bundle must be deferred behind window.__ospBoot (no eager <script src>),
+  // and now booted at the *start* of the intro so its parse runs under the black hold.
   it('defers the engine bundle behind window.__ospBoot (no eager <script src=main>)', () => {
     expect(html).not.toMatch(/<script[^>]*\bsrc=["'][^"']*main\.ts["']/);
     expect(html).toContain('window.__ospBoot');
-    expect(html).toMatch(/__ospBoot\(\)/); // the splash actually calls it
+    expect(html).toMatch(/__ospBoot\(\)/);
   });
 });

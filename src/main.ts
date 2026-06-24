@@ -4,7 +4,7 @@ import { FormationSequence } from './core/FormationSequence';
 import { History } from './core/History';
 import { Loop } from './core/Loop';
 import { meltInward } from './intro/melt';
-import { INTRO_TIMING, SPLASH_COVERS_AT_MS } from './intro/introTimeline';
+import { INTRO_DIALS, MELT_MS, SPLASH_COVERS_AT_MS } from './intro/introTimeline';
 import { createRenderer } from './core/Renderer';
 import { detectQualityTier, QUALITY_TIERS, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
@@ -117,7 +117,7 @@ async function main(): Promise<void> {
   // The reveal is intentionally a touch earlier than the merger's full end + a
   // longer fade (see style.css), so the live disk + background overlap the
   // expanding splash rings/dust rather than cutting to a black void.
-  const MIN_SPLASH_MS = 600;
+  const MIN_SPLASH_MS = INTRO_DIALS.splashHoldMs;
   // Play the splash out once the merger has had its minimum time on screen, measured
   // from its first *painted* frame (window.__ospSplashStart). That frame is now ~0.3s
   // into the intro (after the black hold + test pattern), and __ospIntro resets the
@@ -149,7 +149,7 @@ async function main(): Promise<void> {
           dismissAfterPlayed(); // the fresh splash start is set by now; play it out
         }, SPLASH_COVERS_AT_MS);
       },
-      { durationMs: INTRO_TIMING.meltMs },
+      { durationMs: MELT_MS },
     );
   };
 

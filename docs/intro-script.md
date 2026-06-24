@@ -215,8 +215,42 @@ turning, for as long as you want to watch.
 
 ---
 
+## Dials — tuning the intro
+
+Every timing/speed is an explicit dial, in **one place**: `window.__ospDials` in
+`index.html` (the inline overlay) mirrored by `INTRO_DIALS` in
+[`src/intro/introTimeline.ts`](../src/intro/introTimeline.ts) (the bundle); the
+inline-sync test keeps them locked. Times are ms; **speeds** are duration multipliers
+(`1` = as authored, `2` = twice as slow, `0.5` = twice as fast). You can tweak them live
+in the console and hit **Replay intro**.
+
+| dial | controls | default |
+| ---- | -------- | ------- |
+| `initialBlackMs` | (a) opening black-screen length | 500 |
+| `splitBlackMs` | (b) the split-second of black after the interference pattern | 70 |
+| `creationSpeed` | (c) moment-of-creation animation speed (× its durations) | 1 |
+| `splashSpeed` | (d) splash animation speed (× its durations) | 1 |
+| `creationBeatMs` | how long the creation plays before handing to the splash | 340 |
+| `creationToSplashMs` | (e) creation→splash crossfade **overlap** (− = overlap, + = gap) | −80 |
+| `creationFadeMs` | (e) creation→splash crossfade **speed** (creation fade-out) | 120 |
+| `splashHoldMs` | (f) splash→engine **hold** before the engine is revealed | 600 |
+| `splashFadeMs` | (f) splash→engine crossfade **speed** | 450 |
+
+Speeds drive CSS custom properties (`--osp-cr-scale`, `--osp-splash-scale`) on the
+animation `calc()` durations; the crossfade speeds drive `--osp-cr-fade` /
+`--osp-splash-fade` on the opacity transitions.
+
 ## Tuning log & targets
 
+- **[done · v0.20.7] Explicit dials + three splash fixes.** All intro timings/speeds are
+  now explicit dials (`window.__ospDials` / `INTRO_DIALS`; table above). Three fixes from
+  a recording: (1) the **engine bundle now boots at the *start* of the intro** so its
+  ~860 kB parse runs under the black hold instead of when the splash plays — that parse
+  was **freezing the dust canvas** (~0.5 s) and lagging the splash's first paint (the
+  "0.1 s black gap"); the splash now plays on a free thread. (2) The creation→splash
+  crossfade defaults to **−80 ms overlap** (was a gap). (3) The splash **event horizon
+  grows bigger** (`--core-d` 28 → 38 vmin, ring 33 → 44 vmin) so the dark circle ≈ the
+  engine shadow at the crossfade — no size jump.
 - **[done · v0.20.6] Separate the beats: tiny black → creation → splash (orbs visible).**
   v0.20.5 over-merged them — the moment of creation blurred into the splash and the
   **twirling orbs were hidden** (the splash played *under* the burst, so the orbs

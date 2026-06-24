@@ -209,75 +209,87 @@
         }
       };
       // Play a (possibly prebuilt) splash: schedule its first canvas frame — which adds
-      // --go (un-pausing the merger), stamps __ospSplashStart, and animates — then load
-      // the heavy engine bundle *under* the now-covering splash (deferred from page
-      // load; see __ospBoot at the bottom).
+      // --go (un-pausing the merger), stamps __ospSplashStart, and animates the dust.
       window.__ospSplashPlay = function () {
         var splash = document.getElementById('osp-splash');
         if (!splash || !splash.__draw || splash.__raf) return;
         splash.__raf = requestAnimationFrame(splash.__draw);
-        if (window.__ospBoot && !window.__ospBooted) {
-          window.__ospBooted = true;
-          window.__ospBoot();
-        }
       };
+
+      // ===== Intro dials — the one place to tune the load intro ==============
+      // The bundle mirrors these in src/intro/introTimeline.ts (the inline-sync test
+      // guards the two). Times are ms; *speeds* are duration multipliers (1 = as
+      // authored, 2 = twice as slow, 0.5 = twice as fast). Exposed on window so you can
+      // tweak live in the console, then "Replay intro".
+      window.__ospDials = {
+        initialBlackMs: 500, // (a) opening black-screen length
+        splitBlackMs: 70, // (b) the split-second of black after the interference pattern
+        creationSpeed: 1, // (c) moment-of-creation animation speed (× its durations)
+        splashSpeed: 1, // (d) splash animation speed (× its durations)
+        creationBeatMs: 340, // how long the creation plays before handing to the splash
+        creationToSplashMs: -80, // (e) crossfade overlap: splash start vs the creation fade (− = overlap, + = gap)
+        creationFadeMs: 120, // (e) crossfade speed: how fast the creation fades into the splash
+        splashHoldMs: 600, // (f) how long the splash holds before the engine is revealed (read by main.ts)
+        splashFadeMs: 450, // (f) crossfade speed: how fast the splash fades into the engine
+      };
+
       // The whole intro, sequenced off the *first painted frame* (so a deferred mobile
-      // paint still plays it in full). Timings mirror src/intro/introTimeline.ts (the
-      // inline-sync test guards the two against drifting):
-      //   beat A · black hold     0.00–0.50s  (#osp-creation opaque; burst paused)
-      //   · prebuild splash       ~0.30s      (idle, hidden under the creation)
-      //   beat B · test pattern   ~0.50s      (.osp-lines, a single painted frame)
-      //   beat C · creation burst ~0.53s      (--go fires the CSS firework)
-      //   beat D · splash plays    same frame (the prebuilt merger, instant — no gap)
-      // The creation fades (~0.18s after --go) straight into the playing merger.
+      // paint still plays it in full). All timings/speeds come from window.__ospDials:
+      //   boot engine  start    (parse runs *under the black*, so the splash is smooth)
+      //   beat A · black hold    initialBlackMs       (#osp-creation opaque; burst paused)
+      //   · prebuild splash      ~200ms before B      (idle, hidden under the creation)
+      //   beat B · test pattern  at initialBlackMs    (.osp-lines, one painted frame)
+      //   · split black          splitBlackMs         (a deliberate tiny black)
+      //   beat C · creation      then                 (--go fires the CSS firework)
+      //   beat D · splash plays  creationBeatMs(+overlap), the creation fades into it
       window.__ospIntro = function () {
+        var D = window.__ospDials;
         try {
           var cr = document.getElementById('osp-creation');
+          var splash = document.getElementById('osp-splash');
           var lines = cr && cr.querySelector('.osp-lines');
           if (cr) {
             cr.className = 'osp-creation'; // reset for replay (drop --go / --hide)
+            cr.style.setProperty('--osp-cr-scale', D.creationSpeed); // (c) creation speed
+            cr.style.setProperty('--osp-cr-fade', D.creationFadeMs / 1000 + 's'); // (e) crossfade speed
             void cr.offsetWidth; // force reflow so the CSS animations restart
           }
+          if (splash) {
+            splash.style.setProperty('--osp-splash-scale', D.splashSpeed); // (d) splash speed
+            splash.style.setProperty('--osp-splash-fade', D.splashFadeMs / 1000 + 's'); // (f) crossfade speed
+          }
           if (lines) lines.className = 'osp-lines'; // reset the test-pattern flash for replay
-          // A fresh intro: forget the previous splash's start so main.ts waits for the
-          // *new* splash's first painted frame before playing it out (see dismissAfterPlayed).
-          window.__ospSplashStart = undefined;
+          window.__ospSplashStart = undefined; // a fresh intro: wait for the new splash's first frame
           requestAnimationFrame(function () {
-            // Prebuild the splash partway through the black hold — on an idle main thread,
-            // hidden under the opaque creation — so it can play *instantly* at the merger
-            // (no build hitch, no black gap before it appears).
-            window.setTimeout(function () { window.__ospSplash(true); }, 300);
-            // beat A — hold pure black to 0.5s.
+            // Boot the heavy engine bundle at the *start* of the intro, so its ~860KB parse
+            // + WebGPU init happen under the black hold — not later, where they froze the
+            // splash's dust canvas and lagged its first paint. The black absorbs the load.
+            if (window.__ospBoot && !window.__ospBooted) { window.__ospBooted = true; window.__ospBoot(); }
+            // Prebuild the splash during the black hold (idle, hidden) so it plays instantly.
+            window.setTimeout(function () { window.__ospSplash(true); }, Math.max(0, D.initialBlackMs - 200));
+            // beat A — hold pure black.
             window.setTimeout(function () {
               // beat B — the interference pattern: a brief flash over the black.
               if (lines) lines.classList.add('osp-lines--on');
               requestAnimationFrame(function () { // frame 1: the pattern is painted
                 requestAnimationFrame(function () { // frame 2: drop the pattern → a split-second of black
                   if (lines) lines.classList.remove('osp-lines--on');
-                  // ...a tiny moment of black after the interference, then straight into:
+                  // ...a deliberate tiny black after the interference, then straight into:
                   window.setTimeout(function () {
-                    // beat C — the moment of creation, as its *own* distinct beat.
-                    if (cr) cr.classList.add('osp-creation--go');
-                    // beat D — once the creation has had its moment, fade it *into* the splash:
-                    // play the prebuilt merger as the creation fades (it boots the engine too),
-                    // so the twirling orbs play fresh and *visible* — a separate beat, not hidden
-                    // under the burst.
-                    window.setTimeout(function () {
-                      if (cr) cr.classList.add('osp-creation--hide');
-                      window.__ospSplashPlay();
-                    }, 340);
-                  }, 70);
+                    if (cr) cr.classList.add('osp-creation--go'); // beat C — the moment of creation (its own beat)
+                    // beat D — play the prebuilt splash near the creation's end (overlap dial) and
+                    // fade the creation into it. Negative overlap = splash a touch *before* the fade,
+                    // so there's no black gap and the orbs play fresh + visible.
+                    window.setTimeout(window.__ospSplashPlay, Math.max(0, D.creationBeatMs + D.creationToSplashMs));
+                    window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, D.creationBeatMs);
+                  }, D.splitBlackMs);
                 });
               });
-            }, 500);
+            }, D.initialBlackMs);
           });
-          // Safety net: the splash is best-effort, so guarantee the engine still loads
-          // even if the splash path never reaches its __ospBoot() call.
+          // Safety net: guarantee the engine loads even if the boot above was somehow skipped.
           window.setTimeout(function () {
-            if (window.__ospBoot && !window.__ospBooted) {
-              window.__ospBooted = true;
-              window.__ospBoot();
-            }
+            if (window.__ospBoot && !window.__ospBooted) { window.__ospBooted = true; window.__ospBoot(); }
           }, 1400);
         } catch (e) {
           window.__ospSplash(); // never let the intro break the page

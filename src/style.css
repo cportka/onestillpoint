@@ -74,7 +74,7 @@ canvas.osp-melting {
   overflow: hidden;
   pointer-events: none;
   opacity: 1;
-  transition: opacity 0.12s ease;
+  transition: opacity var(--osp-cr-fade, 0.12s) ease; /* (e) creation→splash crossfade speed */
 }
 #osp-creation.osp-creation--hide {
   opacity: 0;
@@ -104,7 +104,7 @@ canvas.osp-melting {
   margin: -3.5vmax;
   border-radius: 50%;
   background: radial-gradient(circle, #fff 0%, #fff6e0 38%, transparent 72%);
-  animation: osp-cr-core 0.18s ease-out;
+  animation: osp-cr-core calc(0.18s * var(--osp-cr-scale, 1)) ease-out;
 }
 @keyframes osp-cr-core {
   0% { transform: scale(0); opacity: 0; }
@@ -118,7 +118,7 @@ canvas.osp-melting {
   margin: -15vmax;
   border-radius: 50%;
   background: radial-gradient(circle, var(--c, #fff) 0%, rgba(255, 255, 255, 0.28) 30%, transparent 62%);
-  animation: osp-cr-flash 0.2s ease-out var(--d, 0s);
+  animation: osp-cr-flash calc(0.2s * var(--osp-cr-scale, 1)) ease-out var(--d, 0s);
 }
 @keyframes osp-cr-flash {
   0% { transform: scale(0.04); opacity: 0; }
@@ -133,7 +133,7 @@ canvas.osp-melting {
   transform-origin: 0 50%;
   border-radius: 1vmax;
   background: linear-gradient(90deg, #fff 0%, var(--c, #fff) 16%, transparent 72%);
-  animation: osp-cr-ray 0.22s cubic-bezier(0.1, 0.7, 0.3, 1) var(--d, 0s);
+  animation: osp-cr-ray calc(0.22s * var(--osp-cr-scale, 1)) cubic-bezier(0.1, 0.7, 0.3, 1) var(--d, 0s);
 }
 @keyframes osp-cr-ray {
   0% { transform: rotate(var(--a, 0deg)) scaleX(0.02); opacity: 0; }
@@ -147,7 +147,7 @@ canvas.osp-melting {
   margin: -6vmax;
   border-radius: 50%;
   border: 0.5vmax solid var(--c, #fff);
-  animation: osp-cr-ring 0.28s ease-out var(--d, 0s);
+  animation: osp-cr-ring calc(0.28s * var(--osp-cr-scale, 1)) ease-out var(--d, 0s);
 }
 @keyframes osp-cr-ring {
   0% { transform: scale(0.1); opacity: 0; }
@@ -194,7 +194,7 @@ canvas.osp-melting {
 #osp-splash.osp-splash--hide {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.45s ease; /* gentle, so the live disk/stars overlap the fading rings + dust */
+  transition: opacity var(--osp-splash-fade, 0.45s) ease; /* (f) splash→engine crossfade speed */
 }
 /* Hold the merger choreography paused until --go (added on the splash's first canvas
    frame). This must out-specify the per-element `animation:` shorthands below — the
@@ -214,7 +214,8 @@ canvas.osp-melting {
    then the dark event horizon settles into the final circle. This is the one
    place the app "goes crazy with colour". */
 .osp-splash__stage {
-  --core-d: 28vmin; /* final diameter of the forming event horizon */
+  --core-d: 38vmin; /* final diameter of the forming event horizon — grows to ≈ the engine
+                       shadow at the crossfade (tune against a recording; was 28, too small) */
   position: relative;
   width: 90vmin;
   height: 90vmin;
@@ -230,7 +231,7 @@ canvas.osp-melting {
   margin: -6.5vmin;
   border-radius: 50%;
   will-change: transform, opacity;
-  animation: osp-orb 0.3s cubic-bezier(0.55, 0, 0.78, 1) forwards;
+  animation: osp-orb calc(0.3s * var(--osp-splash-scale, 1)) cubic-bezier(0.55, 0, 0.78, 1) forwards;
 }
 /* A warm binary: a hot white-gold twin + an amber twin (no pink/blue). */
 .osp-splash__orb--a {
@@ -295,7 +296,7 @@ canvas.osp-melting {
   transform: scale(0.2);
   /* Starts as the orbs close in and lingers, so it bridges the inspiral into the
      ring/streak burst rather than popping as a separate beat. */
-  animation: osp-flash 0.44s ease-out 0.16s forwards;
+  animation: osp-flash calc(0.44s * var(--osp-splash-scale, 1)) ease-out 0.16s forwards;
 }
 @keyframes osp-flash {
   0% {
@@ -324,7 +325,7 @@ canvas.osp-melting {
   filter: blur(0.4vmin);
   opacity: 0;
   transform: rotate(19deg) scaleX(0.06);
-  animation: osp-jet 0.36s ease-out 0.24s forwards;
+  animation: osp-jet calc(0.36s * var(--osp-splash-scale, 1)) ease-out 0.24s forwards;
 }
 @keyframes osp-jet {
   0% {
@@ -358,8 +359,8 @@ canvas.osp-melting {
   opacity: 0;
   transform: scale(0.12) rotateX(62deg) rotate(var(--rr, 0deg));
   animation:
-    osp-shock 0.46s cubic-bezier(0.15, 0.7, 0.3, 1) var(--sd, 0.24s) forwards,
-    osp-hue 0.62s linear var(--sd, 0.24s) forwards;
+    osp-shock calc(0.46s * var(--osp-splash-scale, 1)) cubic-bezier(0.15, 0.7, 0.3, 1) var(--sd, 0.24s) forwards,
+    osp-hue calc(0.62s * var(--osp-splash-scale, 1)) linear var(--sd, 0.24s) forwards;
 }
 @keyframes osp-shock {
   0% {
@@ -399,8 +400,8 @@ canvas.osp-melting {
   opacity: 0;
   transform: rotate(var(--a, 0deg)) scaleX(0.04);
   animation:
-    osp-streak 0.42s cubic-bezier(0.1, 0.7, 0.3, 1) 0.24s forwards,
-    osp-hue 0.62s linear 0.24s forwards;
+    osp-streak calc(0.42s * var(--osp-splash-scale, 1)) cubic-bezier(0.1, 0.7, 0.3, 1) 0.24s forwards,
+    osp-hue calc(0.62s * var(--osp-splash-scale, 1)) linear 0.24s forwards;
 }
 @keyframes osp-streak {
   0% {
@@ -428,7 +429,7 @@ canvas.osp-melting {
   filter: blur(0.7vmin);
   opacity: 0;
   transform: rotate(var(--a)) translateY(0) scale(0.3);
-  animation: osp-plume 0.42s ease-out 0.25s forwards;
+  animation: osp-plume calc(0.42s * var(--osp-splash-scale, 1)) ease-out 0.25s forwards;
 }
 @keyframes osp-plume {
   0% {
@@ -451,9 +452,9 @@ canvas.osp-melting {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 33vmin;
-  height: 33vmin;
-  margin: -16.5vmin;
+  width: 44vmin;
+  height: 44vmin;
+  margin: -22vmin;
   border-radius: 50%;
   border: 0.55vmin solid rgba(255, 201, 130, 0.92);
   box-shadow:
@@ -461,7 +462,7 @@ canvas.osp-melting {
     inset 0 0 2vmin rgba(255, 156, 84, 0.5);
   opacity: 0;
   transform: scale(0.2) rotateX(76deg);
-  animation: osp-disk 0.52s cubic-bezier(0.2, 0.8, 0.3, 1) 0.14s forwards;
+  animation: osp-disk calc(0.52s * var(--osp-splash-scale, 1)) cubic-bezier(0.2, 0.8, 0.3, 1) 0.14s forwards;
 }
 @keyframes osp-disk {
   0% {
@@ -488,7 +489,7 @@ canvas.osp-melting {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: #05060a;
-  animation: osp-splash-core 0.56s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  animation: osp-splash-core calc(0.56s * var(--osp-splash-scale, 1)) cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 @keyframes osp-splash-core {
   0%,
@@ -533,7 +534,7 @@ canvas.osp-melting {
   background: radial-gradient(circle at 42% 40%, #fff 0%, #ffe6c2 70%, #ffb870 100%);
   box-shadow: 0 0 1.2vmin 0.4vmin rgba(255, 195, 120, 0.5);
   transform: rotate(var(--a)) translateX(var(--r, 36vmin));
-  animation: osp-splash-fall 0.32s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
+  animation: osp-splash-fall calc(0.32s * var(--osp-splash-scale, 1)) cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
 }
 .osp-splash__b--big {
   box-shadow: 0 0 2.2vmin 0.7vmin rgba(255, 190, 110, 0.55);
