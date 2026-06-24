@@ -37,9 +37,10 @@ N-body simulator.
   (bounded) and the fine turbulence averages into a steady disk.
 - **Selectable lensed skies** — Stars, Nebula, Filaments, Lattice — each
   post-tunable for brightness / saturation / tint.
-- **Art-directed intro** — a colourful binary-merger load splash that paints
-  instantly (before the shader even compiles), crossfading into a camera dolly +
-  disk ignition.
+- **Art-directed intro** — a black hold, a one-frame test pattern, a "moment of
+  creation" burst and a colourful binary-merger splash (all painting before the
+  shader even compiles), crossfading into a camera dolly + disk ignition. **Replay**
+  melts the live view inward to the centre, then plays it all again from black.
 - **Filters & polish** — named looks (Physical / EHT / Interstellar / Stylized),
   HDR bloom, adaptive resolution, and a touch-friendly control panel.
 
@@ -54,13 +55,16 @@ list): **Esc** About · **Space** Pause/Resume · **← / →** Step back / forw
   <img src="assets/splash.gif" alt="The load-splash: two warm orbs spiral together and merge into a black hole ringed by neon shock waves, then settle" width="400" />
 </p>
 
-The app opens on a tiny, art-directed **binary-merger splash** that paints
-*instantly* — before the WebGPU shader even compiles — so there's never a blank
-screen. Two warm stars spiral together through a field of drifting dust, flash and
-merge, and the new event horizon settles inside an accretion ring as neon shock
-waves reverberate outward — then it crossfades into the live, formed black hole.
-It's plain CSS + one `<canvas>` layer (no engine), and it starts on the first
-painted frame so it plays in full on mobile too.
+The app opens on a quarter-second of **black**, a single **frame of white/black
+test-pattern bands**, a **moment-of-creation** burst, and then a tiny, art-directed
+**binary-merger splash** — all painting *instantly*, before the WebGPU shader even
+compiles, so there's never a blank screen. Two warm stars spiral together through a
+field of drifting dust, flash and merge, and the new event horizon settles inside an
+accretion ring as neon shock waves reverberate outward — then it crossfades into the
+live, formed black hole. It's plain CSS + one `<canvas>` layer (no engine), targets
+200 fps, and starts on the first painted frame so it plays in full on mobile too. The
+full beat-by-beat storyboard (and the screenplay) lives in
+[`docs/intro-script.md`](docs/intro-script.md).
 
 The animation above is captured straight from the running splash by
 [`scripts/capture-splash.mjs`](scripts/capture-splash.mjs) (`npm run
@@ -165,10 +169,12 @@ src/
       bodies.ts        segment–sphere / stretched-ellipsoid tests for companions
       starfield.ts     procedural lensed star field
       background.ts    selectable sky (Stars / Nebula / Filaments / Lattice), all lensed
-index.html             also hosts the instant-paint intro: the "moment of creation" + the load splash (window.__ospIntro)
+index.html             also hosts the instant-paint intro: black hold → test pattern → "moment of creation" → splash (window.__ospIntro)
+src/intro/             intro timing (introTimeline.ts, shared with the inline boot script) + the Replay melt (melt.ts)
 scripts/
   validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
   capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash
+  verify-intro.mjs     headless visual test of the intro prelude beats — npm run verify:intro
 assets/                tracked art: hero.svg (logo) + splash.gif (captured intro loop)
 ```
 

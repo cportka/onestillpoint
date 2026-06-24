@@ -20,7 +20,7 @@ export interface HudOptions {
 export interface Hud {
   /** Call once per frame with the real frame delta (seconds) + optional state. */
   update(frameDelta: number, info?: HudInfo): void;
-  /** Show/hide the readout (the panel's "Display FPS" toggle). */
+  /** Show/hide the readout (the panel's "Display HUD" title checkbox). */
   setVisible(on: boolean): void;
   /** Toggle which rich rows appear (the Advanced "HUD" options). */
   setOptions(opts: Partial<HudOptions>): void;
@@ -56,7 +56,7 @@ export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
   const canvas = el.querySelector<HTMLCanvasElement>('.hud__graph')!;
   const g = canvas.getContext('2d');
 
-  const opts: HudOptions = { graph: true, detail: false };
+  const opts: HudOptions = { graph: true, detail: true };
   const times = new Float32Array(SAMPLES); // ring of recent frame times (ms)
   let head = 0;
   let frames = 0;

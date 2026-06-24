@@ -27,12 +27,16 @@
          a tilted jet, colour plumes and reverberating shock rings burst forth,
          and the dark event horizon settles into the final circle. Paints on first
          paint (static markup + a tiny synchronous generator), so it can't be late. -->
-    <!-- The "moment of creation" (beat 0: ~0.0–0.18s). A separate, deliberately
-         *cheap* mechanism from the splash below: pure CSS (no canvas, no JS loop) —
-         a full-screen burst of light, beams and reverberating rings that paints on
-         first paint and is the same on every device. The splash overlaps it from
-         ~0.1s; the creation fades out as the splash takes over. -->
+    <!-- The intro prelude + "moment of creation". #osp-creation is an opaque,
+         near-black full-screen layer from the very first paint (its burst children
+         stay invisible until --go), so it doubles as the **black screen** (beat A,
+         0.00–0.25s). At ~0.25s the .osp-lines child flashes for a **single frame**
+         (beat B: a 40px white/black horizontal test pattern). Then the burst fires
+         (beat C: pure CSS — light, beams, reverberating rings, identical on every
+         device), the splash overlaps from ~0.05s later, and the creation fades out
+         as the splash takes over. All sequenced by the inline __ospIntro below. -->
     <div id="osp-creation" aria-hidden="true">
+      <div class="osp-lines" aria-hidden="true"></div>
       <i class="osp-cr osp-cr-core"></i>
       <i class="osp-cr osp-cr-flash" style="--d:0s;--c:#fff7e8"></i>
       <i class="osp-cr osp-cr-flash" style="--d:.05s;--c:#ffd9a0"></i>
@@ -196,21 +200,40 @@
           /* the splash is non-essential — never let it break the page */
         }
       };
-      // The intro's first two beats, sequenced off the *first painted frame* (so a
-      // deferred mobile paint still plays them in full): beat 0 — the cheap
-      // full-screen "moment of creation" — then, overlapping from ~0.1s, beat 1 —
-      // the binary-merger splash. The creation fades out as the splash takes over.
+      // The whole intro, sequenced off the *first painted frame* (so a deferred
+      // mobile paint still plays it in full). Timings mirror src/intro/introTimeline.ts
+      // (the inline-sync test guards the two against drifting):
+      //   beat A · black hold     0.00–0.25s  (#osp-creation is opaque; burst paused)
+      //   beat B · test pattern   ~0.25s      (.osp-lines, a single painted frame)
+      //   beat C · creation burst ~0.28s      (--go fires the CSS firework)
+      //   beat D · splash         +0.05s      (the binary merger overlaps the creation)
+      // The creation fades out (~0.22s after --go) as the splash takes over.
       window.__ospIntro = function () {
         try {
           var cr = document.getElementById('osp-creation');
+          var lines = cr && cr.querySelector('.osp-lines');
           if (cr) {
             cr.className = 'osp-creation'; // reset for replay (drop --go / --hide)
             void cr.offsetWidth; // force reflow so the CSS animations restart
           }
+          if (lines) lines.className = 'osp-lines'; // reset the 1-frame flash for replay
+          // A fresh intro: forget the previous splash's start so main.ts waits for the
+          // *new* splash's first painted frame before playing it out (see dismissAfterPlayed).
+          window.__ospSplashStart = undefined;
           requestAnimationFrame(function () {
-            if (cr) cr.classList.add('osp-creation--go'); // 0.00s: the burst
-            window.setTimeout(function () { window.__ospSplash(); }, 50); // 0.05s: splash overlaps (earlier)
-            window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, 220); // fade creation out
+            // beat A — hold pure black (the opaque creation layer, burst still paused).
+            window.setTimeout(function () {
+              // beat B — a single-frame horizontal-line test pattern at ~0.25s.
+              if (lines) lines.classList.add('osp-lines--on');
+              requestAnimationFrame(function () { // frame 1: the lines are painted
+                requestAnimationFrame(function () { // frame 2: drop the lines + fire creation
+                  if (lines) lines.classList.remove('osp-lines--on');
+                  if (cr) cr.classList.add('osp-creation--go'); // beat C: the burst
+                  window.setTimeout(function () { window.__ospSplash(); }, 50); // beat D: splash overlaps
+                  window.setTimeout(function () { if (cr) cr.classList.add('osp-creation--hide'); }, 220);
+                });
+              });
+            }, 250);
           });
         } catch (e) {
           window.__ospSplash(); // never let the intro break the page
