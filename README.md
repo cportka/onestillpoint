@@ -49,6 +49,24 @@ change the sky, scrub time, and tune the look. Keyboard (press **?** for the ful
 list): **Esc** About · **Space** Pause/Resume · **← / →** Step back / forward ·
 **↑ / ↓** double / halve Speed · **R** Replay · **C** Clear · **F** HUD.
 
+## Moment of creation
+
+<p align="center">
+  <img src="assets/creation.gif" alt="The moment of creation: a white-hot seed ignites at the centre and throws out flashes of light, neon beams and reverberating shock rings, then folds back to black" width="400" />
+</p>
+
+Just before the splash — after a quarter-second of black and a single frame of
+white/black test-pattern bands — the intro opens on the **moment of creation**: a
+white-hot seed ignites at the One Still Point and, in the same breath, throws
+everything outward as flashes of light, neon beams and reverberating shock rings,
+before folding back to black. It's pure CSS (no canvas), so it's instant and
+identical on every device.
+
+Captured straight from the running burst by
+[`scripts/capture-creation.mjs`](scripts/capture-creation.mjs) (`npm run
+capture:creation`) — re-run it whenever the burst changes to refresh
+[`assets/creation.gif`](assets/creation.gif).
+
 ## Splash
 
 <p align="center">
@@ -174,8 +192,9 @@ src/intro/             intro timing (introTimeline.ts, shared with the inline bo
 scripts/
   validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
   capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash
+  capture-creation.mjs render the moment of creation to assets/creation.gif — npm run capture:creation
   verify-intro.mjs     headless visual test of the intro prelude beats — npm run verify:intro
-assets/                tracked art: hero.svg (logo) + splash.gif (captured intro loop)
+assets/                tracked art: hero.svg (logo) + creation.gif + splash.gif (captured intro loops)
 ```
 
 ## Deploy

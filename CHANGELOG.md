@@ -5,6 +5,12 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.1** — The README now shows the **moment of creation** as a looping GIF
+  ([`assets/creation.gif`](assets/creation.gif)), a sibling to the splash GIF. It's
+  captured straight from the running CSS burst by the new `npm run capture:creation`
+  ([`scripts/capture-creation.mjs`](scripts/capture-creation.mjs)) — a single
+  deterministic pass per frame (fire `--go`, freeze every animation via the Web
+  Animations API, screenshot, stitch with ffmpeg).
 - **0.20.0** (Phase 20) — A new two-beat **prelude** opens the intro: **0.25 s of
   black**, then a **single frame** of 40 px white/black **test-pattern bands**, before
   the moment-of-creation burst and the splash. The **intro story** (everything but the
