@@ -15,9 +15,11 @@ describe('intro timeline', () => {
     expect(fps.engine).toBe(0); // 0 = the physics model's own (cappable) rate
   });
 
-  it('holds black for 0.5s and flashes the test pattern for a single frame', () => {
+  it('holds black for 0.5s and the test pattern briefly over the ramping burst', () => {
     expect(INTRO_TIMING.blackMs).toBe(500);
-    expect(INTRO_TIMING.flashFrames).toBe(1);
+    // Held long enough to cover the burst's fade-in, but still a quick flash.
+    expect(INTRO_TIMING.patternHoldMs).toBeGreaterThan(16);
+    expect(INTRO_TIMING.patternHoldMs).toBeLessThan(100);
   });
 
   it('prebuilds the splash during the black hold (before the burst)', () => {
@@ -44,6 +46,9 @@ describe('inline index.html boot script stays in sync', () => {
   it('prebuilds the splash during the black hold, then plays it at the burst', () => {
     expect(html).toMatch(new RegExp(`__ospSplash\\(true\\); \\}, ${INTRO_TIMING.splashPrebuildMs}\\)`));
     expect(html).toContain('window.__ospSplashPlay()'); // played on the creation-burst frame
+  });
+  it('lifts the test pattern after patternHoldMs (so the burst is lit, no black gap)', () => {
+    expect(html).toMatch(new RegExp(`osp-lines--on'\\); \\}, ${INTRO_TIMING.patternHoldMs}\\)`));
   });
   it('uses creationHideMs for the creation fade-out', () => {
     expect(html).toMatch(new RegExp(`osp-creation--hide'\\); \\}, ${INTRO_TIMING.creationHideMs}\\)`));

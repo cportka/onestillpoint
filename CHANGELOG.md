@@ -5,6 +5,14 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.5** — **Test pattern hands straight to the lit creation (no black flash).** A
+  recording showed the black + test pattern looking great, but then briefly going **back
+  to black** before the moment of creation — because the burst was fired *as* the pattern
+  lifted, so its ~50ms fade-in (the core/flash/rays ramp up from zero) read as a black
+  gap. Now `--go` fires **while the pattern is still up** (the opaque bands hide the
+  burst's ramp), and the pattern is lifted ~45ms later once the burst is lit — so the
+  interference pattern leads *directly* into a bright moment of creation. `verify:intro`
+  now also freezes the burst at the lift instant and asserts it's lit (luma ≫ black).
 - **0.20.4** — **Longer black + a seamless creation→splash crossfade.** The black hold
   is now **0.5 s** (was 0.25 s), and the splash **starts way earlier**: it's **prebuilt
   during the black hold** (on an idle thread, hidden under the opaque creation) and then

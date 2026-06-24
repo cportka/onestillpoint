@@ -36,14 +36,16 @@ export const INTRO_BEATS = [
 
 /**
  * The intro's timing constants (milliseconds). The inline boot script in
- * `index.html` mirrors `blackMs`, `splashPrebuildMs` and `creationHideMs` verbatim —
+ * `index.html` mirrors `blackMs`, `splashPrebuildMs`, `patternHoldMs` and `creationHideMs` —
  * change them here *and there together* (the inline-sync test enforces it).
  */
 export const INTRO_TIMING = {
   /** Beat A: how long the screen holds pure black before anything paints. */
   blackMs: 500,
-  /** Beat B: the test pattern is a literal single painted frame (held one rAF). */
-  flashFrames: 1,
+  /** Beat B: the test pattern is held this long over the *ramping* creation burst (the
+   *  opaque bands hide the burst's ~50ms fade-in), then lifted to reveal an already-lit
+   *  creation — so the pattern hands straight to the burst with no black gap. */
+  patternHoldMs: 45,
   /** The splash is **prebuilt** this far into the black hold — on an idle thread,
    *  hidden under the opaque creation — so it can play *instantly* at the burst (no
    *  build hitch, no black gap). It then plays on the same frame as the creation burst
