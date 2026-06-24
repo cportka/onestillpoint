@@ -5,6 +5,19 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
+- **0.20.7** — **Explicit intro dials + three splash fixes.** Every intro timing/speed is
+  now an explicit, named dial in one place — `window.__ospDials` (inline) mirrored by
+  `INTRO_DIALS` ([`src/intro/introTimeline.ts`](src/intro/introTimeline.ts)), kept in
+  lockstep by a test: opening-black length, the split-second black, moment-of-creation
+  **speed**, splash **speed**, the creation→splash crossfade **overlap + speed**, and the
+  splash→engine crossfade **hold + speed** (speeds drive CSS `calc()` durations via custom
+  properties). Three fixes from a recording: (1) the **engine bundle now boots at the
+  *start* of the intro**, so its ~860 kB parse runs *under the black hold* instead of when
+  the splash plays — that parse was **freezing the dust canvas** (~0.5 s) and lagging the
+  splash's first paint (the "0.1 s black gap"); the splash now plays on a free thread.
+  (2) The creation→splash crossfade defaults to **−80 ms overlap** (was a gap). (3) The
+  splash **event horizon grows bigger** (`--core-d` 28 → 38 vmin, accretion ring 33 → 44
+  vmin) so the dark circle ≈ the engine shadow at the crossfade — no size jump.
 - **0.20.6** — **Separate the beats; bring back the twirling orbs.** v0.20.5 over-merged
   the moment of creation into the splash — they blurred together and the splash's
   **twirling orbs were hidden** (the splash played *under* the burst, so they finished

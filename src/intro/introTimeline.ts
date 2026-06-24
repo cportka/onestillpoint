@@ -35,36 +35,45 @@ export const INTRO_BEATS = [
 ] as const;
 
 /**
- * The intro's timing constants (milliseconds). The inline boot script in
- * `index.html` mirrors `blackMs`, `splashPrebuildMs`, `blackSplitMs` and `creationHideMs` —
- * change them here *and there together* (the inline-sync test enforces it).
+ * The intro dials — the one place (with the `window.__ospDials` mirror in `index.html`)
+ * to tune the load intro. Times are ms; *speeds* are duration multipliers (1 = as
+ * authored, 2 = twice as slow, 0.5 = twice as fast). The inline boot script paints
+ * before the bundle, so it can't import these — it hard-codes the same values; the
+ * `introTimeline.test.ts` inline-sync guard keeps the two from drifting.
  */
-export const INTRO_TIMING = {
-  /** Beat A: how long the screen holds pure black before anything paints. */
-  blackMs: 500,
-  /** Beat B → C: after the interference pattern flashes off, a deliberate *split-second*
-   *  of black, then the moment of creation fires — the pattern leads into a tiny black,
-   *  then straight into the burst. */
-  blackSplitMs: 70,
-  /** The splash is **prebuilt** this far into the black hold — on an idle thread, hidden
-   *  under the opaque creation — so it can play *instantly* later (no build hitch). It's
-   *  played as the creation *fades* (see creationHideMs), so the twirling orbs play fresh
-   *  and visible. */
-  splashPrebuildMs: 300,
-  /** The creation burst plays this long as its **own distinct beat**, then fades — and the
-   *  splash is played at that fade, so the orbs read as a *separate*, visible beat instead
-   *  of being hidden under the burst. */
-  creationHideMs: 340,
-  /** Replay: the live view "melts" inward toward the One Still Point for this long
-   *  before the intro replays from the black screen. */
-  meltMs: 2000,
+export const INTRO_DIALS = {
+  /** (a) Opening black-screen length. */
+  initialBlackMs: 500,
+  /** (b) The deliberate split-second of black after the interference pattern. */
+  splitBlackMs: 70,
+  /** (c) Moment-of-creation animation speed (× its CSS durations). */
+  creationSpeed: 1,
+  /** (d) Splash animation speed (× its CSS durations). */
+  splashSpeed: 1,
+  /** How long the creation plays as its own beat before handing to the splash. */
+  creationBeatMs: 340,
+  /** (e) Creation→splash crossfade *overlap*: when the splash starts relative to the
+   *  creation fade — negative = splash a touch *before* the fade (overlap, no gap),
+   *  positive = a black gap. */
+  creationToSplashMs: -80,
+  /** (e) Creation→splash crossfade *speed*: how fast the creation fades into the splash. */
+  creationFadeMs: 120,
+  /** (f) Splash→engine crossfade *hold*: how long the splash stays up before the engine is
+   *  revealed (main.ts's MIN_SPLASH_MS, measured from the splash's first painted frame). */
+  splashHoldMs: 600,
+  /** (f) Splash→engine crossfade *speed*: how fast the splash fades into the engine. */
+  splashFadeMs: 450,
 } as const;
 
+/** Replay: the live view "melts" inward toward the One Still Point for this long before
+ *  the intro replays from black (bundle-only; not part of the inline overlay). */
+export const MELT_MS = 2000;
+
 /**
- * When (ms after the intro starts) the splash is reliably *covering* the screen with
- * its opaque backdrop — i.e. the first moment it's safe to un-melt the engine canvas
- * underneath, and to start counting down the splash's minimum on-screen time. The
- * splash plays on the burst's frame (~blackMs + a couple frames), so a generous margin
- * past the black hold covers it.
+ * When (ms after the intro starts) the screen is reliably *covered* — the opaque creation
+ * layer covers from the first frame and the splash takes over by here — i.e. when it's
+ * safe to un-melt the engine canvas on replay and start the splash's minimum-on-screen
+ * countdown. dismissAfterPlayed still polls `__ospSplashStart`, so a generous value is fine.
  */
-export const SPLASH_COVERS_AT_MS = INTRO_TIMING.blackMs + 200;
+export const SPLASH_COVERS_AT_MS =
+  INTRO_DIALS.initialBlackMs + INTRO_DIALS.splitBlackMs + INTRO_DIALS.creationBeatMs + 150;
