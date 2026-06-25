@@ -1,120 +1,178 @@
+import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
+
 /**
  * A rolling video buffer of the last few seconds of the canvas — the source for the
- * Share button's clip. It continuously records the live view into a small ring buffer
- * so that, at any moment, "the previous ~5 seconds" is ready to share without the user
- * waiting for a capture.
+ * Share button's clip. It continuously encodes the live view so that, at any moment, "the
+ * previous ~5 seconds" is ready to share as a real **.mp4**.
  *
- * How it works:
- *   • A 720×720 offscreen canvas is the recording surface. Each render frame we blit the
- *     main canvas into it, centre-cropped to a square and scaled to 720p — so the clip is
- *     a clean square regardless of the viewport aspect (ideal for social / share sheets).
- *   • `MediaRecorder` records that canvas's `captureStream`, emitting a chunk every
- *     `TIMESLICE_MS`. We keep the first chunk forever (it carries the container's init
- *     segment / header) plus a rolling window of the most recent chunks; older ones are
- *     dropped. On `takeClip()` we flush the pending chunk and stitch header + window into
- *     one file, so the clip ends ~now and runs back ~`WINDOW_MS`.
- *   • Format: mp4 (H.264) where the platform can record it (Safari, recent Chromium),
- *     else WebM (VP9/VP8). Short clips like this auto-loop on most share targets.
+ * **Why WebCodecs, not MediaRecorder.** `MediaRecorder` can't produce mp4 on many browsers
+ * (Chromium often only offers WebM), and macOS can't preview/AirDrop a WebM. So we encode
+ * H.264 directly with a `VideoEncoder` and mux it into an mp4 with `mp4-muxer`. This also
+ * gives us what a rolling clip needs: explicit keyframes (so the buffer always begins on a
+ * decodable frame), tiny retained chunks, and a correct duration written on finalize.
  *
- * Returns `null` when the platform can't record canvas video (no `MediaRecorder` /
- * `captureStream` / 2D context) — the Share button then falls back to a still PNG.
+ *   • A 720×720 offscreen canvas is the encode surface — each frame the main canvas is
+ *     blitted in, centre-cropped to a square and scaled to 720p (clean for share sheets).
+ *   • We keep a rolling window of encoded chunks back to the keyframe preceding ~5s ago, so
+ *     a clip is always recent (it ends at ~now) and starts clean — fixing the earlier bug
+ *     where a clip began with stale frames from when recording started.
+ *
+ * Returns `null` (→ the Share button falls back to a still PNG) when the platform can't
+ * encode H.264 video — e.g. WebCodecs is missing, or there's no H.264 encoder (some Linux
+ * Chrome / headless). macOS/iOS/Android/Windows all have one.
  */
 export interface ClipRecorder {
   /** Begin buffering. Call once the intro is done, to keep the heavy intro frames clear. */
   start: () => void;
-  /** Blit the current frame into the square recording canvas. Call once per render frame
-   *  (cheap — the blit is internally throttled to the capture rate). No-op until `start()`. */
+  /** Blit + encode the current frame. Call once per render frame (cheap — internally
+   *  throttled to the capture rate). No-op until `start()` and the encoder is configured. */
   update: () => void;
-  /** Stitch the buffered window into a share-ready square video File (mp4 or webm).
+  /** Mux the buffered window into a share-ready square **mp4** File that ends at ~now.
    *  Resolves `null` if nothing has buffered yet. */
   takeClip: () => Promise<File | null>;
-  /** True once enough has buffered to be worth sharing as a clip (else use a still). */
+  /** True once a recent clip is available (else the Share button uses a still). */
   readonly ready: boolean;
-  /** Stop recording and release the buffer. */
+  /** Stop encoding and release the buffer. */
   dispose: () => void;
 }
 
 const SIZE = 720; // 720×720 square
 const FPS = 30;
-const WINDOW_MS = 5000; // ~5 seconds of footage
-const TIMESLICE_MS = 500; // chunk granularity (→ the clip ends within ~½s of "now")
 const BITRATE = 5_000_000; // ~5 Mbps — plenty for 720p square
-// Hard cap on retained chunks — belt-and-suspenders so a muxer that doesn't honour the
-// timeslice cadence can never grow the buffer without bound (the time window is primary).
-const MAX_CHUNKS = Math.ceil(WINDOW_MS / TIMESLICE_MS) + 4;
+const WINDOW_MS = 5000; // keep ~the last 5 seconds
+const KEYFRAME_MS = 1000; // force a keyframe ~every second (tight rolling-window start)
+const MIN_SPAN_MS = 2000; // don't offer a clip until at least this much has buffered
+// H.264 profiles to try, most-capable first: Main 4.0, then Baseline 3.1 / 3.0 (broadest).
+const AVC_CODECS = ['avc1.4d0028', 'avc1.42001f', 'avc1.42e01e'];
 
-/** The best recordable container for this platform, mp4 first (per the request). */
-function pickMime(): { mimeType: string; ext: string } | null {
-  if (typeof MediaRecorder === 'undefined') return null;
-  const candidates = [
-    { mimeType: 'video/mp4;codecs=avc1.4d0028', ext: 'mp4' }, // H.264 High, 720p
-    { mimeType: 'video/mp4;codecs=avc1', ext: 'mp4' },
-    { mimeType: 'video/mp4', ext: 'mp4' },
-    { mimeType: 'video/webm;codecs=vp9', ext: 'webm' },
-    { mimeType: 'video/webm;codecs=vp8', ext: 'webm' },
-    { mimeType: 'video/webm', ext: 'webm' },
-  ];
-  return candidates.find((c) => MediaRecorder.isTypeSupported(c.mimeType)) ?? null;
+interface Entry {
+  chunk: EncodedVideoChunk;
+  t: number; // performance.now() when encoded — drives the rolling window
 }
 
 export function createClipRecorder(source: HTMLCanvasElement): ClipRecorder | null {
-  const mime = pickMime();
-  // Bail (→ PNG fallback) if the platform can't record canvas video.
-  if (!mime || typeof source.captureStream !== 'function') return null;
+  // Need WebCodecs. (H.264 encoder support is checked async in start(); until then ready=false.)
+  if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return null;
 
   const square = document.createElement('canvas');
   square.width = SIZE;
   square.height = SIZE;
   const ctx = square.getContext('2d', { alpha: false });
-  if (!ctx || typeof square.captureStream !== 'function') return null;
+  if (!ctx) return null;
   ctx.fillStyle = '#05060a'; // the app's near-black, so a clip taken early isn't pure black
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  const baseType = mime.mimeType.split(';')[0]!; // e.g. 'video/mp4' — the File's type
-  let rec: MediaRecorder | null = null;
-  let header: Blob | null = null; // first chunk = container init segment; always kept
-  let tail: Array<{ t: number; data: Blob }> = []; // rolling window of recent chunks
+  let encoder: VideoEncoder | null = null;
+  let meta: EncodedVideoChunkMetadata | null = null; // decoder config (avcC) from the encoder
+  let buf: Entry[] = [];
   let started = false;
+  let dead = false;
+  let busy = false; // pause encoding while a clip is flushed + muxed
+  let baseTs = 0;
   let lastBlit = 0;
+  let lastKey = 0;
+
+  // Drop chunks older than the window, but never below the keyframe that precedes the kept
+  // span — so the buffer always begins on a decodable keyframe.
+  const prune = (): void => {
+    const cutoff = performance.now() - WINDOW_MS;
+    let keep = 0;
+    for (let i = 0; i < buf.length; i++) {
+      if (buf[i]!.t > cutoff) break;
+      if (buf[i]!.chunk.type === 'key') keep = i;
+    }
+    if (keep > 0) buf.splice(0, keep);
+  };
 
   const start = (): void => {
-    if (started) return;
+    if (started || dead) return;
     started = true;
-    const stream = square.captureStream(FPS);
-    rec = new MediaRecorder(stream, { mimeType: mime.mimeType, videoBitsPerSecond: BITRATE });
-    rec.ondataavailable = (e: BlobEvent): void => {
-      if (!e.data || e.data.size === 0) return;
-      const now = performance.now();
-      if (!header) header = e.data; // the first chunk carries the header / init segment
-      else tail.push({ t: now, data: e.data });
-      // Drop chunks older than the window (a little slack so the kept span ≥ WINDOW_MS),
-      // and hard-cap the count as a backstop.
-      const cutoff = now - WINDOW_MS - TIMESLICE_MS;
-      while (tail.length > 0 && tail[0]!.t < cutoff) tail.shift();
-      while (tail.length > MAX_CHUNKS) tail.shift();
-    };
-    rec.start(TIMESLICE_MS);
+    void (async () => {
+      try {
+        let codec: string | null = null;
+        for (const c of AVC_CODECS) {
+          const config = { codec: c, width: SIZE, height: SIZE, bitrate: BITRATE, framerate: FPS };
+          if ((await VideoEncoder.isConfigSupported(config)).supported) {
+            codec = c;
+            break;
+          }
+        }
+        if (!codec) {
+          dead = true; // no H.264 encoder → the Share button uses a still PNG instead
+          return;
+        }
+        encoder = new VideoEncoder({
+          output: (chunk, m): void => {
+            if (m?.decoderConfig) meta = m;
+            buf.push({ chunk, t: performance.now() });
+            prune();
+          },
+          error: (): void => {
+            dead = true;
+            encoder = null;
+          },
+        });
+        encoder.configure({
+          codec,
+          width: SIZE,
+          height: SIZE,
+          bitrate: BITRATE,
+          framerate: FPS,
+          latencyMode: 'realtime',
+          avc: { format: 'avc' }, // length-prefixed (avcC) chunks, as mp4-muxer wants
+        });
+        baseTs = performance.now();
+      } catch {
+        dead = true;
+      }
+    })();
   };
 
   const update = (): void => {
-    if (!started) return;
+    if (!started || dead || busy || !encoder || encoder.state !== 'configured') return;
     const now = performance.now();
-    if (now - lastBlit < 1000 / FPS) return; // throttle the blit to the capture rate
+    if (now - lastBlit < 1000 / FPS) return; // throttle to the capture rate
     lastBlit = now;
     const sw = source.width;
     const sh = source.height;
     if (sw === 0 || sh === 0) return;
     const s = Math.min(sw, sh); // centre-crop the drawing buffer to a square, scaled to 720
     ctx.drawImage(source, (sw - s) / 2, (sh - s) / 2, s, s, 0, 0, SIZE, SIZE);
+    if (encoder.encodeQueueSize > 4) return; // backpressure: skip a frame if the encoder is behind
+    const keyFrame = now - lastKey >= KEYFRAME_MS;
+    if (keyFrame) lastKey = now;
+    const frame = new VideoFrame(square, { timestamp: Math.max(0, Math.round((now - baseTs) * 1000)) });
+    try {
+      encoder.encode(frame, { keyFrame });
+    } finally {
+      frame.close(); // VideoFrames hold GPU memory — release immediately
+    }
   };
 
   const takeClip = async (): Promise<File | null> => {
-    if (!rec || !header) return null;
-    rec.requestData(); // flush the in-progress chunk so the clip ends ~now
-    await new Promise((r) => setTimeout(r, 80)); // let that dataavailable land
-    if (!header) return null;
-    const blob = new Blob([header, ...tail.map((c) => c.data)], { type: baseType });
-    return new File([blob], `onestillpoint.${mime.ext}`, { type: baseType });
+    if (!encoder || dead || !meta || buf.length === 0) return null;
+    busy = true; // stop feeding frames while we flush + mux a clean snapshot
+    try {
+      await encoder.flush(); // drain pending frames so the clip ends at ~now
+      const entries = buf.slice();
+      const startIdx = entries.findIndex((e) => e.chunk.type === 'key');
+      if (startIdx < 0) return null;
+      const clip = entries.slice(startIdx);
+      const target = new ArrayBufferTarget();
+      const muxer = new Muxer({
+        target,
+        video: { codec: 'avc', width: SIZE, height: SIZE },
+        fastStart: 'in-memory',
+        firstTimestampBehavior: 'offset', // rebase the clip to start at t=0
+      });
+      for (let i = 0; i < clip.length; i++) muxer.addVideoChunk(clip[i]!.chunk, i === 0 ? meta : undefined);
+      muxer.finalize();
+      return new File([target.buffer], 'onestillpoint.mp4', { type: 'video/mp4' });
+    } catch {
+      return null;
+    } finally {
+      busy = false;
+    }
   };
 
   return {
@@ -122,17 +180,25 @@ export function createClipRecorder(source: HTMLCanvasElement): ClipRecorder | nu
     update,
     takeClip,
     get ready(): boolean {
-      return started && header !== null && tail.length > 0;
+      return (
+        started &&
+        !dead &&
+        meta !== null &&
+        buf.length > 0 &&
+        buf.some((e) => e.chunk.type === 'key') &&
+        performance.now() - buf[0]!.t >= MIN_SPAN_MS
+      );
     },
     dispose(): void {
+      started = false;
+      dead = true;
       try {
-        rec?.stop();
+        encoder?.close();
       } catch {
-        /* already stopped */
+        /* already closed */
       }
-      rec = null;
-      header = null;
-      tail = [];
+      encoder = null;
+      buf = [];
     },
   };
 }

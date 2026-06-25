@@ -44,7 +44,10 @@ export class CameraRig implements IntroDriver {
     this.controls.rotateSpeed = 0.6;
     this.controls.zoomSpeed = 0.8;
     this.controls.minDistance = 4; // stay outside the 3M photon sphere
-    this.controls.maxDistance = 120;
+    this.controls.maxDistance = 240; // how far you can pull back (doubled — more room to zoom out)
+    // Panning is off: there's no re-centre control yet, so a pan would strand the hole
+    // off-screen with no way back. Keep the target locked at the origin — orbit + zoom only.
+    this.controls.enablePan = false;
     // Allow the full vertical sweep — directly overhead through to directly below.
     this.controls.minPolarAngle = 0;
     this.controls.maxPolarAngle = Math.PI;

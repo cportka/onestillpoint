@@ -1,21 +1,25 @@
 /**
  * The "Share" button (top row, beside About + version). Shares the **previous ~5 seconds**
- * of the view as a short, square, looping video — preferring the OS share sheet, then the
- * clipboard, then a download:
- *   • share-capable (mobile + many desktops) → `navigator.share` with the clip + the text
- *     "onestillpoint.app"                                            → "Shared ✓"
- *   • else copy the clip to the clipboard (where the platform allows the type) → "Copied ✓"
- *   • else download it as a last resort                              → "Saved ✓"
+ * of the view as a short, square, looping **mp4** — preferring the OS share sheet, then a
+ * download:
+ *   • share-capable (mobile + Safari) → `navigator.share` with the clip + the text
+ *     "onestillpoint.app"                                  → "Shared ✓"
+ *   • else (e.g. desktop Chromium, which has no native file share) → download the clip,
+ *     so you get the actual animation as a file                → "Saved ✓"
  *
- * `capture` (from main.ts) returns the share-ready File: the rolling video clip when the
- * platform can record canvas video, otherwise a still PNG of the current frame.
+ * The clipboard isn't a fallback: browsers can't put a video on the system clipboard (only
+ * a narrow set of types, never mp4/webm), so a download is the honest way to hand over the
+ * animation when the share sheet isn't available.
+ *
+ * `capture` (from main.ts) returns the share-ready File: the rolling mp4 clip where the
+ * platform can encode H.264, otherwise a still PNG of the current frame.
  */
 export function createShareButton(capture: () => Promise<File | null>): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'osp-share-btn';
   button.textContent = 'Share';
-  button.title = 'Share the last few seconds (or copy / save the clip)';
+  button.title = 'Share the last few seconds (or save the clip)';
 
   let busy = false;
   const reset = (): void => {
@@ -27,21 +31,6 @@ export function createShareButton(capture: () => Promise<File | null>): HTMLButt
     button.classList.add('is-done');
     button.textContent = text;
     window.setTimeout(reset, 1600);
-  };
-
-  // Copy a File to the clipboard, if the platform accepts its type there. Browsers only
-  // allow a narrow set of clipboard types (video is rarely among them), so this returns
-  // false when unsupported and the caller falls back to a download.
-  const copyToClipboard = async (file: File): Promise<boolean> => {
-    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return false;
-    const C = ClipboardItem as unknown as { supports?: (t: string) => boolean };
-    if (typeof C.supports === 'function' && !C.supports(file.type)) return false;
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ [file.type]: file })]);
-      return true;
-    } catch {
-      return false;
-    }
   };
 
   const download = (file: File): void => {
@@ -67,16 +56,23 @@ export function createShareButton(capture: () => Promise<File | null>): HTMLButt
         }
         const shareData = { files: [file], text: 'onestillpoint.app' };
         if (navigator.canShare?.(shareData) && navigator.share) {
-          await navigator.share(shareData); // the OS share sheet (mobile + many desktops)
-          flash('Shared ✓');
-        } else if (await copyToClipboard(file)) {
-          flash('Copied ✓'); // copied the clip to the clipboard
+          try {
+            await navigator.share(shareData); // the OS share sheet (mobile + Safari)
+            flash('Shared ✓');
+          } catch (err) {
+            // The user dismissing the sheet aborts — leave it be. Any other failure
+            // (e.g. the gesture expired) falls back to a download so the clip isn't lost.
+            if (err instanceof DOMException && err.name === 'AbortError') reset();
+            else {
+              download(file);
+              flash('Saved ✓');
+            }
+          }
         } else {
-          download(file); // last resort: save the clip
+          download(file); // desktop without native file share → save the animation
           flash('Saved ✓');
         }
       } catch {
-        // Most often: the user dismissed the share sheet, or a permission was denied.
         reset();
       } finally {
         busy = false;
