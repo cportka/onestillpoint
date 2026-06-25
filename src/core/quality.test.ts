@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectQualityTier, QUALITY_TIERS } from './quality';
+import { detectQualityTier, introResolutionScale, INTRO_SCALE_DROP, QUALITY_TIERS, type QualityTier } from './quality';
 
 describe('quality tiers', () => {
   it('orders cost from low to high', () => {
@@ -13,5 +13,25 @@ describe('quality tiers', () => {
 
   it('detects a tier that exists in the table', () => {
     expect(QUALITY_TIERS).toHaveProperty(detectQualityTier());
+  });
+});
+
+describe('intro resolution ramp', () => {
+  const tiers = Object.keys(QUALITY_TIERS) as QualityTier[];
+
+  it('starts the reveal below the tier scale, but never below its floor', () => {
+    for (const tier of tiers) {
+      const q = QUALITY_TIERS[tier];
+      const start = introResolutionScale(q);
+      expect(start).toBeLessThan(q.scale); // cheaper than steady-state → the reveal is smooth
+      expect(start).toBeGreaterThanOrEqual(q.minScale); // never mushier than the device's own floor
+    }
+  });
+
+  it('drops by INTRO_SCALE_DROP unless that would cross the floor', () => {
+    for (const tier of tiers) {
+      const q = QUALITY_TIERS[tier];
+      expect(introResolutionScale(q)).toBe(Math.max(q.minScale, q.scale - INTRO_SCALE_DROP));
+    }
   });
 });

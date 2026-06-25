@@ -41,4 +41,17 @@ describe('ResolutionScaler', () => {
     s.update(1 / 10); // even a terrible frame shouldn't lower it
     expect(s.scale).toBe(s.maxScale);
   });
+
+  it('resetSmoothing forgets a heavy backlog so a fresh cheap scale climbs back, not down', () => {
+    const s = new ResolutionScaler();
+    s.targetFps = 50;
+    feed(s, 1 / 20, 40); // slow 20fps frames build a heavy EMA and push the scale down
+    expect(s.scale).toBeLessThan(1); // sanity: the backlog really did drag it down
+    // The intro reveal drops to a cheaper scale; with the backlog forgotten, the now-light
+    // (fast) frames climb the scale back up instead of the stale history dragging it lower.
+    s.scale = 0.45;
+    s.resetSmoothing();
+    feed(s, 1 / 120, 300);
+    expect(s.scale).toBeGreaterThan(0.45);
+  });
 });

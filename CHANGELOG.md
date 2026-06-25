@@ -5,6 +5,21 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.21.x — modular intro + the intro lab
 
+- **0.21.1** — **Smooth the splash→engine handoff (an intro resolution ramp).** A phone
+  recording caught the intro stuttering for ~1.5 s right as the splash lifts (~1.3 s):
+  a couple of multi-hundred-ms hitches, then a choppy 20–30 fps recovery before it
+  settles. The WGSL compile is already paid *under* the splash (`compileAsync` + priming
+  renders), so this isn't a compile hitch — it's **sustained full-resolution raymarch
+  load** at the heaviest moment (the camera dolly + disk ignition at the reveal), and the
+  adaptive `ResolutionScaler` only fixed it *reactively* (starting sharp, then creeping
+  down). Now the reveal starts **already cheap** — `introResolutionScale()` drops the
+  starting drawing-buffer scale 0.2 below the device tier (floored at its `minScale`) for
+  the pre-warm, the covered frames, and the reveal — and the scaler climbs *back up* to
+  full quality as the scene calms (`ResolutionScaler.resetSmoothing()` keeps the prior
+  heavy frames from dragging it down first). Same steady-state quality the scaler always
+  seeks, just reached from below (smooth) instead of above (stuttering), masked by the
+  crossfade; re-armed on **Replay**. See
+  [`docs/perf-frame-rate.md`](docs/perf-frame-rate.md).
 - **0.21.0** — **Modularize the intro, add a dev "intro lab", and two recording fixes.**
   The whole intro — the moment-of-creation markup, the splash markup, and the inline boot
   script that sequences them — now lives in **one source of truth**,

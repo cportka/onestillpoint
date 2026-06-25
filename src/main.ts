@@ -6,7 +6,7 @@ import { Loop } from './core/Loop';
 import { meltInward } from './intro/melt';
 import { INTRO_DIALS, MELT_MS, SPLASH_COVERS_AT_MS } from './intro/introTimeline';
 import { createRenderer } from './core/Renderer';
-import { detectQualityTier, QUALITY_TIERS, type QualityTier } from './core/quality';
+import { detectQualityTier, introResolutionScale, QUALITY_TIERS, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
 import { TimeController } from './core/TimeController';
 import { PhysicsController } from './physics/PhysicsController';
@@ -105,12 +105,32 @@ async function main(): Promise<void> {
   };
   applyQuality(autoTier);
 
+  // ── Intro resolution ramp — smooth the splash→engine handoff ────────────────
+  // The first ~2s the engine is on screen (the dolly + disk ignition as the splash
+  // lifts) is the heaviest it ever is. Starting at the device's steady-state scale makes
+  // the GPU render too-sharp frames it can't hold — the multi-hundred-ms hitch + choppy
+  // 20–30 fps recovery seen in screen recordings. So we render the pre-warm, the covered
+  // frames *and* the reveal at a lower scale, then let the adaptive ResolutionScaler
+  // climb back to full quality as the scene calms (no permanent quality cut; the scaler
+  // still drops further if a device genuinely can't keep up). Masked by the crossfade.
+  const introScale = introResolutionScale(QUALITY_TIERS[autoTier]);
+  const armIntroScale = (): void => {
+    if (scaler.scale > introScale) {
+      scaler.scale = introScale;
+      scaler.resetSmoothing(); // don't let the prior full-res frame times drag it down further
+      applySize();
+    }
+  };
+
   // The load splash (built by the inline window.__ospSplash in index.html). We
   // *hide* rather than remove it, so "Replay intro" can rebuild + replay it; the
   // canvas dust self-stops when the `--hide` class appears, freeing the GPU for
   // the crossfade.
   const splash = document.getElementById('osp-splash');
-  const dismissSplash = (): void => splash?.classList.add('osp-splash--hide');
+  const dismissSplash = (): void => {
+    splash?.classList.add('osp-splash--hide');
+    armIntroScale(); // the reveal + settle is the heaviest the engine gets — start cheap, then climb
+  };
   // Crossfade out only once the merger has had its minimum time on screen,
   // measured from the splash's first *painted* frame (window.__ospSplashStart) —
   // so it always plays in full, even when a heavy mobile load defers that paint.
@@ -143,6 +163,7 @@ async function main(): Promise<void> {
       canvas,
       () => {
         onReplay?.();
+        armIntroScale(); // render the replayed reveal + settle cheap too, then climb back
         window.__ospIntro?.(); // black hold → test pattern → creation → splash
         window.setTimeout(() => {
           melt.restore(); // un-melt under the now-covering splash (the snap-back is invisible)
@@ -231,6 +252,7 @@ async function main(): Promise<void> {
   //   1. compileAsync builds the heavy raymarch WGSL up front (awaited → ready);
   //   2. a couple of post renders (a frame apart) compile + prime the bloom chain
   //      and warm the GPU caches, so the disk is already lit under the splash.
+  armIntroScale(); // render the pre-warm + covered frames + reveal cheap (climbs back after)
   await renderer.compileAsync(pass.scene, pass.camera);
   post.render();
   await new Promise((resolve) => requestAnimationFrame(resolve));
