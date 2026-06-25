@@ -29,6 +29,15 @@ export class ResolutionScaler {
     return 1 / (this.targetFps + 8);
   }
 
+  /** Forget recent frame-time history (and clear the cooldown). Call when the workload
+   *  changes abruptly — e.g. the intro reveal drops to a cheaper scale — so a backlog of
+   *  heavy full-resolution frames doesn't drag the scale further down before the new,
+   *  cheaper frames register, and the climb-back starts clean. */
+  resetSmoothing(): void {
+    this.smoothed = 1 / this.targetFps;
+    this.cooldown = 0;
+  }
+
   /** Feed the real frame delta; returns true when `scale` changed (re-apply size). */
   update(frameDelta: number): boolean {
     if (!this.enabled) {

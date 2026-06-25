@@ -34,3 +34,21 @@ export function detectQualityTier(): QualityTier {
   const cores = navigator.hardwareConcurrency ?? 4;
   return mem >= 6 && cores >= 8 ? 'medium' : 'low';
 }
+
+/** How far below the tier's steady-state `scale` the intro reveal starts (a linear
+ *  resolution fraction). The heaviest the engine ever is, is the first ~2s it's on
+ *  screen — the camera dolly + disk ignition at full formation, right as the splash
+ *  lifts; rendering that at the full tier scale is what stutters the splash→engine
+ *  handoff on a phone. So we start the adaptive resolution this much lower. */
+export const INTRO_SCALE_DROP = 0.2;
+
+/**
+ * The drawing-buffer scale the intro reveal should start at for a tier — below the
+ * tier's steady-state `scale`, floored at its `minScale` so it never goes mushier than
+ * the device's own worst-case. The adaptive `ResolutionScaler` climbs back up from here
+ * the moment there's frame-time headroom, so the settle smooths out the splash→engine
+ * handoff without any permanent quality cut. Pure (no globals) so it's unit-tested.
+ */
+export function introResolutionScale(q: QualitySettings): number {
+  return Math.max(q.minScale, q.scale - INTRO_SCALE_DROP);
+}

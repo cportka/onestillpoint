@@ -73,3 +73,39 @@ feel, **30 fps** is the safe, smooth choice on 60 Hz; **24** is gorgeous on 120 
 without touching motion, **lower Target FPS (uncapped) to ~30–36**. A future
 refinement worth considering: auto-pick the cap from `screen`'s refresh (24 on
 120 Hz, 30 on 60 Hz).
+
+## The splash→engine handoff — an intro resolution ramp (v0.21.1)
+
+*Prompted by a phone screen recording: the intro is smooth until the splash lifts
+(~1.3 s), then **stutters for ~1.5 s** — a couple of multi-hundred-ms hitches and a
+choppy 20–30 fps recovery — before settling. `ffmpeg mpdecimate` on the clip showed a
+clean 60 fps up to ~1.4 s, then big inter-frame gaps through ~3 s.*
+
+**Why it happens.** The first ~2 s the engine is on screen is the **heaviest it ever
+is**: the camera dolly is moving *and* the disk is igniting at full formation, so every
+pixel runs the full geodesic RK4 loop + volume march + bloom — right as the splash
+crossfades away. The WGSL **compile** is already paid *under* the splash
+(`renderer.compileAsync` + two priming `post.render()`s before `loop.start()`, plus
+~30 covered frames), so this is **not** a compile hitch — it's **sustained full-resolution
+raymarch load** on a phone GPU. The adaptive `ResolutionScaler` *does* fix it, but
+**reactively**: it starts at the tier's steady-state scale and only creeps down ~0.1
+every 0.4 s, so the reveal renders several too-sharp frames it can't hold before the
+scaler catches up.
+
+**The fix.** Start the reveal **already cheap** and let the scaler climb *up* instead of
+stutter *down*. `introResolutionScale()` (in `quality.ts`) returns the tier's scale minus
+`INTRO_SCALE_DROP` (0.2), floored at the tier's `minScale`; `main.ts` arms it for the
+pre-warm, the covered frames, and the reveal (`armIntroScale`, also re-armed when the
+splash lifts and on **Replay**). `ResolutionScaler.resetSmoothing()` clears the heavy
+full-res frame-time backlog at that moment so it doesn't drag the scale *further* down
+before the new, cheaper frames register. The adaptive scaler then climbs back toward full
+quality as the dolly settles and headroom appears.
+
+**Why it's safe.** A phone's *sustainable* scale is the same either way — the scaler
+always seeks the band where frames land near `targetFps`. This change just **arrives**
+there from below (cheap, smooth frames) instead of from above (sharp, stuttering frames),
+so there's **no permanent quality cut** — only a smoother approach, masked by the
+crossfade and the igniting disk. A device with genuine headroom (desktop) climbs back to
+full within ~1–2 s; a struggling phone simply holds where it's smooth, exactly as before.
+The drop (0.2) is deliberately modest; `volumeStep` / geodesic-step ramps are bigger
+levers held in reserve if recordings still show a hitch.
