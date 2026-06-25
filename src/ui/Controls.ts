@@ -216,6 +216,11 @@ export function createControls(ctx: {
   // + restart run *after* the 2s melt (passed as the callback), under the black/splash
   // — so the live view collapses inward before the scene re-forms.
   const replayIntro = (): void => {
+    // Get the panel out of the way for the whole replayed intro: collapse it (so it
+    // returns folded, not expanded) and hide it entirely. It reappears via
+    // formation.onDone (below) only once the replayed intro has finished settling.
+    gui.close();
+    gui.hide();
     replaySplash(() => {
       scene.reseed(); // fresh orbits for the current composition
       physics.syncBodies(); // rebuild GPU buffers for the new bodies
@@ -223,6 +228,9 @@ export function createControls(ctx: {
       formation.restart();
     });
   };
+  // Reveal the panel again the moment the (replayed) intro finishes its dolly. Harmless on
+  // first load — the panel is already shown, so this is a no-op there.
+  formation.onDone = () => gui.show();
   tip(
     gui.add({ replay: replayIntro }, 'replay').name('Replay intro'),
     'Melt the current view inward toward the centre (~2s), then replay the whole intro from the ' +

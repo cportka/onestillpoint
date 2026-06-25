@@ -46,6 +46,9 @@ export interface IntroDriver {
  */
 export class FormationSequence {
   done = false;
+  /** Fired each time the intro finishes settling (end of the dolly, or a skip). The
+   *  control panel uses it to reappear only once a *replayed* intro has fully played. */
+  onDone?: () => void;
   private elapsed = 0;
   private readonly duration: number;
   private readonly far: number;
@@ -107,5 +110,6 @@ export class FormationSequence {
     this.formation.value = 1;
     this.driver.finishIntro();
     this.done = true;
+    this.onDone?.();
   }
 }
