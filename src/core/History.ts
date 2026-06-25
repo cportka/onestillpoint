@@ -33,6 +33,7 @@ export class History {
   private readonly gens: Int32Array;
   private head = -1; // ring index of the most recent frame
   private count = 0; // recorded frames so far (≤ capacity)
+  private total = 0; // frames ever recorded (monotonic) — a stable axis for the scrub bar
   private generation = 0;
   private prevIds: number[] = [];
 
@@ -52,6 +53,27 @@ export class History {
   /** The current generation (bumped when the body set last changed). */
   get currentGeneration(): number {
     return this.generation;
+  }
+
+  /** Total frames ever recorded (monotonic — never wraps). The scrub bar uses this
+   *  as a stable time axis: the live window spans absolute indices
+   *  `[recorded − length, recorded − 1]`, and a transient event tagged with the
+   *  `recorded` value at the time keeps a fixed position as the window scrolls. */
+  get recorded(): number {
+    return this.total;
+  }
+
+  /** How many of the most-recent frames share the current generation — the span a
+   *  scrub can actually `restore()` (older frames have a different body layout, so a
+   *  restore there would no-op). 0 when nothing is recorded. */
+  get restorableLength(): number {
+    let n = 0;
+    for (let back = 0; back < this.count; back++) {
+      const idx = (this.head - back + this.capacity) % this.capacity;
+      if (this.gens[idx] !== this.generation) break;
+      n += 1;
+    }
+    return n;
   }
 
   /** Snapshot the movable bodies into the next ring slot. No allocation — a typed
@@ -79,6 +101,7 @@ export class History {
     this.counts[this.head] = n;
     this.gens[this.head] = this.generation;
     this.count = Math.min(this.count + 1, this.capacity);
+    this.total += 1;
   }
 
   /** The frame `back` steps before the latest (0 = latest), or null if out of

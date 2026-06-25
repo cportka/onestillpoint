@@ -41,6 +41,10 @@ const PLUNGE_TURNS = 1.75;
  * placed on circular orbits beyond the disk; `addStar` / `addPlanet` is the
  * single-call "add a body via the UI" the Phase 5 plan asks for.
  */
+/** A transient event worth marking on the scrub-bar timeline: a body added (by its
+ *  type), absorbed at the centre, or flung clear of the scene. */
+export type SceneEvent = BodyType | 'absorb' | 'escape';
+
 export class Scene {
   readonly blackHole: BlackHole;
   readonly physics: PhysicsEngine;
@@ -49,6 +53,12 @@ export class Scene {
   /** Fired when the body set changes during simulation (pruning), so the UI
    *  count can refresh. */
   onChange?: () => void;
+  /** Fired for a transient event worth marking on the history timeline — a body
+   *  added (by type), absorbed at the centre, or flung clear (escaped). */
+  onEvent?: (event: SceneEvent) => void;
+  /** True while `seed()` populates the default / reseeded line-up, so those bulk adds
+   *  don't each fire an `onEvent` (only user-driven adds are timeline events). */
+  private seeding = false;
 
   constructor() {
     this.blackHole = createBlackHole();
@@ -73,9 +83,14 @@ export class Scene {
    *  ⟳ Intro look: the counts/radii here shape the load intro — changing them
    *  substantially → update docs/intro-script.md (the master beats + tuning log). */
   private seed(stars: number, planets: number, holes: number): void {
-    for (let i = 0; i < stars; i++) this.addStar(28 + i * 9);
-    for (let i = 0; i < planets; i++) this.addPlanet(22 + i * 5);
-    for (let i = 0; i < holes; i++) this.addBlackHole();
+    this.seeding = true; // a bulk line-up, not individual timeline events
+    try {
+      for (let i = 0; i < stars; i++) this.addStar(28 + i * 9);
+      for (let i = 0; i < planets; i++) this.addPlanet(22 + i * 5);
+      for (let i = 0; i < holes; i++) this.addBlackHole();
+    } finally {
+      this.seeding = false;
+    }
   }
 
   /** Re-seed the *current* composition on fresh orbits, so Replay intro shows
@@ -165,6 +180,7 @@ export class Scene {
     this.bodies.push(body);
     this.physics.bodies = this.bodies;
     this.physics.reset();
+    if (!this.seeding) this.onEvent?.(type); // a user-driven add → a timeline event
     return body;
   }
 
@@ -229,6 +245,7 @@ export class Scene {
       if (b.absorbing === undefined && b.position.length() <= MERGE_RADIUS) {
         b.absorbing = 0; // just reached the centre — begin the absorption fade
         b.absorbAnchor = b.position.clone();
+        this.onEvent?.('absorb'); // a body fell in — mark the moment on the timeline
       }
       if (b.absorbing !== undefined) {
         b.absorbing = Math.min(1, b.absorbing + frameDelta / ABSORB_DURATION);
@@ -245,8 +262,17 @@ export class Scene {
       if (b.absorbing !== undefined) return b.absorbing >= 1; // freed once fully absorbed
       return b.position.length() >= ESCAPE_RADIUS; // flung clear of the scene
     };
-    // Scan first (no allocation) — only rebuild the list when something is out.
-    if (!this.bodies.some(gone)) return false;
+    // Scan first — mark escapes (an absorbed body already fired 'absorb' when it
+    // reached the centre), then only rebuild the list when something is actually out.
+    let anyGone = false;
+    for (const b of this.bodies) {
+      if (!gone(b)) continue;
+      anyGone = true;
+      if (b.absorbing === undefined && Number.isFinite(b.position.x + b.position.y + b.position.z)) {
+        this.onEvent?.('escape'); // flung clear of the scene
+      }
+    }
+    if (!anyGone) return false;
     this.bodies = this.bodies.filter((b) => !gone(b));
     this.physics.bodies = this.bodies;
     this.physics.reset();
