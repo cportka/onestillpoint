@@ -1,7 +1,9 @@
 name: CI
 
-# Lint, typecheck, unit tests, and the physics validation scripts. Runs on every
-# push to main and on all pull requests.
+# Lint, typecheck, and unit tests. Runs on every push to main and on all pull
+# requests. The physics/maths *validation scripts* run separately, in
+# validate-physics.yml — only when physics or shader-maths files change — so a
+# UI/docs/CSS change doesn't pay for the geodesic/orbit/lensing checks.
 on:
   push:
     branches: [main]
@@ -31,6 +33,3 @@ jobs:
 
       - name: Unit tests
         run: npm run test
-
-      - name: Physics validation
-        run: npm run validate

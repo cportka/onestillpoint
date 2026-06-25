@@ -5,6 +5,20 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.22.x — HUD & controls polish
 
+- **0.22.1** — **Adopt the Portka standard workflow + gate physics validation by path.**
+  - **CI: physics validation is now path-gated.** Split the maths validation scripts (geodesic ·
+    disk · orbit · lensing) out of `ci.yml` into their own
+    [`validate-physics.yml`](.github/workflows/validate-physics.yml) that runs **only when physics
+    or shader-maths files change** (`src/physics/**`, `src/render/tsl/**`, `src/scene/**`,
+    `scripts/validate-*.mjs`). `ci.yml` keeps lint · typecheck · unit tests on every PR — so a
+    UI/docs/CSS change no longer pays for the geodesic/orbit/lensing checks.
+  - **Portka standard workflow.** Committed [`.claude/CLAUDE.md`](.claude/CLAUDE.md) encoding the
+    standing process — update `main` → branch per change → tests + CI → PR → merge on green → hand
+    back the PR link the user deletes as confirmation — so each session stays on the code, not the
+    process.
+  - **Version sync, enforced.** New [`src/version.test.ts`](src/version.test.ts) asserts
+    `package.json` ↔ `src/version.ts` ↔ `CHANGELOG.md` agree (the repo-native form of the Portka
+    SemVer triplet); CI runs it so they can't drift.
 - **0.22.0** — **Automated GPU, a clearer HUD, and the first branding de-saturation.**
   - **GPU physics is now automatic.** Removed the **GPU physics** checkbox — the CPU/GPU
     integrator is chosen for you by body count
