@@ -3,6 +3,24 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.23.x — warm-fuzzy reveal + leaner intro
+
+- **0.23.0** — **A warm-fuzzy low-res reveal, and the intro tuning scaffolding removed.**
+  - **Warm-fuzzy reveal (smoother engine takeover).** The live engine now reveals at a much lower
+    resolution — every quality tier bottoms out at its `minScale` floor for the first ~2s
+    (`INTRO_SCALE_DROP` 0.2 → 0.45), so the heaviest moment (the camera dolly + disk ignition as
+    the splash lifts) is far cheaper to draw. That softness is *masked, and made intentional,* by a
+    new **warm-fuzzy veil** ([`uniforms.fuzz`](src/render/uniforms.ts) →
+    [`PostPipeline`](src/render/PostPipeline.ts)): a warm tint + soft bloom glow at full strength
+    the instant the engine appears, easing to nothing over the settle as the `ResolutionScaler`
+    climbs back — so the scene **comes into focus** rather than stuttering in sharp. A no-op once
+    settled (`fuzz = 0`).
+  - **Removed the intro tuning scaffolding.** The dev-only **intro lab** (`intro-lab.html`,
+    `src/intro/lab.ts`, the lab screenshot) and the "Tuning the intro" / tuning-log prose (in the
+    README, `docs/intro-script.md`, and `src/intro/README.md`) are gone — the intro is considered
+    tuned. The intro itself — the dials, overlay, timeline, melt, and the CI guards — is unchanged
+    and stays well-documented.
+
 ## 0.22.x — HUD & controls polish
 
 - **0.22.1** — **Adopt the Portka standard workflow + gate physics validation by path.**

@@ -49,6 +49,12 @@ export function createUniforms() {
 
     /** Drawing-buffer size in physical pixels (for AA / dithering / dynamic res). */
     resolution: uniform(new Vector2(1, 1)),
+
+    /** Warm-fuzzy reveal filter weight: 1 the instant the engine is revealed (the
+     *  low-resolution buffer rendered "warm and out of focus"), eased to 0 over the
+     *  settle as the scene sharpens into reality. Read by PostPipeline; 0 in steady
+     *  state, so the veil is a no-op once the intro has resolved. */
+    fuzz: uniform(0),
   };
 }
 

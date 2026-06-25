@@ -23,7 +23,6 @@ Point consumes these exact files, so this directory is the live source — it ne
 | [`overlay.html`](overlay.html) | **The intro itself** — the creation + splash markup and the inline boot script that sequences them (`window.__ospSplash` / `__ospSplashPlay` / `__ospDials` / `__ospIntro`). Designed to be **inlined into your HTML before the bundle** so it paints first. |
 | [`intro.css`](intro.css) | All the intro styles (creation burst, splash, Replay melt). Namespaced selectors only; driven by `--osp-*` custom properties. Load it as its own `<link>`. |
 | [`introTimeline.ts`](introTimeline.ts) | The **dials** (`INTRO_DIALS`) and beat metadata — the one source of timing, mirrored by `window.__ospDials` in `overlay.html` (a test keeps them in lockstep). |
-| [`lab.ts`](lab.ts) | The **intro lab** controller — sliders bound live to every dial over a looping preview (see [`../../intro-lab.html`](../../intro-lab.html)). Dev-only. |
 | [`melt.ts`](melt.ts) | The **Replay melt** — collapses a canvas inward toward the centre, then restores it. Host-agnostic (`meltInward(el, onComplete, opts)`). |
 | `*.test.ts` | Unit tests for the timeline (incl. the inline-sync guard) and the melt. |
 | [`README.md`](README.md) | This file. |
@@ -32,11 +31,10 @@ Satellites (outside this directory, but part of the unit — see the filter list
 
 | Path | What it is |
 | --- | --- |
-| [`../../intro-lab.html`](../../intro-lab.html) | The intro-lab page (loops the intro behind the slider panel). `npm run dev` → `/intro-lab.html`. |
 | `../../scripts/verify-intro.mjs` | Headless visual + play-state test of the prelude beats (`npm run verify:intro`). |
 | `../../scripts/capture-{creation,splash}.mjs` | Render the creation / splash to looping GIFs (`npm run capture:*`). |
-| `../../assets/{creation,splash}.gif`, `intro-lab.png` | Captured loops + the lab screenshot. |
-| `../../docs/intro-script.md` | The beat-by-beat storyboard + the dials tuning log. |
+| `../../assets/{creation,splash}.gif` | Captured intro loops. |
+| `../../docs/intro-script.md` | The beat-by-beat storyboard. |
 
 ---
 
@@ -105,19 +103,17 @@ cd moment-of-creation
 
 git filter-repo \
   --path src/intro/ \
-  --path intro-lab.html \
   --path scripts/verify-intro.mjs \
   --path scripts/capture-creation.mjs \
   --path scripts/capture-splash.mjs \
   --path assets/creation.gif \
   --path assets/splash.gif \
-  --path assets/intro-lab.png \
   --path docs/intro-script.md
 ```
 
-That leaves a tidy tree (`src/intro/`, `intro-lab.html`, `scripts/`, `assets/`,
+That leaves a tidy tree (`src/intro/`, `scripts/`, `assets/`,
 `docs/`) carrying just the commits that touched those files. Keep the `src/intro/` layout
-as-is — every reference (`/src/intro/intro.css`, `/src/intro/lab.ts`, the overlay marker)
+as-is — every reference (`/src/intro/intro.css`, the overlay marker)
 already lines up, so nothing needs rewriting.
 
 ### Then add a tiny scaffold (the only "new" files)
@@ -239,7 +235,7 @@ Then:
 
 ```bash
 npm install
-npm run dev            # http://localhost:5173  (the intro)  ·  /intro-lab.html (tune it)
+npm run dev            # http://localhost:5173  (the intro)
 npm test               # the timeline + melt unit tests
 npm run verify:intro   # headless visual test of the prelude beats (needs Chromium + ffmpeg)
 ```
@@ -250,11 +246,3 @@ npm run verify:intro   # headless visual test of the prelude beats (needs Chromi
 > sparse.
 
 ---
-
-## Tuning
-
-Open the **intro lab** (`npm run dev` → `/intro-lab.html`): the intro loops behind a panel
-of sliders bound live to every dial, with a copy-paste snippet of the current values. Drop
-that snippet into `window.__ospDials` (in `overlay.html`) and `INTRO_DIALS` (in
-`introTimeline.ts`) — the inline-sync test keeps the two locked. The full beat-by-beat
-storyboard lives in [`../../docs/intro-script.md`](../../docs/intro-script.md).

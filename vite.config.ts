@@ -5,10 +5,9 @@ import { readFileSync } from 'node:fs';
 
 // The intro overlay (the "moment of creation" markup, the splash markup, and the
 // inline boot script that sequences them) lives in one place — src/intro/overlay.html —
-// and is inlined into every HTML entry that contains this marker. index.html ships it
-// to production; intro-lab.html reuses the *exact same* overlay to preview/tune it. The
-// script must paint before the module bundle, so it's a build-time inline (not a runtime
-// fetch); keeping a single source means the lab can never drift from the real intro.
+// and is inlined into every HTML entry that contains this marker (index.html ships it to
+// production). The script must paint before the module bundle, so it's a build-time
+// inline (not a runtime fetch); keeping a single source keeps the markup unduplicated.
 const OVERLAY_MARKER = '<!-- @osp-intro-overlay -->';
 const overlayUrl = new URL('./src/intro/overlay.html', import.meta.url);
 
@@ -25,7 +24,7 @@ function introOverlay(): Plugin {
       },
     },
     // The partial isn't a normal HMR dependency of the HTML entries, so editing it
-    // wouldn't reload anything — force a full reload (dev ergonomics for the lab).
+    // wouldn't reload anything — force a full reload (dev ergonomics).
     handleHotUpdate(ctx: HmrContext): ModuleNode[] | void {
       if (ctx.file.endsWith('/src/intro/overlay.html')) {
         ctx.server.hot.send({ type: 'full-reload' });
@@ -43,8 +42,7 @@ function introOverlay(): Plugin {
 // domain is ever dropped and the site is served from cportka.github.io/onestillpoint/.
 // See the build plan §8 (Deploy).
 //
-// Only index.html is a build input (the default), so intro-lab.html serves in `npm run
-// dev` for tuning but is never published — the live site stays just the app.
+// Only index.html is a build input (the default) — the live site is just the app.
 export default defineConfig({
   base: '/',
   plugins: [introOverlay()],

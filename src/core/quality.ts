@@ -39,8 +39,11 @@ export function detectQualityTier(): QualityTier {
  *  resolution fraction). The heaviest the engine ever is, is the first ~2s it's on
  *  screen — the camera dolly + disk ignition at full formation, right as the splash
  *  lifts; rendering that at the full tier scale is what stutters the splash→engine
- *  handoff on a phone. So we start the adaptive resolution this much lower. */
-export const INTRO_SCALE_DROP = 0.2;
+ *  handoff. So we start the adaptive resolution **well** below steady-state (every
+ *  tier bottoms out at its `minScale` floor for the reveal) — the softness is then
+ *  *masked, and made intentional,* by the warm-fuzzy reveal filter (uniforms.fuzz →
+ *  PostPipeline), which fades out in lock-step as the ResolutionScaler climbs back. */
+export const INTRO_SCALE_DROP = 0.45;
 
 /**
  * The drawing-buffer scale the intro reveal should start at for a tier — below the
