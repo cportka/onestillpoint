@@ -10,9 +10,9 @@
 
 <p align="center"><em>The circle of eternal return · The spinning cycle of time</em></p>
 
-<p align="center">🌐 <a href="https://onestillpoint.app"><strong>onestillpoint.app</strong></a></p>
+<p align="center"><a href="https://onestillpoint.app"><strong>onestillpoint.app</strong></a></p>
 
-A scientifically grounded, GPU-accelerated, animated **black hole visualizer** that
+A scientifically grounded, GPU-accelerated, animated **black hole and spacetime visualizer** that
 runs in the browser — event-horizon shadow, photon ring, gravitationally lensed
 background, and a live relativistic accretion disk. Built on WebGPU (with an
 automatic WebGL2 fallback) and architected to grow into a general gravitational
@@ -37,10 +37,10 @@ N-body simulator.
   (bounded) and the fine turbulence averages into a steady disk.
 - **Selectable lensed skies** — Stars, Nebula, Filaments, Lattice — each
   post-tunable for brightness / saturation / tint.
-- **Art-directed intro** — a black hold, a one-frame test pattern, a "moment of
-  creation" burst and a colourful binary-merger splash (all painting before the
+- **Art-directed intro** — a scripted and tuned moment of
+  creation and binary star merger intro (all painting before the
   shader even compiles), crossfading into a camera dolly + disk ignition. **Replay**
-  melts the live view inward to the centre, then plays it all again from black.
+  melts the live view and plays it all again.
 - **Filters & polish** — named looks (Physical / EHT / Interstellar / Stylized),
   HDR bloom, adaptive resolution, and a touch-friendly control panel.
 
