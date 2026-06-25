@@ -17,6 +17,7 @@ import { createBlackHoleNode } from './render/tsl/raymarch';
 import { createUniforms } from './render/uniforms';
 import { Scene } from './scene/Scene';
 import { createHud, showFatalError } from './ui/hud';
+import { createClipRecorder } from './ui/clipRecorder';
 
 declare global {
   interface Window {
@@ -174,26 +175,39 @@ async function main(): Promise<void> {
     );
   };
 
+  // The Share button shares the **previous ~5 seconds** as a short, square, looping clip.
+  // A rolling recorder continuously buffers the live view (started after the intro, below;
+  // fed once per frame in the loop) so "the last few seconds" is always ready. It returns
+  // null where the platform can't record canvas video — then we fall back to a still PNG.
+  const clip = createClipRecorder(renderer.domElement);
+  const captureFrame = async (): Promise<Blob | null> => {
+    post.render(); // a fresh frame, presented, then read back
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const canvas = renderer.domElement as HTMLCanvasElement;
+    return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
+  };
+  const captureShare = async (): Promise<File | null> => {
+    if (clip?.ready) {
+      const file = await clip.takeClip();
+      if (file) return file; // the rolling video clip (mp4 / webm)
+    }
+    const blob = await captureFrame(); // fallback: a still PNG of the current frame
+    return blob ? new File([blob], 'onestillpoint.png', { type: 'image/png' }) : null;
+  };
+
   // Build the control panel *lazily, off the critical path*. lil-gui + the panel
   // are a heavy, synchronous DOM build that isn't needed during the intro — doing
   // it under the splash was janking the fresh-load animation. Code-split it (a
   // dynamic import → its own chunk, out of the initial bundle) and mount it when
   // the main thread is next idle, after the merger has played.
-  // Capture the current view to a PNG (for the Share button). Render once so the
-  // canvas has a fresh frame, wait for it to present, then read it back.
-  const captureFrame = async (): Promise<Blob | null> => {
-    post.render();
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    const canvas = renderer.domElement as HTMLCanvasElement;
-    return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
-  };
   const mountControls = async (): Promise<void> => {
+    clip?.start(); // begin buffering now (post-intro) — clear of the heavy reveal frames
     const { createControls } = await import('./ui/Controls');
     createControls({
       blackHole, scene, physics, time, formation, backend, renderer, scaler,
       bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
       bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
-      replaySplash, captureFrame,
+      replaySplash, captureShare,
       setMaxFps: (fps: number) => {
         loop.maxFps = fps;
       },
@@ -231,6 +245,7 @@ async function main(): Promise<void> {
     if (formation.done) rig.update();
     else formation.update(frameDelta);
     post.render();
+    clip?.update(); // blit this frame into the rolling share buffer (cheap; throttled internally)
     hud.update(frameDelta, {
       resScale: scaler.scale,
       bodies: scene.companions.length,

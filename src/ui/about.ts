@@ -1,7 +1,6 @@
 import { TAGLINE } from '../tagline';
 
 const GITHUB = 'https://github.com/cportka/onestillpoint';
-const PRIVACY = 'https://github.com/cportka/onestillpoint/blob/main/PRIVACY.md';
 const VENMO = 'https://venmo.com/portka';
 const ETH = '0x354c2aB3f7a23F74cdDC745B26aEA53EC1602203';
 const BTC = '3J4XRAwhHwJWQb4F4qw5yTCrs5Zg1s1vaR';
@@ -96,9 +95,6 @@ export function createAboutButton(): { button: HTMLButtonElement; toggle: () => 
         </button>
         <a class="osp-about__row" href="${VENMO}" target="_blank" rel="noopener noreferrer">
           <span>Donate Venmo</span><span class="osp-about__val">@portka&nbsp;↗</span>
-        </a>
-        <a class="osp-about__row osp-about__privacy" href="${PRIVACY}" target="_blank" rel="noopener noreferrer">
-          <span>Privacy</span><span class="osp-about__val">PRIVACY.md&nbsp;↗</span>
         </a>
       </div>
     </div>`;

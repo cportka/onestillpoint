@@ -246,10 +246,28 @@ canvas {
   display: flex;
   align-items: center;
 }
-.lil-gui .lil-title .osp-hud-titlebox {
-  margin: 0 2px 0 auto; /* auto-left margin → flush to the right edge of the title */
+/* All boolean toggles read as the same native green checkbox, right-justified into one
+   clean vertical column. The Display-HUD box lives in the folder *title* (auto-left margin
+   pushes it to the right edge); the row toggles (GPU physics, Auto resolution, …) are
+   pushed to the right of their widget column. lil-gui both left-aligns and custom-skins its
+   checkbox, so we undo both — the title box and every row box now match and line up. */
+.lil-gui .lil-controller.lil-boolean .lil-widget {
+  display: flex;
+  justify-content: flex-end;
+}
+.lil-gui .lil-title .osp-hud-titlebox,
+.lil-gui .lil-controller.lil-boolean .lil-widget input[type='checkbox'] {
+  appearance: auto;
+  width: 15px;
+  height: 15px;
   accent-color: #7ee787; /* the app's confirm-green */
   cursor: pointer;
+}
+.lil-gui .lil-title .osp-hud-titlebox {
+  margin: 0 2px 0 auto; /* auto-left → flush to the right edge of the title (the column) */
+}
+.lil-gui .lil-controller.lil-boolean .lil-widget input[type='checkbox'] {
+  margin: 0 2px 0 0; /* 2px right inset → same column as the title box above */
 }
 
 /* Pause: a real toggle button whose colour matches the action — a red "Pause"
@@ -344,6 +362,7 @@ canvas {
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.5);
   transition: color 0.15s, background 0.15s;
+  white-space: nowrap; /* keep the confirmation (e.g. "Shared ✓") on one line, never wrapping */
 }
 .osp-about-btn:hover,
 .osp-share-btn:hover {
@@ -354,7 +373,7 @@ canvas {
   color: rgba(255, 255, 255, 0.4);
 }
 .osp-share-btn.is-done {
-  color: #7CFFB0; /* confirmed: "copied ✓" / "shared ✓" */
+  color: #7cffb0; /* confirmed: "Shared ✓" / "Copied ✓" / "Saved ✓" */
   background: rgba(80, 220, 140, 0.12);
 }
 
