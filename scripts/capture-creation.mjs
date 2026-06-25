@@ -68,7 +68,7 @@ document.getAnimations().forEach(function(a){try{a.currentTime=T;a.pause();}catc
 const file = join(ROOT, '__cre_capture.html');
 writeFileSync(
   file,
-  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/style.css"></head>` +
+  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/intro/intro.css"></head>` +
     `<body style="margin:0;background:#05060a">${creation}${freeze}</body></html>`,
 );
 

@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
     <title>Intro Lab · One Still Point</title>
-    <!-- The app stylesheet drives the intro overlay's animations (same as the real page). -->
-    <link rel="stylesheet" href="/src/style.css" />
+    <!-- Just the intro stylesheet (no app UI styles needed) — the same one index.html
+         loads, so the overlay animates exactly as it does on the real page. -->
+    <link rel="stylesheet" href="/src/intro/intro.css" />
     <style>
       /* Lab chrome only — never shipped (intro-lab.html isn't a build input). */
       :root {

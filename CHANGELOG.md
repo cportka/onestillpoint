@@ -5,6 +5,19 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.21.x — modular intro + the intro lab
 
+- **0.21.2** — **Make the intro a self-contained, forkable unit (+ fix a latent keyframe
+  collision).** The intro's stylesheet is split out of the app's into its own
+  [`src/intro/intro.css`](src/intro/intro.css) (linked separately by `index.html` and on
+  its own by `intro-lab.html`), so the whole intro — the moment of creation, the splash,
+  the Replay melt, the sequencing, and now its styles — lives as one cohesive unit under
+  [`src/intro/`](src/intro/). A new [`src/intro/README.md`](src/intro/README.md) documents
+  the integration contract (`window.__osp*` + the `__ospBoot` hook) and a `git filter-repo`
+  recipe + minimal scaffold for lifting it into its own repo. Splitting surfaced a **real
+  bug**: the splash's merger-flash keyframe was named `osp-flash`, the *same* as the app's
+  stepper-button flash — so the later definition silently won and the merger flash animated
+  with the **wrong keyframe** (a stray `translateY` + wrong scale arc). Renamed to
+  `osp-splash-flash`. The intro now ships as one `<link>` the lab can load *without* the
+  full 1200-line app stylesheet. No app behaviour change; new tests guard the split.
 - **0.21.1** — **Smooth the splash→engine handoff (an intro resolution ramp).** A phone
   recording caught the intro stuttering for ~1.5 s right as the splash lifts (~1.3 s):
   a couple of multi-hundred-ms hitches, then a choppy 20–30 fps recovery before it

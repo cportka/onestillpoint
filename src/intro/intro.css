@@ -1,0 +1,548 @@
+/*
+ * The intro stylesheet — the moment of creation, the binary-merger splash, and the
+ * Replay "melt inward", split out of the app stylesheet so the whole intro is one
+ * self-contained, forkable unit (see src/intro/README.md). Loaded as its own
+ * <link> by index.html (alongside the app styles) and by intro-lab.html (on its
+ * own). All selectors are namespaced #osp-creation / #osp-splash / .osp-cr /
+ * .osp-lines / .osp-melting and drive the inline boot script in overlay.html via
+ * the --osp-* custom properties (the dials).
+ */
+/* Replay's "melt inward" (src/intro/melt.ts): the live engine canvas collapses
+   toward the One Still Point at the centre of the screen — scaling + spinning down
+   to a point, blurring and fading to black — over 2s (== INTRO_TIMING.meltMs),
+   before the intro replays from the black screen. forwards holds it melted-away
+   (black) through the black-hold beat; melt.restore() clears it under the splash. */
+canvas.osp-melting {
+  animation: osp-melt 2s cubic-bezier(0.6, 0, 0.9, 0.35) forwards;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+@keyframes osp-melt {
+  0% {
+    transform: scale(1) rotate(0deg);
+    filter: blur(0);
+    opacity: 1;
+  }
+  60% {
+    filter: blur(5px);
+    opacity: 0.92;
+  }
+  100% {
+    transform: scale(0.012) rotate(150deg);
+    filter: blur(26px);
+    opacity: 0;
+  }
+}
+
+/* --- The "moment of creation" (intro beat 0, ~0.0–0.18s). A separate, cheap
+   mechanism from the splash: pure CSS (no canvas / JS loop), GPU-composited
+   transforms + gradients only (no blur), so it's instant and identical on every
+   device. A full-screen burst of light, neon beams and reverberating rings. The
+   inline script adds --go on the first painted frame, then --hide as the splash
+   takes over (overlapping from ~0.1s). Kept smooth, not strobing. --- */
+#osp-creation {
+  position: fixed;
+  inset: 0;
+  z-index: 2100; /* above the splash (2000) until it fades out */
+  background: #05060a; /* same as the splash, so the cross-fade reveals it seamlessly */
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--osp-cr-fade, 0.12s) ease; /* (e) creation→splash crossfade speed */
+}
+#osp-creation.osp-creation--hide {
+  opacity: 0;
+}
+.osp-cr {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation-fill-mode: forwards;
+}
+/* Hold the ENTIRE burst paused until the black hold + test pattern have played and the
+   inline script adds --go. This rule needs **higher specificity** than the per-element
+   `animation:` shorthands below — the shorthand resets `animation-play-state` to its
+   initial `running`, which is the bug that made the burst fire on page-load (before the
+   black). `#osp-creation:not(--go) .osp-cr` (id + 2 classes) beats `.osp-cr-core` (1
+   class), so the burst genuinely waits; once --go lands, :not stops matching and each
+   element's own `running` resumes it from 0%. */
+#osp-creation:not(.osp-creation--go) .osp-cr {
+  animation-play-state: paused;
+}
+/* The white-hot seed at the centre. */
+.osp-cr-core {
+  width: 7vmax;
+  height: 7vmax;
+  margin: -3.5vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff6e0 38%, transparent 72%);
+  animation: osp-cr-core calc(0.18s * var(--osp-cr-scale, 1)) ease-out;
+}
+@keyframes osp-cr-core {
+  0% { transform: scale(0); opacity: 0; }
+  28% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.18); opacity: 0; }
+}
+/* Full-screen flashes of light. */
+.osp-cr-flash {
+  width: 30vmax;
+  height: 30vmax;
+  margin: -15vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c, #fff) 0%, rgba(255, 255, 255, 0.28) 30%, transparent 62%);
+  animation: osp-cr-flash calc(0.2s * var(--osp-cr-scale, 1)) ease-out var(--d, 0s);
+}
+@keyframes osp-cr-flash {
+  0% { transform: scale(0.04); opacity: 0; }
+  22% { opacity: 0.95; }
+  100% { transform: scale(8); opacity: 0; }
+}
+/* Neon beams sweeping out to the edges. */
+.osp-cr-ray {
+  width: 150vmax;
+  height: 0.7vmax;
+  margin: -0.35vmax 0 0 0;
+  transform-origin: 0 50%;
+  border-radius: 1vmax;
+  background: linear-gradient(90deg, #fff 0%, var(--c, #fff) 16%, transparent 72%);
+  animation: osp-cr-ray calc(0.22s * var(--osp-cr-scale, 1)) cubic-bezier(0.1, 0.7, 0.3, 1) var(--d, 0s);
+}
+@keyframes osp-cr-ray {
+  0% { transform: rotate(var(--a, 0deg)) scaleX(0.02); opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { transform: rotate(var(--a, 0deg)) scaleX(1); opacity: 0; }
+}
+/* Reverberating shock rings. */
+.osp-cr-ring {
+  width: 12vmax;
+  height: 12vmax;
+  margin: -6vmax;
+  border-radius: 50%;
+  border: 0.5vmax solid var(--c, #fff);
+  animation: osp-cr-ring calc(0.28s * var(--osp-cr-scale, 1)) ease-out var(--d, 0s);
+}
+@keyframes osp-cr-ring {
+  0% { transform: scale(0.1); opacity: 0; }
+  18% { opacity: 0.85; }
+  100% { transform: scale(13); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .osp-cr {
+    animation-duration: 0.01s;
+  }
+}
+/* Beat B — the single-frame test pattern: full-screen horizontal bands 40px tall,
+   alternating white/black. The inline script shows it for exactly one painted frame
+   (no transition — a literal 1-frame flash), above the still-paused creation burst.
+   A deliberate "sync frame" / academy-leader strobe between the black and the birth. */
+.osp-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 10; /* above the burst children within #osp-creation */
+  background: repeating-linear-gradient(180deg, #fff 0 40px, #000 40px 80px);
+  opacity: 0;
+  pointer-events: none;
+}
+.osp-lines.osp-lines--on {
+  opacity: 1;
+}
+
+/* --- Load splash (Phase 15): an instant, JS-free black-and-white "formation"
+   that paints before the WebGPU shader compiles, then crossfades to the live
+   scene. A cluster of bodies spirals inward (accretion) and merges into the
+   forming event horizon + photon ring. main.ts adds .osp-splash--hide once the
+   first real frame is on screen, and removes the node after the fade. --- */
+#osp-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000; /* above the canvas and the (collapsed) panel during load */
+  background: #05060a;
+  display: grid;
+  place-items: center;
+  opacity: 1;
+  /* No *show* transition: a replay must cover the live scene instantly (no old
+     frame bleeding through). Only the dismiss fades — see .osp-splash--hide. */
+}
+#osp-splash.osp-splash--hide {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--osp-splash-fade, 0.45s) ease; /* (f) splash→engine crossfade speed */
+}
+/* Hold the merger choreography paused until --go (added on the splash's first canvas
+   frame). This must out-specify the per-element `animation:` shorthands below — the
+   shorthand resets animation-play-state to its initial `running` (the same cascade bug
+   the creation burst had), which would let the merger play the instant the stage is
+   built. `#osp-splash:not(--go)` (id + 2 classes) beats `.osp-splash__orb` (1 class),
+   so the splash can be **prebuilt during the black hold yet stay frozen** until it's
+   played — that's what lets it crossfade seamlessly out of the moment of creation with
+   no black gap. */
+#osp-splash:not(.osp-splash--go) .osp-splash__stage > * {
+  animation-play-state: paused;
+}
+/* The binary-merger choreography (sized in vmin so the final event horizon lines
+   up with the real shadow at the crossfade; tune --core-d against a recording).
+   Two big orbs twirl together while a cluster + dust swirls in; at the merger a
+   flash, a tilted jet, colour plumes and reverberating shock rings burst forth,
+   then the dark event horizon settles into the final circle. This is the one
+   place the app "goes crazy with colour". */
+.osp-splash__stage {
+  --core-d: 38vmin; /* final diameter of the forming event horizon — grows to ≈ the engine
+                       shadow at the crossfade (tune against a recording; was 28, too small) */
+  position: relative;
+  width: 90vmin;
+  height: 90vmin;
+}
+/* The two big inspiralling orbs (a cool + a warm twin). Twirl ~2 turns,
+   accelerating, from the rim into the centre where they merge. */
+.osp-splash__orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 13vmin;
+  height: 13vmin;
+  margin: -6.5vmin;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation: osp-orb calc(0.3s * var(--osp-splash-scale, 1)) cubic-bezier(0.55, 0, 0.78, 1) forwards;
+}
+/* A warm binary: a hot white-gold twin + an amber twin (no pink/blue). */
+.osp-splash__orb--a {
+  --a: 0deg;
+  background: radial-gradient(circle at 42% 38%, #fff 0%, #fff6e6 32%, #ffe1a8 60%, #ffc164 100%);
+  box-shadow:
+    0 0 4vmin 1.2vmin rgba(255, 220, 150, 0.7),
+    0 0 10vmin 3vmin rgba(255, 180, 90, 0.32);
+}
+.osp-splash__orb--b {
+  --a: 180deg;
+  background: radial-gradient(circle at 42% 38%, #fff 0%, #ffe9cf 32%, #ffbf72 60%, #ff8a36 100%);
+  box-shadow:
+    0 0 4vmin 1.2vmin rgba(255, 175, 95, 0.6),
+    0 0 10vmin 3vmin rgba(255, 130, 55, 0.3);
+}
+/* Frequent keyframes, each rotating < 180°, so the inspiral interpolates the
+   same way in every browser — WebKit/Safari decomposes big rotate+translate
+   steps to a matrix and takes the short arc, which made the orbs briefly fly
+   apart mid-approach. Monotonic radius (27 → 0), accelerating ~2 turns. */
+@keyframes osp-orb {
+  0% {
+    transform: rotate(var(--a)) translateX(27vmin) scale(0.85);
+    opacity: 0;
+  }
+  12% {
+    transform: rotate(calc(var(--a) + 85deg)) translateX(23vmin) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: rotate(calc(var(--a) + 220deg)) translateX(17vmin) scale(1);
+    opacity: 1;
+  }
+  48% {
+    transform: rotate(calc(var(--a) + 360deg)) translateX(11.5vmin) scale(1);
+    opacity: 1;
+  }
+  66% {
+    transform: rotate(calc(var(--a) + 500deg)) translateX(6.5vmin) scale(0.98);
+    opacity: 1;
+  }
+  84% {
+    transform: rotate(calc(var(--a) + 630deg)) translateX(2.5vmin) scale(0.82);
+    opacity: 0.55;
+  } /* begin dissolving into the flash, so the orbs hand off rather than vanish */
+  100% {
+    transform: rotate(calc(var(--a) + 730deg)) translateX(0) scale(0.3);
+    opacity: 0;
+  }
+}
+/* Merger flash — a white-cyan burst as the orbs coalesce (~0.4s). */
+.osp-splash__flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34vmin;
+  height: 34vmin;
+  margin: -17vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff1d6 22%, rgba(255, 200, 120, 0.45) 46%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.2);
+  /* Starts as the orbs close in and lingers, so it bridges the inspiral into the
+     ring/streak burst rather than popping as a separate beat. */
+  animation: osp-splash-flash calc(0.44s * var(--osp-splash-scale, 1)) ease-out 0.16s forwards;
+}
+@keyframes osp-splash-flash {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  16% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+/* A tilted jet flaring across the merger. */
+.osp-splash__jet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 92vmin;
+  height: 1.4vmin;
+  margin: -0.7vmin 0 0 -46vmin;
+  border-radius: 1vmin;
+  background: linear-gradient(90deg, transparent 6%, #ffb44f 26%, #fff 50%, #ffd98a 74%, transparent 94%);
+  filter: blur(0.4vmin);
+  opacity: 0;
+  transform: rotate(19deg) scaleX(0.06);
+  animation: osp-jet calc(0.36s * var(--osp-splash-scale, 1)) ease-out 0.24s forwards;
+}
+@keyframes osp-jet {
+  0% {
+    transform: rotate(19deg) scaleX(0.06);
+    opacity: 0;
+  }
+  22% {
+    transform: rotate(19deg) scaleX(1);
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(19deg) scaleX(1.18);
+    opacity: 0;
+  }
+}
+/* Reverberating shock rings — staggered (--sd), neon (--rc), tilted to read as 3D
+   rings expanding in waves. A neon glow (box-shadow) + an animated hue-shift make
+   them shimmer vibrantly through the spectrum as they expand. */
+.osp-splash__shock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9vmin;
+  height: 9vmin;
+  margin: -4.5vmin;
+  border-radius: 50%;
+  border: 0.5vmin solid var(--rc, #ff4fd8);
+  box-shadow:
+    0 0 2.4vmin 0.2vmin var(--rc, #ff4fd8),
+    inset 0 0 1.2vmin var(--rc, #ff4fd8);
+  opacity: 0;
+  transform: scale(0.12) rotateX(62deg) rotate(var(--rr, 0deg));
+  animation:
+    osp-shock calc(0.46s * var(--osp-splash-scale, 1)) cubic-bezier(0.15, 0.7, 0.3, 1) var(--sd, 0.24s) forwards,
+    osp-hue calc(0.62s * var(--osp-splash-scale, 1)) linear var(--sd, 0.24s) forwards;
+}
+@keyframes osp-shock {
+  0% {
+    transform: scale(0.12) rotateX(62deg) rotate(var(--rr, 0deg));
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(7) rotateX(62deg) rotate(var(--rr, 0deg));
+    opacity: 0;
+  }
+}
+/* Cycle the hue (with extra saturation/brightness) so rings + streaks read neon. */
+@keyframes osp-hue {
+  0% {
+    filter: hue-rotate(0deg) saturate(1.5) brightness(1.18);
+  }
+  100% {
+    filter: hue-rotate(170deg) saturate(1.5) brightness(1.18);
+  }
+}
+/* Neon streaks — thin bright rays fired radially from the merger with the rings;
+   hue-shifted to read as electric, vibrant flashes (the "streaks" on the rings). */
+.osp-splash__streak {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58vmin;
+  height: 0.5vmin;
+  margin: -0.25vmin 0 0 0;
+  transform-origin: 0 50%;
+  border-radius: 0.5vmin;
+  background: linear-gradient(90deg, #fff 0%, var(--kc, #ff2fae) 16%, transparent 82%);
+  box-shadow: 0 0 1.3vmin 0.1vmin var(--kc, #ff2fae);
+  opacity: 0;
+  transform: rotate(var(--a, 0deg)) scaleX(0.04);
+  animation:
+    osp-streak calc(0.42s * var(--osp-splash-scale, 1)) cubic-bezier(0.1, 0.7, 0.3, 1) 0.24s forwards,
+    osp-hue calc(0.62s * var(--osp-splash-scale, 1)) linear 0.24s forwards;
+}
+@keyframes osp-streak {
+  0% {
+    transform: rotate(var(--a, 0deg)) scaleX(0.04);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(var(--a, 0deg)) scaleX(1);
+    opacity: 0;
+  }
+}
+/* Colour plumes — gas flung radially outward (angle --a, colour --pc). */
+.osp-splash__plume {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4vmin;
+  height: 11vmin;
+  margin: -5.5vmin -2vmin;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 100%, var(--pc, #ffb24a) 0%, transparent 72%);
+  filter: blur(0.7vmin);
+  opacity: 0;
+  transform: rotate(var(--a)) translateY(0) scale(0.3);
+  animation: osp-plume calc(0.42s * var(--osp-splash-scale, 1)) ease-out 0.25s forwards;
+}
+@keyframes osp-plume {
+  0% {
+    transform: rotate(var(--a)) translateY(0) scale(0.3);
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: rotate(var(--a)) translateY(-24vmin) scale(1);
+    opacity: 0;
+  }
+}
+/* The gas/dust accretion ring: forms early (≈0.14 s) and *holds* around the
+   horizon, warm and tilted nearly disk-flat — unlike the shock rings (which
+   expand away). It reads as the accretion ring and is the visual bridge to the
+   real disk during the crossfade. */
+.osp-splash__disk {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44vmin;
+  height: 44vmin;
+  margin: -22vmin;
+  border-radius: 50%;
+  border: 0.55vmin solid rgba(255, 201, 130, 0.92);
+  box-shadow:
+    0 0 3vmin 0.3vmin rgba(255, 178, 96, 0.55),
+    inset 0 0 2vmin rgba(255, 156, 84, 0.5);
+  opacity: 0;
+  transform: scale(0.2) rotateX(76deg);
+  animation: osp-disk calc(0.52s * var(--osp-splash-scale, 1)) cubic-bezier(0.2, 0.8, 0.3, 1) 0.14s forwards;
+}
+@keyframes osp-disk {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotateX(76deg);
+  }
+  45% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1) rotateX(76deg);
+  } /* settle and hold (forwards) — the gas ring persists into the crossfade */
+}
+/* The forming event horizon: holds at a point through the merger, then expands
+   back outward (slight overshoot → settle) to the final black circle + a cool
+   photon ring. */
+.osp-splash__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #05060a;
+  animation: osp-splash-core calc(0.56s * var(--osp-splash-scale, 1)) cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+@keyframes osp-splash-core {
+  0%,
+  44% {
+    width: 0;
+    height: 0;
+    box-shadow: 0 0 1vmin 0.2vmin rgba(255, 238, 210, 0);
+  }
+  80% {
+    width: calc(var(--core-d) * 1.06);
+    height: calc(var(--core-d) * 1.06);
+    box-shadow:
+      0 0 5vmin 1.4vmin rgba(255, 240, 214, 0.85),
+      inset 0 0 3vmin 1vmin #000;
+  } /* expand outward + overshoot */
+  100% {
+    width: var(--core-d);
+    height: var(--core-d);
+    box-shadow:
+      0 0 4vmin 1.2vmin rgba(255, 236, 206, 0.78),
+      inset 0 0 3vmin 1vmin #000;
+  } /* settle */
+}
+/* The canvas dust field (tons of particles: swirl in → burst back out). One
+   layer behind the stage; sized/drawn by the inline script. */
+.osp-splash__dustcv {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+/* A few much-bigger bodies + small, as crisp CSS elements: spiral inward from
+   the rim and shrink as they merge. */
+.osp-splash__b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--s, 1vmin);
+  height: var(--s, 1vmin);
+  margin: calc(var(--s, 1vmin) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 40%, #fff 0%, #ffe6c2 70%, #ffb870 100%);
+  box-shadow: 0 0 1.2vmin 0.4vmin rgba(255, 195, 120, 0.5);
+  transform: rotate(var(--a)) translateX(var(--r, 36vmin));
+  animation: osp-splash-fall calc(0.32s * var(--osp-splash-scale, 1)) cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) forwards;
+}
+.osp-splash__b--big {
+  box-shadow: 0 0 2.2vmin 0.7vmin rgba(255, 190, 110, 0.55);
+}
+@keyframes osp-splash-fall {
+  0% {
+    transform: rotate(var(--a)) translateX(var(--r, 36vmin)) scale(0.6);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(calc(var(--a) + var(--w, 160deg))) translateX(0vmin) scale(0.14);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Settle quickly to the formed state rather than the full inspiral/burst.
+     (The canvas dust also drops to a small count under reduced motion.) */
+  .osp-splash__orb,
+  .osp-splash__flash,
+  .osp-splash__jet,
+  .osp-splash__shock,
+  .osp-splash__streak,
+  .osp-splash__plume,
+  .osp-splash__disk,
+  .osp-splash__b {
+    animation-duration: 0.01s;
+  }
+  .osp-splash__core {
+    animation-duration: 0.2s;
+  }
+}

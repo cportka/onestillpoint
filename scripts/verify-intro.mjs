@@ -82,7 +82,7 @@ requestAnimationFrame(function(){ requestAnimationFrame(function(){
 const file = join(ROOT, '__intro_beats.html');
 writeFileSync(
   file,
-  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/style.css"></head>` +
+  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/intro/intro.css"></head>` +
     `<body style="margin:0;background:#000">${creationMarkup}${harness}</body></html>`,
 );
 
@@ -95,7 +95,7 @@ writeFileSync(
 const psFile = join(ROOT, '__intro_playstate.html');
 writeFileSync(
   psFile,
-  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/style.css"></head>` +
+  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/intro/intro.css"></head>` +
     `<body style="margin:0;background:#000">${creationMarkup}<pre id="r">pending</pre><script>` +
     `var cr=document.getElementById('osp-creation');` +
     `var core=document.querySelector('.osp-cr-core'),ring=document.querySelector('.osp-cr-ring');` +
@@ -132,8 +132,11 @@ const shot = (beat, out) =>
   spawnSync(
     CHROME,
     [
+      // A generous virtual-time budget so the freeze harness (rAF×2 → set currentTime →
+      // pause) reliably lands *before* the screenshot — the burst is paused at a fixed
+      // currentTime, so extra budget never advances it, it only removes a capture race.
       ...headlessFlag, '--no-sandbox', '--disable-gpu', '--hide-scrollbars', '--force-color-profile=srgb',
-      '--window-size=480,480', '--virtual-time-budget=120', `--screenshot=${out}`, `${base}/__intro_beats.html?beat=${beat}`,
+      '--window-size=480,480', '--virtual-time-budget=400', `--screenshot=${out}`, `${base}/__intro_beats.html?beat=${beat}`,
     ],
     { timeout: 30000, stdio: 'ignore' },
   );

@@ -85,10 +85,15 @@ capture:splash`) — re-run it whenever the splash changes to refresh
 
 ## Tuning the intro
 
-The whole intro — the moment of creation and the splash — lives in **one** place,
-[`src/intro/overlay.html`](src/intro/overlay.html) (markup + the inline boot script).
-A tiny Vite plugin inlines it into both the app (`index.html`) and a dev-only **intro
-lab**, so the lab always previews the *exact* intro the site ships.
+The whole intro — the moment of creation, the splash, the Replay melt, and its
+stylesheet — lives as **one self-contained, forkable unit** under
+[`src/intro/`](src/intro/) ([`overlay.html`](src/intro/overlay.html) markup + inline boot
+script, [`intro.css`](src/intro/intro.css), [`introTimeline.ts`](src/intro/introTimeline.ts),
+[`lab.ts`](src/intro/lab.ts), [`melt.ts`](src/intro/melt.ts)). A tiny Vite plugin inlines
+the overlay into both the app (`index.html`) and a dev-only **intro lab**, so the lab
+always previews the *exact* intro the site ships. The integration contract and a
+`git filter-repo` recipe for lifting it into its own repo are in
+[`src/intro/README.md`](src/intro/README.md).
 
 <p align="center">
   <img src="assets/intro-lab.png" alt="The intro lab: a control panel of sliders — opening black, split black, creation/splash speed, creation beat, creation→splash overlap, creation/splash fade, splash hold/fade — over the looping intro, with a copy-paste snippet of the current values" width="320" />
@@ -222,9 +227,10 @@ src/
 index.html             inlines the shared intro overlay (the @osp-intro-overlay marker) and defers the engine bundle
 intro-lab.html         dev-only intro lab: loop + tune the intro (npm run dev → /intro-lab.html); never shipped
 vite.config.ts         build config + the introOverlay() plugin that inlines overlay.html into both HTML entries
-src/intro/             the intro: overlay.html (one source of truth — markup + inline boot script, inlined by the
-                       plugin above), introTimeline.ts (timing, mirrored by the inline dials), lab.ts (the lab's
-                       sliders + loop), melt.ts (the Replay melt)
+src/intro/             the intro as one self-contained, forkable unit (its own README.md + filter-repo recipe):
+                       overlay.html (source of truth — markup + inline boot script, inlined by the plugin above),
+                       intro.css (all the intro styles, linked separately), introTimeline.ts (timing, mirrored by
+                       the inline dials), lab.ts (the lab's sliders + loop), melt.ts (the Replay melt)
 scripts/
   validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
   capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash
