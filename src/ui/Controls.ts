@@ -12,6 +12,7 @@ import type { BodyType } from '../scene/Body';
 import type { BlackHole } from '../scene/BlackHole';
 import { bodyCap, type Scene } from '../scene/Scene';
 import type { Hud } from './hud';
+import type { HistoryBar } from './historyBar';
 import { createAboutButton } from './about';
 import { createHudFolder } from './hudFolder';
 import { attachKeybindings } from './keybindings';
@@ -57,11 +58,13 @@ export function createControls(ctx: {
   /** The share-ready capture for the Share button — a short rolling video clip of the
    *  last few seconds where the platform can record canvas video, else a still PNG. */
   captureShare: () => Promise<File | null>;
+  /** The bottom history scrub bar — shown on Pause, hidden on resume. */
+  historyBar: HistoryBar;
   /** Cap the render rate (0 = uncapped). Drives the optional cinematic frame cap. */
   setMaxFps: (fps: number) => void;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, setMaxFps } = ctx;
+  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, historyBar, setMaxFps } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   // The single persisted blob (localStorage). Defaults here; saved values are
   // applied control-by-control at the end (so a stored value overrides a preset).
@@ -248,6 +251,7 @@ export function createControls(ctx: {
     pauseCtrl.name(time.paused ? 'Resume' : 'Pause'); // text only — no glyphs
     pauseCtrl.domElement.classList.toggle('osp-paused', time.paused); // red = stopped
     pauseCtrl.domElement.classList.toggle('osp-running', !time.paused); // green = running
+    historyBar.setVisible(time.paused); // the bottom history scrub bar shows only while paused
   };
   onPauseClick = (): void => {
     time.paused = !time.paused;

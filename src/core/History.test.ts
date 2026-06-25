@@ -67,4 +67,29 @@ describe('History', () => {
     expect(h.length).toBe(0);
     expect(h.peek(0)).toBeNull();
   });
+
+  it('tracks total frames recorded (monotonic) and the current-generation span', () => {
+    const h = new History(8);
+    const primary = body(0, new Vector3(), new Vector3(), true);
+    const a = body(1, new Vector3(1, 0, 0), new Vector3());
+    const b = body(2, new Vector3(2, 0, 0), new Vector3());
+    h.record([primary, a]);
+    h.record([primary, a]); // generation N, two frames
+    expect(h.recorded).toBe(2);
+    expect(h.restorableLength).toBe(2); // both restorable
+    h.record([primary, a, b]); // a body was added → new generation
+    h.record([primary, a, b]);
+    expect(h.recorded).toBe(4); // monotonic
+    expect(h.length).toBe(4);
+    expect(h.restorableLength).toBe(2); // only the last two share the current layout
+  });
+
+  it('recorded counts past capacity; restorableLength never exceeds length', () => {
+    const h = new History(4);
+    const bodies = [body(0, new Vector3(), new Vector3(), true), body(1, new Vector3(), new Vector3())];
+    for (let i = 0; i < 10; i++) h.record(bodies);
+    expect(h.recorded).toBe(10); // monotonic, well past the 4-frame capacity
+    expect(h.length).toBe(4);
+    expect(h.restorableLength).toBe(4); // all the same generation
+  });
 });

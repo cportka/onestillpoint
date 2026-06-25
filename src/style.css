@@ -706,3 +706,98 @@ canvas {
     transform: scale(1);
   }
 }
+
+/* History scrub bar — a soft, warm-neon line along the exact bottom of the screen,
+   shown only while Paused (Controls toggles .osp-history--on). Click jumps to a moment;
+   click-and-drag scrubs. A dim base line spans the whole recorded window; a brighter warm
+   fill marks the part the current body layout can still restore; colour-coded transient-
+   event ticks rise from it; a glowing playhead marks the scrub position. See ui/historyBar.ts. */
+.osp-history {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20; /* above the scene + HUD, below the lil-gui panel */
+  height: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.34s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.osp-history--on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.osp-history__track {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  touch-action: none; /* scrub gestures, not scroll */
+}
+/* The dim base line spanning the whole recorded window, hugging the very bottom edge. */
+.osp-history__track::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(255, 168, 102, 0.26);
+  box-shadow: 0 0 6px rgba(255, 150, 80, 0.28);
+}
+/* The brighter warm fill over the scrubable (current-layout) span; JS sets its left. */
+.osp-history__fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 196, 138, 0.5), rgba(255, 216, 174, 0.92));
+  box-shadow:
+    0 0 10px rgba(255, 170, 100, 0.6),
+    0 0 3px rgba(255, 202, 152, 0.85);
+}
+.osp-history__events {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* A colour-coded transient-event tick (--osp-ev = its event colour), rising from the line. */
+.osp-history__event {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 13px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--osp-ev, #ffd9a8);
+  box-shadow:
+    0 0 7px var(--osp-ev, #ffd9a8),
+    0 0 2px var(--osp-ev, #ffd9a8);
+}
+/* The playhead — a thin vertical line with a glowing cap at the bottom; JS sets its left. */
+.osp-history__head {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 20px;
+  margin-left: -1px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 240, 216, 0), rgba(255, 240, 216, 0.95));
+  box-shadow: 0 0 9px rgba(255, 224, 170, 0.9);
+}
+.osp-history__head::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #fff0d8;
+  box-shadow: 0 0 10px 2px rgba(255, 214, 150, 0.95);
+}

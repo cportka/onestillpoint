@@ -3,6 +3,21 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.24.x — the history scrub bar
+
+- **0.24.0** — **A history scrub bar along the bottom (on Pause).** Pause the sim and a soft,
+  **warm-neon** line appears along the *exact bottom* of the screen — the last ~10 s of
+  simulation as a rolling window (`History`, a bounded ring buffer, so the oldest is lost):
+  - **Click** jumps to that moment; **click-and-drag** scrubs through time. Each position
+    restores that frame's kinematics onto the bodies (the paused render shows it); scrubbing is
+    clamped to the span the current body layout can still restore.
+  - **Colour-coded transient-event ticks** rise from the line — a body **added** (gold/blue/violet
+    by type), **absorbed** at the centre (warm red), or **escaped** (teal) — each glowing in its
+    own hue, tagged to its moment so it holds position as the window scrolls.
+  - A glowing **playhead** marks the scrub position; a brighter fill shows the restorable span.
+  - Built on the v0.18.0 `History` foundation (new `recorded` / `restorableLength` queries) +
+    a small `EventLog`. New tests cover both, plus the `Scene` transient-event hooks.
+
 ## 0.23.x — warm-fuzzy reveal + leaner intro
 
 - **0.23.2** — **Hide the control panel during a Replay.** Triggering **Replay intro** now
