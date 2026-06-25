@@ -5,6 +5,22 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.21.x — modular intro + the intro lab
 
+- **0.21.3** — **Share the last 5 seconds as a clip, + panel polish.**
+  - **Share → a rolling clip.** The Share button now captures the **previous ~5 seconds**
+    of the live view as a short, **square 720p, looping** video (mp4 where the platform can
+    record it, else WebM) instead of a still PNG. A lightweight recorder
+    ([`src/ui/clipRecorder.ts`](src/ui/clipRecorder.ts)) continuously buffers the canvas
+    (centre-cropped to a square, started after the intro) so the recent moment is always
+    ready. Sharing prefers the **native share sheet** (with the text `onestillpoint.app`),
+    then the clipboard, then a download — falling back to a still PNG where canvas video
+    can't be recorded.
+  - **One-line confirmation.** The Share button's confirmation no longer wraps, and reads
+    **"Shared ✓"** for the native share sheet vs **"Copied ✓"** / **"Saved ✓"** for the
+    fallbacks.
+  - **Checkboxes line up.** Every panel toggle is now the same native green checkbox,
+    **right-justified into one clean vertical column** (the row toggles and the Display-HUD
+    title box now match and align).
+  - **Removed the Privacy link** from the About dialog (PRIVACY.md still lives in the repo).
 - **0.21.2** — **Make the intro a self-contained, forkable unit (+ fix a latent keyframe
   collision).** The intro's stylesheet is split out of the app's into its own
   [`src/intro/intro.css`](src/intro/intro.css) (linked separately by `index.html` and on

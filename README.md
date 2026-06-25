@@ -203,7 +203,8 @@ src/
     presets.ts         named looks / "filters" (Physical / EHT / Interstellar / Stylized)
     stepper.ts         the Bodies "− N +" add/remove rows (✓/✗ flash)
     about.ts           the About modal (author, project link, donations, privacy, animated logo)
-    share.ts           the Share button: capture the view → OS share sheet / clipboard
+    share.ts           the Share button: roll the last ~5s into a square clip → OS share sheet / clipboard / save
+    clipRecorder.ts    rolling ~5s 720² mp4/webm buffer of the canvas (the Share clip source)
     touchTooltips.ts   long-press tooltips for touch devices (no native hover)
     versionBadge.ts    click-to-copy version chip
     hud.ts             lower-left HUD: FPS + frame-time graph + resolution + debug detail
