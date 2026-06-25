@@ -42,13 +42,12 @@ describe('intro dials', () => {
 
 // The inline boot script paints before the bundle, so it can't import this module — it
 // hard-codes the same dials on window.__ospDials. The overlay now lives in one place
-// (src/intro/overlay.html), inlined into index.html + intro-lab.html by the introOverlay()
-// plugin in vite.config.ts. These guards keep the mirror in lockstep and the wiring intact.
+// (src/intro/overlay.html), inlined into index.html by the introOverlay() plugin in
+// vite.config.ts. These guards keep the mirror in lockstep and the wiring intact.
 describe('inline window.__ospDials mirrors INTRO_DIALS', () => {
   const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
   const overlay = read('./overlay.html');
   const index = read('../../index.html');
-  const lab = read('../../intro-lab.html');
 
   it('defines window.__ospDials', () => {
     expect(overlay).toContain('window.__ospDials = {');
@@ -71,12 +70,10 @@ describe('inline window.__ospDials mirrors INTRO_DIALS', () => {
     expect(overlay).toContain('window.__ospSplashStart = undefined');
   });
 
-  // The overlay is the single source: index.html (shipped) and intro-lab.html (the dev
-  // tuning page) both inline it via the marker the vite plugin replaces — so the lab can
-  // never drift from the real intro.
-  it('inlines the one overlay into index.html and intro-lab.html via the build-time marker', () => {
+  // The overlay is the single source: index.html inlines it via the marker the vite
+  // plugin replaces, so the shipped markup is never duplicated.
+  it('inlines the one overlay into index.html via the build-time marker', () => {
     expect(index).toContain('<!-- @osp-intro-overlay -->');
-    expect(lab).toContain('<!-- @osp-intro-overlay -->');
   });
 
   // The heavy engine bundle must be deferred behind window.__ospBoot (no eager <script src>),

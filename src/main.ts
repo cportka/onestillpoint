@@ -57,7 +57,7 @@ async function main(): Promise<void> {
 
   const rig = new CameraRig(uniforms, renderer.domElement);
   const pass = new RaymarchPass(createBlackHoleNode(uniforms, blackHole, bodyUniforms));
-  const post = createPostPipeline(renderer, pass.scene, pass.camera);
+  const post = createPostPipeline(renderer, pass.scene, pass.camera, uniforms.fuzz);
   const loop = new Loop(renderer);
   const time = new TimeController();
   const physics = new PhysicsController(scene, renderer);
@@ -133,6 +133,7 @@ async function main(): Promise<void> {
   const dismissSplash = (): void => {
     splash?.classList.add('osp-splash--hide');
     armIntroScale(); // the reveal + settle is the heaviest the engine gets — start cheap, then climb
+    uniforms.fuzz.value = 1; // …and reveal it "warm and out of focus", easing to reality in the loop
   };
   // Crossfade out only once the merger has had its minimum time on screen,
   // measured from the splash's first *painted* frame (window.__ospSplashStart) —
@@ -231,9 +232,17 @@ async function main(): Promise<void> {
   // (dismissAfterPlayed). Into the formation playing underneath.
   let warmFrames = 0;
   const WARM_FRAMES = 5;
+  // How long the warm-fuzzy reveal veil takes to ease from full (at the reveal) to
+  // nothing — roughly the window the ResolutionScaler needs to climb back from the
+  // low intro scale to steady-state, so the warmth fades as the image sharpens.
+  const FUZZ_FADE_S = 2.0;
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
+    // Ease the warm-fuzzy reveal veil out as the scene settles into focus (PostPipeline).
+    if (uniforms.fuzz.value > 0) {
+      uniforms.fuzz.value = Math.max(0, uniforms.fuzz.value - frameDelta / FUZZ_FADE_S);
+    }
 
     const t = time.tick(frameDelta);
     uniforms.time.value += t.animDelta; // bounded dust clock (can ebb when stepping back)

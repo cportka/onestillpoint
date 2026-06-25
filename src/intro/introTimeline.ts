@@ -36,10 +36,10 @@ export const INTRO_BEATS = [
 
 /**
  * The intro dials — the one place (with the `window.__ospDials` mirror in `index.html`)
- * to tune the load intro. Times are ms; *speeds* are duration multipliers (1 = as
- * authored, 2 = twice as slow, 0.5 = twice as fast). The inline boot script paints
- * before the bundle, so it can't import these — it hard-codes the same values; the
- * `introTimeline.test.ts` inline-sync guard keeps the two from drifting.
+ * that holds the load-intro timing. Times are ms; *speeds* are duration multipliers
+ * (1 = as authored, 2 = twice as slow, 0.5 = twice as fast). The inline boot script
+ * paints before the bundle, so it can't import these — it hard-codes the same values;
+ * the `introTimeline.test.ts` inline-sync guard keeps the two from drifting.
  */
 export const INTRO_DIALS = {
   /** (a) Opening black-screen length. */
