@@ -3,6 +3,26 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.22.x — HUD & controls polish
+
+- **0.22.0** — **Automated GPU, a clearer HUD, and the first branding de-saturation.**
+  - **GPU physics is now automatic.** Removed the **GPU physics** checkbox — the CPU/GPU
+    integrator is chosen for you by body count
+    ([`PhysicsController.autoSelect`](src/physics/PhysicsController.ts)). For every count the
+    app can currently reach (`MAX_BODIES` is 14) that's the exact, faster **CPU** path; the GPU
+    compute path only switches in past ~256 bodies (a future "swarm" mode). The HUD's CPU/GPU
+    readout shows which path the selector picked — handy for debugging.
+  - **HUD readout, clarified.** Dropped the static **WebGPU/WebGL2** label from the detail line.
+    The **CPU/GPU** token is now **colour-coded** — a cool-slate dot for CPU, warm amber for GPU
+    — so the one-letter C/G difference registers at a glance. And the body count is now an
+    **S/P/B breakdown**: e.g. `3/2/1 bodies` = 3 stars, 2 planets, 1 (orbiting) black hole,
+    mirroring the Bodies panel.
+  - **De-saturated checkboxes.** The panel's checkboxes were a bright confirm-green; they're now
+    a neutral, barely-warm **silver** (the new `--osp-check` variable) — quiet chrome, not a
+    status colour. The first step of a wider branding/theme pass.
+  - **"Click outside closes" moved to the top** of Advanced settings (it was last in the list).
+  - New tests cover the `autoSelect` CPU/GPU decision and the HUD detail line.
+
 ## 0.21.x — modular intro + the intro lab
 
 - **0.21.4** — **Share a real mp4 of the *recent* view, + camera tweaks.**

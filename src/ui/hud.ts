@@ -2,11 +2,14 @@
 export interface HudInfo {
   /** Drawing-buffer scale 0..1 (auto-resolution). */
   resScale?: number;
-  /** Orbiting-companion count. */
-  bodies?: number;
+  /** Orbiting companions by type — shown as the S/P/B breakdown. These mirror the
+   *  Bodies panel (the always-present central primary isn't tallied). */
+  stars?: number;
+  planets?: number;
+  holes?: number;
   /** Simulation speed multiplier. */
   timeScale?: number;
-  /** N-body sim running on the GPU? */
+  /** N-body sim running on the GPU? (which path the auto-selector chose) */
   gpu?: boolean;
 }
 
@@ -14,7 +17,7 @@ export interface HudInfo {
  *  The resolution always shows next to the FPS, so it isn't an option. */
 export interface HudOptions {
   graph: boolean; // the frame-time sparkline
-  detail: boolean; // bodies · speed · CPU/GPU · backend
+  detail: boolean; // S/P/B bodies · speed · CPU/GPU
 }
 
 export interface Hud {
@@ -35,11 +38,11 @@ const TARGET_MS = 1000 / 60;
 /**
  * A small, beautiful debug HUD pinned to the **lower-left**. Always shows the live
  * frame rate + the current **resolution scale** (right of the FPS); optionally a
- * **frame-time sparkline** and a **detail** line (bodies · speed · CPU/GPU ·
- * backend) — toggled by the Display-HUD child checkboxes. Hidden by default;
- * revealed (with a fade + pop) by "Display HUD".
+ * **frame-time sparkline** and a **detail** line (S/P/B bodies · speed · CPU/GPU) —
+ * toggled by the Display-HUD child checkboxes. Hidden by default; revealed (with a
+ * fade + pop) by "Display HUD".
  */
-export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
+export function createHud(): Hud {
   const el = document.createElement('div');
   el.className = 'hud';
   el.innerHTML =
@@ -48,7 +51,6 @@ export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
     `<div class="hud__ft">—</div><div class="hud__detail">—</div>`;
   document.body.appendChild(el);
 
-  const beName = backend === 'webgpu' ? 'WebGPU' : 'WebGL2';
   const fpsEl = el.querySelector<HTMLElement>('.hud__fps')!;
   const resEl = el.querySelector<HTMLElement>('.hud__res')!;
   const ftEl = el.querySelector<HTMLElement>('.hud__ft')!;
@@ -102,7 +104,13 @@ export function createHud(backend: 'webgpu' | 'webgl2'): Hud {
         if (opts.detail && info) {
           const speed = info.timeScale ?? 1;
           const speedStr = speed >= 1 ? `×${Math.round(speed)}` : `×1/${Math.round(1 / speed)}`;
-          detailEl.textContent = `${info.bodies ?? 0} bodies · ${speedStr} · ${info.gpu ? 'GPU' : 'CPU'} · ${beName}`;
+          // S/P/B = stars / planets / black holes (orbiting companions).
+          const spb = `${info.stars ?? 0}/${info.planets ?? 0}/${info.holes ?? 0}`;
+          const compute = info.gpu ? 'GPU' : 'CPU';
+          const computeClass = info.gpu ? 'hud__compute--gpu' : 'hud__compute--cpu';
+          detailEl.innerHTML =
+            `${spb} bodies · ${speedStr} · ` +
+            `<span class="hud__compute ${computeClass}">${compute}</span>`;
         }
       }
       if (opts.graph) drawGraph();

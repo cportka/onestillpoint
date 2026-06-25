@@ -4,7 +4,6 @@ import type { WebGPURenderer } from 'three/webgpu';
 import { VERSION } from '../version';
 import type { FormationSequence } from '../core/FormationSequence';
 import type { QualityTier } from '../core/quality';
-import type { RendererBundle } from '../core/Renderer';
 import type { ResolutionScaler } from '../core/ResolutionScaler';
 import type { TimeController } from '../core/TimeController';
 import type { PhysicsController } from '../physics/PhysicsController';
@@ -32,10 +31,11 @@ function tip<T extends Controller>(controller: T, text: string): T {
 
 /**
  * The lil-gui control panel. Expanded, it leads with the essentials —
- * About/version · Filter · Speed · Bodies (± steppers) · Replay · Pause · an
- * Advanced-settings toggle — and folds the deep tuning (GPU, FPS, Step, and the
- * Look / Animation / Bloom / Quality folders, each starting collapsed) behind that
- * toggle, whose state is remembered. Every row has a hover tooltip (long-press on touch).
+ * About/version · Filter · Speed · Bodies (± steppers) · Replay · Pause · Step · an
+ * Advanced-settings toggle — and folds the deep tuning (click-outside, the HUD, and
+ * the Look / Animation / Bloom / Quality / Background folders, each starting
+ * collapsed) behind that toggle, whose state is remembered. Every row has a hover
+ * tooltip (long-press on touch).
  */
 export function createControls(ctx: {
   blackHole: BlackHole;
@@ -43,7 +43,6 @@ export function createControls(ctx: {
   physics: PhysicsController;
   time: TimeController;
   formation: FormationSequence;
-  backend: RendererBundle['backend'];
   renderer: WebGPURenderer;
   scaler: ResolutionScaler;
   bloom: BloomNode;
@@ -61,7 +60,7 @@ export function createControls(ctx: {
   /** Cap the render rate (0 = uncapped). Drives the optional cinematic frame cap. */
   setMaxFps: (fps: number) => void;
 }): GUI {
-  const { blackHole: bh, scene, physics, time, formation, backend, renderer, scaler, bloom } = ctx;
+  const { blackHole: bh, scene, physics, time, formation, renderer, scaler, bloom } = ctx;
   const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, setMaxFps } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   // The single persisted blob (localStorage). Defaults here; saved values are
@@ -209,7 +208,6 @@ export function createControls(ctx: {
       physics.syncBodies();
       refreshAll();
     },
-    gpu: false, // CPU integrator by default — exact and faster for these counts (see main.ts)
   };
   tip(bodies.add(actions, 'clear').name('Clear companions'), 'Remove all added bodies and restore the default orbits.');
 
@@ -266,32 +264,21 @@ export function createControls(ctx: {
   const advCtrl = gui.add(prefs, 'advanced').name('Advanced settings');
   advCtrl.domElement.classList.add('osp-section'); // bold label + a stronger divider
 
-  // --- Advanced, in order: GPU physics, Display HUD, Step, Click-outside, then tuning ---
-  const gpuAvailable = backend === 'webgpu';
-  const gpuCtrl = gui.add(actions, 'gpu').name('GPU physics').onChange((v: boolean) => {
-    void physics.setGPU(v); // async: lazily loads the compute engine on first enable
-  });
-  if (!gpuAvailable) gpuCtrl.disable();
-  tip(
-    gpuCtrl,
-    gpuAvailable
-      ? 'Run the N-body simulation on the GPU (WebGPU compute). Off by default — for these body ' +
-          'counts the CPU integrator is exact and actually faster (the GPU path adds a per-frame ' +
-          'read-back). It is the scaling foundation for many bodies, not a win for a handful.'
-      : 'Requires WebGPU. This browser is on the WebGL2 fallback, so the N-body sim runs on the ' +
-          'CPU (exact, and fine for a handful of bodies).',
+  // --- Advanced, in order: Click outside, Display HUD, then the tuning folders ---
+  // (CPU vs GPU physics is now chosen automatically by body count — see
+  // PhysicsController.autoSelect — so there's no GPU toggle; the HUD's CPU/GPU
+  // readout shows which path the selector picked.)
+
+  // First Advanced toggle: click/tap the scene outside the panel to collapse it.
+  const tapOutsideCtrl = tip(
+    gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
+    'Clicking or tapping the scene outside this panel collapses it. On by default.',
   );
 
   // "Display HUD": a compact collapsible folder whose *title carries the on/off
   // checkbox* (off + collapsed by default); its children — Frame-time graph + Detail
   // — are on by default, so the first time the HUD is turned on it shows everything.
   const { folder: hudFolder, toggle: toggleFps } = createHudFolder(gui, hud, prefs, tip);
-
-  // Last of the first batch of Advanced toggles: click/tap outside to collapse.
-  const tapOutsideCtrl = tip(
-    gui.add(prefs, 'tapOutsideClose').name('Click outside closes'),
-    'Clicking or tapping the scene outside this panel collapses it. On by default.',
-  );
 
   // --- Advanced: deep tuning folders ---
   const look = gui.addFolder('Look');
@@ -447,12 +434,11 @@ export function createControls(ctx: {
   // Each tuning folder starts collapsed when Advanced is first shown.
   [look, anim, post, quality, bgFolder].forEach((f) => f.close());
 
-  // Everything revealed by the Advanced toggle: GPU / HUD / Click-outside first,
-  // then the deeper tuning folders.
+  // Everything revealed by the Advanced toggle: Click-outside + the HUD first, then
+  // the deeper tuning folders.
   const advanced: Array<{ show(): unknown; hide(): unknown }> = [
-    gpuCtrl,
-    hudFolder,
     tapOutsideCtrl,
+    hudFolder,
     look,
     anim,
     post,
@@ -464,7 +450,7 @@ export function createControls(ctx: {
   };
   applyAdvanced(prefs.advanced);
   advCtrl.onChange((v: boolean) => applyAdvanced(v));
-  tip(advCtrl, 'Reveal GPU physics, the HUD, and the deeper tuning folders. Remembered for next time.');
+  tip(advCtrl, 'Reveal the HUD and the deeper tuning folders. Remembered for next time.');
 
   // --- Persistence: auto-save every value control, auto-load on start ---------
   // One profile, no logins: load whatever is stored and save on any change. Every
