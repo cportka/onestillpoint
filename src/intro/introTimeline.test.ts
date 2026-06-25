@@ -87,3 +87,36 @@ describe('inline window.__ospDials mirrors INTRO_DIALS', () => {
     expect(overlay).toMatch(/__ospBoot\(\)/);
   });
 });
+
+// The intro stylesheet is split out of the app's (src/intro/intro.css) so the whole
+// intro is one forkable unit (see src/intro/README.md). These guards keep the split
+// clean — the styles really moved (not duplicated), the app links the new file, and the
+// splash's flash keyframe is uniquely named (it used to silently collide with the app's
+// `osp-flash`, so the merger flash animated with the wrong keyframe).
+describe('intro stylesheet split (forkable unit)', () => {
+  const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+  const introCss = read('./intro.css');
+  const appCss = read('../style.css');
+  const index = read('../../index.html');
+
+  it('index.html links the intro stylesheet alongside the app styles', () => {
+    expect(index).toMatch(/<link[^>]+href="\/src\/intro\/intro\.css"/);
+  });
+
+  it('intro.css owns the creation + splash + Replay-melt styles', () => {
+    for (const sel of ['#osp-creation', '#osp-splash', '@keyframes osp-melt', '@keyframes osp-cr-core', '@keyframes osp-splash-core']) {
+      expect(introCss).toContain(sel);
+    }
+  });
+
+  it('uniquely names the splash flash keyframe (no collision with the app osp-flash)', () => {
+    expect(introCss).toContain('@keyframes osp-splash-flash');
+    expect(introCss).not.toMatch(/@keyframes osp-flash\b/); // the app keeps osp-flash; the splash must not reuse it
+  });
+
+  it('the app stylesheet no longer carries the intro styles (split, not duplicated)', () => {
+    expect(appCss).not.toContain('#osp-creation');
+    expect(appCss).not.toContain('#osp-splash');
+    expect(appCss).not.toContain('@keyframes osp-melt');
+  });
+});

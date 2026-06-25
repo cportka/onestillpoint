@@ -73,11 +73,11 @@ requestAnimationFrame(function(){requestAnimationFrame(function(){
 document.getElementById('osp-splash').classList.add('osp-splash--go');
 document.getAnimations().forEach(function(a){try{a.currentTime=T;a.pause();}catch(e){}});});});</script>`;
 const page = (extraCss) =>
-  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/style.css"><style>${extraCss}</style></head>` +
+  `<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/intro/intro.css"><style>${extraCss}</style></head>` +
   `<body style="margin:0">${div}<script>${script}</script>${freeze}</body></html>`;
 // Write the two harness pages into the repo root and serve it with python's
 // static server (robust in this sandbox; the inline Node server hit IPv6 issues).
-// They reference /src/style.css and are cleaned up at the end.
+// They reference /src/intro/intro.css and are cleaned up at the end.
 const cssFile = join(ROOT, '__cap_css.html');
 const dustFile = join(ROOT, '__cap_dust.html');
 writeFileSync(cssFile, page('#osp-splash{background:transparent!important}.osp-splash__dustcv{display:none!important}'));
