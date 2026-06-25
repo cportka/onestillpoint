@@ -5,6 +5,19 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.21.x — modular intro + the intro lab
 
+- **0.21.4** — **Share a real mp4 of the *recent* view, + camera tweaks.**
+  - **Real .mp4.** The Share clip is now true H.264 mp4 (encoded with **WebCodecs** and muxed
+    by **mp4-muxer**), so macOS can preview/AirDrop it — instead of the WebM that just
+    downloaded as an unplayable file. Where there's no native file share (desktop Chromium),
+    Share now **downloads the mp4**; the OS share sheet is still preferred on mobile/Safari.
+    (Browsers can't put a video on the clipboard, so a download is the honest hand-off.)
+  - **Fixed the clip content.** It's now the *actual previous ~5 seconds, ending at your
+    current view*, with a correct duration. The old recorder kept a stale "header" chunk, so
+    every clip began near the start of formation rather than what you were looking at.
+  - Where H.264 can't be encoded (rare — e.g. some Linux Chrome), Share falls back to a still
+    PNG rather than a WebM.
+  - **Camera.** Doubled the maximum zoom-out distance (120 → 240), and **disabled panning** —
+    there's no re-centre control yet, so a pan could strand the hole off-screen with no way back.
 - **0.21.3** — **Share the last 5 seconds as a clip, + panel polish.**
   - **Share → a rolling clip.** The Share button now captures the **previous ~5 seconds**
     of the live view as a short, **square 720p, looping** video (mp4 where the platform can
