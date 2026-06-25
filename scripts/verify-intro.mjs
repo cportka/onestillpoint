@@ -55,10 +55,11 @@ if (!CHROME) {
 }
 const headlessFlag = /headless_shell/.test(CHROME) ? [] : ['--headless=old'];
 
-// Pull the #osp-creation markup (incl. the .osp-lines test pattern) out of index.html
-// — anchored to the closing </div> after the last <i> child, so the inner lines <div>
+// Pull the #osp-creation markup (incl. the .osp-lines test pattern) out of the shared
+// intro overlay (src/intro/overlay.html — the single source inlined into index.html) —
+// anchored to the closing </div> after the last <i> child, so the inner lines <div>
 // doesn't end the match early.
-const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+const html = readFileSync(join(ROOT, 'src/intro/overlay.html'), 'utf8');
 const creationMarkup = html.match(/<div id="osp-creation"[\s\S]*?<\/i>\s*<\/div>/)[0];
 // A tiny freeze harness: set the classes for the requested beat on the first painted
 // frame, then freeze any CSS animation so the screenshot is deterministic.

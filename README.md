@@ -83,6 +83,44 @@ Captured from:
 capture:splash`) — re-run it whenever the splash changes to refresh
 [`assets/splash.gif`](assets/splash.gif).
 
+## Tuning the intro
+
+The whole intro — the moment of creation and the splash — lives in **one** place,
+[`src/intro/overlay.html`](src/intro/overlay.html) (markup + the inline boot script).
+A tiny Vite plugin inlines it into both the app (`index.html`) and a dev-only **intro
+lab**, so the lab always previews the *exact* intro the site ships.
+
+<p align="center">
+  <img src="assets/intro-lab.png" alt="The intro lab: a control panel of sliders — opening black, split black, creation/splash speed, creation beat, creation→splash overlap, creation/splash fade, splash hold/fade — over the looping intro, with a copy-paste snippet of the current values" width="320" />
+</p>
+
+```bash
+npm run dev    # then open http://localhost:5173/intro-lab.html
+```
+
+The lab loops the intro behind a panel of sliders bound live to `window.__ospDials`, so
+every adjustment to the visual sequence is visible within a cycle (or hit **Replay now**).
+When a look feels right, **Copy values** and paste the snippet into
+[`src/intro/overlay.html`](src/intro/overlay.html) (`window.__ospDials`) and
+[`src/intro/introTimeline.ts`](src/intro/introTimeline.ts) (`INTRO_DIALS`) — a unit test
+keeps those two in lockstep. The dials, in play order:
+
+| Dial | Default | What it does |
+| --- | --- | --- |
+| Opening black | 500 ms | how long the screen holds pure black before the test pattern |
+| Split black | 70 ms | the deliberate sliver of black after the one-frame test pattern |
+| Creation speed | 1× | stretch / compress the moment-of-creation burst (1 = as authored) |
+| Splash speed | 1× | stretch / compress the splash animation (1 = as authored) |
+| Creation beat | 240 ms | how long the creation plays as its own beat before the splash |
+| Creation → splash overlap | −80 ms | when the splash starts vs the creation fade (negative = overlap, no black gap) |
+| Creation fade | 120 ms | how fast the creation crossfades into the splash |
+| Splash hold | 600 ms | how long the splash holds before the engine is revealed (read by `main.ts`) |
+| Splash fade | 450 ms | how fast the splash crossfades into the engine |
+
+The lab isn't part of the production build (`intro-lab.html` isn't a Vite input), but
+its controller [`src/intro/lab.ts`](src/intro/lab.ts) is typechecked and linted with the
+rest of `src`.
+
 ## Project status
 
 Actively developed in small, themed phases. See **[CHANGELOG.md](CHANGELOG.md)**
@@ -181,14 +219,18 @@ src/
       bodies.ts        segment–sphere / stretched-ellipsoid tests for companions
       starfield.ts     procedural lensed star field
       background.ts    selectable sky (Stars / Nebula / Filaments / Lattice), all lensed
-index.html             also hosts the instant-paint intro: black hold → test pattern → "moment of creation" → splash (window.__ospIntro)
-src/intro/             intro timing (introTimeline.ts, shared with the inline boot script) + the Replay melt (melt.ts)
+index.html             inlines the shared intro overlay (the @osp-intro-overlay marker) and defers the engine bundle
+intro-lab.html         dev-only intro lab: loop + tune the intro (npm run dev → /intro-lab.html); never shipped
+vite.config.ts         build config + the introOverlay() plugin that inlines overlay.html into both HTML entries
+src/intro/             the intro: overlay.html (one source of truth — markup + inline boot script, inlined by the
+                       plugin above), introTimeline.ts (timing, mirrored by the inline dials), lab.ts (the lab's
+                       sliders + loop), melt.ts (the Replay melt)
 scripts/
   validate-*.mjs       CPU physics checks (geodesic / disk / orbit / lensing) — npm run validate
   capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash
   capture-creation.mjs render the moment of creation to assets/creation.gif — npm run capture:creation
   verify-intro.mjs     headless visual test of the intro prelude beats — npm run verify:intro
-assets/                tracked art: hero.svg (logo) + creation.gif + splash.gif (captured intro loops)
+assets/                tracked art: hero.svg (logo) + creation.gif + splash.gif (captured intro loops) + intro-lab.png
 ```
 
 ## Deploy

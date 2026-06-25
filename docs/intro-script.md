@@ -218,11 +218,14 @@ turning, for as long as you want to watch.
 ## Dials — tuning the intro
 
 Every timing/speed is an explicit dial, in **one place**: `window.__ospDials` in
-`index.html` (the inline overlay) mirrored by `INTRO_DIALS` in
+[`src/intro/overlay.html`](../src/intro/overlay.html) (the shared intro overlay, inlined
+into the app + the lab) mirrored by `INTRO_DIALS` in
 [`src/intro/introTimeline.ts`](../src/intro/introTimeline.ts) (the bundle); the
 inline-sync test keeps them locked. Times are ms; **speeds** are duration multipliers
-(`1` = as authored, `2` = twice as slow, `0.5` = twice as fast). You can tweak them live
-in the console and hit **Replay intro**.
+(`1` = as authored, `2` = twice as slow, `0.5` = twice as fast). Tune them visually in the
+**intro lab** (`npm run dev` → `/intro-lab.html`) — sliders bound live to the dials over a
+looping preview, with a copy-paste snippet — or tweak `window.__ospDials` in the console
+and hit **Replay intro**.
 
 | dial | controls | default |
 | ---- | -------- | ------- |
@@ -230,7 +233,7 @@ in the console and hit **Replay intro**.
 | `splitBlackMs` | (b) the split-second of black after the interference pattern | 70 |
 | `creationSpeed` | (c) moment-of-creation animation speed (× its durations) | 1 |
 | `splashSpeed` | (d) splash animation speed (× its durations) | 1 |
-| `creationBeatMs` | how long the creation plays before handing to the splash | 340 |
+| `creationBeatMs` | how long the creation plays before handing to the splash | 240 |
 | `creationToSplashMs` | (e) creation→splash crossfade **overlap** (− = overlap, + = gap) | −80 |
 | `creationFadeMs` | (e) creation→splash crossfade **speed** (creation fade-out) | 120 |
 | `splashHoldMs` | (f) splash→engine **hold** before the engine is revealed | 600 |
@@ -242,6 +245,17 @@ animation `calc()` durations; the crossfade speeds drive `--osp-cr-fade` /
 
 ## Tuning log & targets
 
+- **[done · v0.21.0] Modular intro + the intro lab + two recording fixes.** The intro
+  (creation + splash markup + the inline boot script) moved into one source of truth,
+  [`src/intro/overlay.html`](../src/intro/overlay.html), inlined into `index.html` and a
+  dev-only **intro lab** (`intro-lab.html`) by a Vite plugin — so the lab previews the
+  exact shipped intro. The lab ([`src/intro/lab.ts`](../src/intro/lab.ts)) loops the intro
+  behind sliders bound live to every dial, with a copy-paste snippet. Two fixes from a
+  recording: (1) **Replay now plays the moment of creation** — the burst's CSS animations
+  finished on first load and a parent reflow doesn't restart reused children, so the burst
+  is now explicitly restarted (`animation:'none'` → reflow → `''`); Replay matches the
+  first load. (2) **The splash lands earlier** — `creationBeatMs` 340 → **240**, so the
+  splash is fully revealed by ~0.95 s and the ~1.0–1.14 s **black gap is gone**.
 - **[done · v0.20.7] Explicit dials + three splash fixes.** All intro timings/speeds are
   now explicit dials (`window.__ospDials` / `INTRO_DIALS`; table above). Three fixes from
   a recording: (1) the **engine bundle now boots at the *start* of the intro** so its

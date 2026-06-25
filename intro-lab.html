@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Intro Lab · One Still Point</title>
+    <!-- The app stylesheet drives the intro overlay's animations (same as the real page). -->
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      /* Lab chrome only — never shipped (intro-lab.html isn't a build input). */
+      :root {
+        color-scheme: dark;
+      }
+      #osp-lab {
+        position: fixed;
+        z-index: 3000; /* above the intro overlay (creation 2100 / splash 2000) */
+        top: 0;
+        right: 0;
+        width: min(360px, 92vw);
+        max-height: 100vh;
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 16px 18px 28px;
+        background: rgba(10, 12, 18, 0.82);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        color: #eef1f7;
+        font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      #osp-lab h1 {
+        margin: 4px 0 2px;
+        font-size: 15px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #ffd9a0;
+      }
+      .osp-lab__sub {
+        margin: 0 0 12px;
+        color: #9aa3b4;
+        font-size: 11.5px;
+      }
+      .osp-lab__row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin: 10px 0 14px;
+        flex-wrap: wrap;
+      }
+      .osp-lab__transport {
+        position: sticky;
+        top: -16px;
+        padding: 12px 0 10px;
+        margin-top: 0;
+        background: linear-gradient(rgba(10, 12, 18, 0.95), rgba(10, 12, 18, 0.85));
+        z-index: 1;
+      }
+      .osp-lab__toggle {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+      }
+      .osp-lab__btn {
+        appearance: none;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: #eef1f7;
+        border-radius: 7px;
+        padding: 6px 11px;
+        font: inherit;
+        font-size: 12px;
+      }
+      .osp-lab__btn:hover {
+        background: rgba(255, 255, 255, 0.13);
+      }
+      .osp-lab__btn:active {
+        transform: translateY(1px);
+      }
+      .osp-lab__dial {
+        margin: 0 0 13px;
+      }
+      .osp-lab__dialhead {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .osp-lab__dialhead label {
+        flex: 1;
+        font-weight: 600;
+        color: #d9dffb;
+      }
+      .osp-lab__dialhead input[type='number'] {
+        width: 70px;
+        box-sizing: border-box;
+        text-align: right;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 6px;
+        color: #fff;
+        font: inherit;
+        padding: 3px 6px;
+      }
+      .osp-lab__unit {
+        width: 18px;
+        color: #8b93a6;
+        font-size: 11px;
+      }
+      .osp-lab__dial input[type='range'] {
+        width: 100%;
+        margin: 7px 0 4px;
+        accent-color: #ff8a3c;
+      }
+      .osp-lab__hint {
+        margin: 0;
+        color: #828b9d;
+        font-size: 10.5px;
+        line-height: 1.35;
+      }
+      .osp-lab__snippet {
+        margin: 6px 0 0;
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.42);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        color: #ffe6c2;
+        font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The real intro overlay (same source as index.html). src/intro/lab.ts loops it
+         and binds the sliders to window.__ospDials. -->
+    <!-- @osp-intro-overlay -->
+    <script type="module" src="/src/intro/lab.ts"></script>
+  </body>
+</html>

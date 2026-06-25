@@ -55,10 +55,11 @@ if (!CHROME) {
 }
 const headlessFlag = /headless_shell/.test(CHROME) ? [] : ['--headless=old'];
 
-// Pull the #osp-creation markup out of index.html (anchored to the </div> after the
-// last <i> child, so the inner .osp-lines <div> doesn't end the match early). The
-// .osp-lines test pattern is never switched on here, so it stays invisible.
-const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+// Pull the #osp-creation markup out of the shared intro overlay (src/intro/overlay.html,
+// the single source inlined into index.html) — anchored to the </div> after the last
+// <i> child, so the inner .osp-lines <div> doesn't end the match early. The .osp-lines
+// test pattern is never switched on here, so it stays invisible.
+const html = readFileSync(join(ROOT, 'src/intro/overlay.html'), 'utf8');
 const creation = html.match(/<div id="osp-creation"[\s\S]*?<\/i>\s*<\/div>/)[0];
 const freeze = `<script>var T=Number(new URLSearchParams(location.search).get('t')||0);
 requestAnimationFrame(function(){requestAnimationFrame(function(){
