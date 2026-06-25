@@ -5,7 +5,21 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.23.x — warm-fuzzy reveal + leaner intro
 
-- **0.23.0** — **A warm-fuzzy low-res reveal, and the intro tuning scaffolding removed.**
+- **0.23.1** — **Share actually produces an mp4 on the desktop (the PNG fallback bug).**
+  - **Root cause #1 (Chrome): `latencyMode: 'realtime'`.** It biased the encoder toward a
+    *hardware* H.264 path that, on desktop, frequently omits the `avcC` decoder config from its
+    chunk metadata — so the recorder never had what `mp4-muxer` needs, never became `ready`, and
+    Share silently fell back to a still PNG. Dropped it; the default software path reliably emits
+    `avcC` (a 5s clip doesn't need realtime latency, and `takeClip()` still flushes to end at ~now).
+  - **Root cause #2 (Chromium): no H.264 encoder at all.** Plain Chromium ships without the
+    proprietary codec, so H.264 encode is simply unavailable. Added an **AV1 fallback** — still an
+    `.mp4`, and playable on modern OSes. *Verified end-to-end in real Chromium:* the recorder now
+    emits a valid `onestillpoint.mp4` (AV1, correct `ftyp`/`avcC`) instead of a PNG.
+  - **No more silent PNG.** When a share *does* fall back to a still (no encoder at all, or the
+    clip isn't buffered yet), the reason is logged to the console and exposed on the recorder's new
+    `status` snapshot (`reason` · `codec` · `hasMeta` · `frames` · `ready`).
+
+## 0.22.x — HUD & controls polish
   - **Warm-fuzzy reveal (smoother engine takeover).** The live engine now reveals at a much lower
     resolution — every quality tier bottoms out at its `minScale` floor for the first ~2s
     (`INTRO_SCALE_DROP` 0.2 → 0.45), so the heaviest moment (the camera dolly + disk ignition as

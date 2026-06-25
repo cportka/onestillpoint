@@ -192,7 +192,12 @@ async function main(): Promise<void> {
   const captureShare = async (): Promise<File | null> => {
     if (clip?.ready) {
       const file = await clip.takeClip();
-      if (file) return file; // the rolling video clip (mp4 / webm)
+      if (file) return file; // the rolling mp4 clip
+      console.warn('[onestillpoint] Share: clip was ready but takeClip() produced no mp4 — sending a still.', clip.status);
+    } else if (clip) {
+      // The desktop "still a PNG" case: say *why* (no encoder / not buffered yet / no avcC) so
+      // it's diagnosable from the console instead of a silent fallback.
+      console.warn('[onestillpoint] Share: no mp4 clip available yet — sending a still.', clip.status);
     }
     const blob = await captureFrame(); // fallback: a still PNG of the current frame
     return blob ? new File([blob], 'onestillpoint.png', { type: 'image/png' }) : null;

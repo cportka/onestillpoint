@@ -7,20 +7,42 @@ import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
  *
  * **Why WebCodecs, not MediaRecorder.** `MediaRecorder` can't produce mp4 on many browsers
  * (Chromium often only offers WebM), and macOS can't preview/AirDrop a WebM. So we encode
- * H.264 directly with a `VideoEncoder` and mux it into an mp4 with `mp4-muxer`. This also
- * gives us what a rolling clip needs: explicit keyframes (so the buffer always begins on a
- * decodable frame), tiny retained chunks, and a correct duration written on finalize.
+ * directly with a `VideoEncoder` and mux into an mp4 with `mp4-muxer`. This also gives us
+ * what a rolling clip needs: explicit keyframes (so the buffer always begins on a decodable
+ * frame), tiny retained chunks, and a correct duration written on finalize.
  *
+ *   • Codec: **H.264** first (universally playable, incl. macOS preview/AirDrop); where the
+ *     browser has no H.264 encoder (plain Chromium, which omits the proprietary codec) it
+ *     falls back to **AV1** — still an .mp4, and playable on modern OSes (see `CODECS`).
  *   • A 720×720 offscreen canvas is the encode surface — each frame the main canvas is
  *     blitted in, centre-cropped to a square and scaled to 720p (clean for share sheets).
  *   • We keep a rolling window of encoded chunks back to the keyframe preceding ~5s ago, so
- *     a clip is always recent (it ends at ~now) and starts clean — fixing the earlier bug
- *     where a clip began with stale frames from when recording started.
+ *     a clip is always recent (it ends at ~now) and starts clean.
  *
- * Returns `null` (→ the Share button falls back to a still PNG) when the platform can't
- * encode H.264 video — e.g. WebCodecs is missing, or there's no H.264 encoder (some Linux
- * Chrome / headless). macOS/iOS/Android/Windows all have one.
+ * Returns `null` (→ a still PNG) only when there's **no** H.264 *or* AV1 encoder, or WebCodecs
+ * is missing. When a share still falls back to a PNG, the reason is on `status` (logged by the
+ * Share path), so it's never a silent mystery.
  */
+/** A diagnostic snapshot of the recorder — surfaced when a share falls back to a still,
+ *  so it's clear *why* (no encoder, not buffered yet, no decoder config, …) instead of a
+ *  silent PNG. Logged by the Share path; also handy from the `osp` console handle. */
+export interface ClipStatus {
+  started: boolean;
+  dead: boolean;
+  /** Why it died / can't produce a clip yet, if known. */
+  reason: string | null;
+  /** The H.264 profile that configured, if any. */
+  codec: string | null;
+  /** Whether the encoder has emitted the decoder config (avcC) — required to mux an mp4. */
+  hasMeta: boolean;
+  /** Buffered encoded chunks, and whether the window starts on a decodable keyframe. */
+  frames: number;
+  hasKeyframe: boolean;
+  /** Age (ms) of the oldest buffered chunk — must reach MIN_SPAN_MS before a clip is offered. */
+  oldestMs: number;
+  ready: boolean;
+}
+
 export interface ClipRecorder {
   /** Begin buffering. Call once the intro is done, to keep the heavy intro frames clear. */
   start: () => void;
@@ -32,6 +54,8 @@ export interface ClipRecorder {
   takeClip: () => Promise<File | null>;
   /** True once a recent clip is available (else the Share button uses a still). */
   readonly ready: boolean;
+  /** A diagnostic snapshot — why a clip is / isn't available. */
+  readonly status: ClipStatus;
   /** Stop encoding and release the buffer. */
   dispose: () => void;
 }
@@ -42,8 +66,19 @@ const BITRATE = 5_000_000; // ~5 Mbps — plenty for 720p square
 const WINDOW_MS = 5000; // keep ~the last 5 seconds
 const KEYFRAME_MS = 1000; // force a keyframe ~every second (tight rolling-window start)
 const MIN_SPAN_MS = 2000; // don't offer a clip until at least this much has buffered
-// H.264 profiles to try, most-capable first: Main 4.0, then Baseline 3.1 / 3.0 (broadest).
-const AVC_CODECS = ['avc1.4d0028', 'avc1.42001f', 'avc1.42e01e'];
+// Codecs to try, in order. H.264 first (most universally playable — incl. macOS
+// preview / AirDrop); then AV1 as a fallback for browser builds *without* the proprietary
+// H.264 encoder (plain Chromium), which still mux into an .mp4 and play on modern OSes.
+// `mux` is the mp4-muxer track codec. `realtime` biases the encoder toward speed: OFF for
+// H.264 (the default/software path reliably emits the avcC decoder config the muxer needs —
+// the realtime/hardware path frequently omits it), ON for AV1 (software libaom needs it to
+// keep up at 30 fps, and it still emits av1C). Verified in Chromium: AV1 encodes ~6 ms/frame.
+const CODECS: { codec: string; mux: 'avc' | 'av1'; realtime: boolean }[] = [
+  { codec: 'avc1.4d0028', mux: 'avc', realtime: false }, // H.264 Main 4.0
+  { codec: 'avc1.42001f', mux: 'avc', realtime: false }, // H.264 Baseline 3.1
+  { codec: 'avc1.42e01e', mux: 'avc', realtime: false }, // H.264 Baseline 3.0
+  { codec: 'av01.0.04M.08', mux: 'av1', realtime: true }, // AV1 Main, L4.0, 8-bit (fallback)
+];
 
 interface Entry {
   chunk: EncodedVideoChunk;
@@ -67,6 +102,9 @@ export function createClipRecorder(source: HTMLCanvasElement): ClipRecorder | nu
   let buf: Entry[] = [];
   let started = false;
   let dead = false;
+  let deadReason: string | null = null; // why we gave up (surfaced via `status` for diagnostics)
+  let codecUsed: string | null = null; // the codec string that configured, if any
+  let muxerCodec: 'avc' | 'av1' = 'avc'; // which mp4 track codec takeClip() should write
   let busy = false; // pause encoding while a clip is flushed + muxed
   let baseTs = 0;
   let lastBlit = 0;
@@ -89,41 +127,43 @@ export function createClipRecorder(source: HTMLCanvasElement): ClipRecorder | nu
     started = true;
     void (async () => {
       try {
-        let codec: string | null = null;
-        for (const c of AVC_CODECS) {
-          const config = { codec: c, width: SIZE, height: SIZE, bitrate: BITRATE, framerate: FPS };
-          if ((await VideoEncoder.isConfigSupported(config)).supported) {
-            codec = c;
+        let chosen: (typeof CODECS)[number] | null = null;
+        for (const c of CODECS) {
+          const cfg = { codec: c.codec, width: SIZE, height: SIZE, bitrate: BITRATE, framerate: FPS };
+          if ((await VideoEncoder.isConfigSupported(cfg)).supported) {
+            chosen = c;
             break;
           }
         }
-        if (!codec) {
-          dead = true; // no H.264 encoder → the Share button uses a still PNG instead
+        if (!chosen) {
+          // No H.264 *or* AV1 encoder at all → the Share button uses a still PNG instead.
+          dead = true;
+          deadReason = 'no H.264/AV1 encoder (isConfigSupported was false for every codec)';
           return;
         }
+        codecUsed = chosen.codec;
+        muxerCodec = chosen.mux;
         encoder = new VideoEncoder({
           output: (chunk, m): void => {
             if (m?.decoderConfig) meta = m;
             buf.push({ chunk, t: performance.now() });
             prune();
           },
-          error: (): void => {
+          error: (e: DOMException): void => {
             dead = true;
+            deadReason = `VideoEncoder error: ${e.message || e.name}`;
             encoder = null;
           },
         });
-        encoder.configure({
-          codec,
-          width: SIZE,
-          height: SIZE,
-          bitrate: BITRATE,
-          framerate: FPS,
-          latencyMode: 'realtime',
-          avc: { format: 'avc' }, // length-prefixed (avcC) chunks, as mp4-muxer wants
-        });
+        const config: VideoEncoderConfig = { codec: chosen.codec, width: SIZE, height: SIZE, bitrate: BITRATE, framerate: FPS };
+        // See CODECS: realtime OFF for H.264 (so the software path emits avcC), ON for AV1.
+        if (chosen.realtime) config.latencyMode = 'realtime';
+        if (chosen.mux === 'avc') config.avc = { format: 'avc' }; // length-prefixed (avcC), as mp4-muxer wants
+        encoder.configure(config);
         baseTs = performance.now();
-      } catch {
+      } catch (e) {
         dead = true;
+        deadReason = `encoder setup threw: ${e instanceof Error ? e.message : String(e)}`;
       }
     })();
   };
@@ -161,7 +201,7 @@ export function createClipRecorder(source: HTMLCanvasElement): ClipRecorder | nu
       const target = new ArrayBufferTarget();
       const muxer = new Muxer({
         target,
-        video: { codec: 'avc', width: SIZE, height: SIZE },
+        video: { codec: muxerCodec, width: SIZE, height: SIZE },
         fastStart: 'in-memory',
         firstTimestampBehavior: 'offset', // rebase the clip to start at t=0
       });
@@ -175,19 +215,34 @@ export function createClipRecorder(source: HTMLCanvasElement): ClipRecorder | nu
     }
   };
 
+  const isReady = (): boolean =>
+    started &&
+    !dead &&
+    meta !== null &&
+    buf.length > 0 &&
+    buf.some((e) => e.chunk.type === 'key') &&
+    performance.now() - buf[0]!.t >= MIN_SPAN_MS;
+
   return {
     start,
     update,
     takeClip,
     get ready(): boolean {
-      return (
-        started &&
-        !dead &&
-        meta !== null &&
-        buf.length > 0 &&
-        buf.some((e) => e.chunk.type === 'key') &&
-        performance.now() - buf[0]!.t >= MIN_SPAN_MS
-      );
+      return isReady();
+    },
+    get status(): ClipStatus {
+      const oldestMs = buf.length > 0 ? performance.now() - buf[0]!.t : 0;
+      return {
+        started,
+        dead,
+        reason: deadReason,
+        codec: codecUsed,
+        hasMeta: meta !== null,
+        frames: buf.length,
+        hasKeyframe: buf.some((e) => e.chunk.type === 'key'),
+        oldestMs: Math.round(oldestMs),
+        ready: isReady(),
+      };
     },
     dispose(): void {
       started = false;
