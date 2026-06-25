@@ -61,13 +61,15 @@ async function main(): Promise<void> {
   const loop = new Loop(renderer);
   const time = new TimeController();
   const physics = new PhysicsController(scene, renderer);
-  // Default to the CPU integrator. It is exact and trivially cheap for this app's
-  // body counts (≤14), and — crucially — it avoids the GPU path's per-frame
-  // position+velocity read-back, which forces a CPU↔GPU sync every frame and
-  // stalls the pipeline. The GPU compute kernel stays an opt-in (Advanced → GPU
-  // physics): a scaling foundation for many bodies, not a win for a handful.
+  // The CPU/GPU integrator choice is now automatic (PhysicsController.autoSelect).
+  // The CPU path is exact and trivially cheap for this app's body counts (≤14) and
+  // avoids the GPU path's per-frame position+velocity read-back (a CPU↔GPU sync
+  // that stalls the pipeline), so the selector stays on CPU for every count the app
+  // can reach today — flipping to GPU only if a future swarm raises the cap into the
+  // hundreds. Tell it whether the WebGPU compute path is even available.
+  physics.gpuAvailable = backend === 'webgpu';
   const scaler = new ResolutionScaler();
-  const hud = createHud(backend);
+  const hud = createHud();
 
   // The art-directed intro: dolly in from far while the disk ignites.
   const formation = new FormationSequence(rig, uniforms.formation, {
@@ -204,7 +206,7 @@ async function main(): Promise<void> {
     clip?.start(); // begin buffering now (post-intro) — clear of the heavy reveal frames
     const { createControls } = await import('./ui/Controls');
     createControls({
-      blackHole, scene, physics, time, formation, backend, renderer, scaler,
+      blackHole, scene, physics, time, formation, renderer, scaler,
       bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
       bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
       replaySplash, captureShare,
@@ -246,9 +248,22 @@ async function main(): Promise<void> {
     else formation.update(frameDelta);
     post.render();
     clip?.update(); // blit this frame into the rolling share buffer (cheap; throttled internally)
+    // Companion breakdown for the HUD's S/P/B readout — one pass, no allocation
+    // (skips the always-present central primary, mirroring the Bodies panel).
+    let stars = 0;
+    let planets = 0;
+    let holes = 0;
+    for (const b of scene.bodies) {
+      if (b.fixed) continue;
+      if (b.type === 'star') stars += 1;
+      else if (b.type === 'planet') planets += 1;
+      else holes += 1;
+    }
     hud.update(frameDelta, {
       resScale: scaler.scale,
-      bodies: scene.companions.length,
+      stars,
+      planets,
+      holes,
       timeScale: time.timeScale,
       gpu: physics.useGPU,
     });

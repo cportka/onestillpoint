@@ -64,7 +64,7 @@ export function createHudFolder(gui: GUI, hud: Hud, prefs: { showFps: boolean },
     ),
     tip(
       folder.add(hudOpts, 'detail').name('Detail'),
-      'Show body count · time scale · CPU/GPU physics · render backend.',
+      'Show the S/P/B body breakdown (stars / planets / black holes) · time scale · CPU/GPU compute path.',
     ),
   ];
   children.forEach((c) => c.onChange(() => hud.setOptions(hudOpts)));

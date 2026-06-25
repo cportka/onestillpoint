@@ -91,6 +91,25 @@ canvas {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.55);
 }
+/* The compute path (CPU/GPU) in the detail line. A single C/G letter is hard to
+   register, so colour + a leading dot carry the distinction at a glance: cool
+   slate = the calm CPU default, warm amber = the engaged GPU path. */
+.hud__compute {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.hud__compute::before {
+  content: '●';
+  margin-right: 4px;
+  font-size: 9px;
+  vertical-align: 1px;
+}
+.hud__compute--cpu {
+  color: #9bb3d0;
+}
+.hud__compute--gpu {
+  color: #ffce86;
+}
 .hud.hud--on {
   opacity: 1;
   transform: none;
@@ -210,6 +229,10 @@ canvas {
   --input-font-size: 12px;
   --spacing: 7px;
   --widget-height: 26px;
+  /* Checkbox accent — a neutral, barely-warm silver (branding WIP). One knob here
+     so the coming theme pass can retune every toggle at once; replaces the old
+     confirm-green so the checkboxes read as quiet chrome, not a status colour. */
+  --osp-check: #cdc7ba;
   letter-spacing: 0.04em;
 }
 .lil-gui.root {
@@ -260,7 +283,7 @@ canvas {
   appearance: auto;
   width: 15px;
   height: 15px;
-  accent-color: #7ee787; /* the app's confirm-green */
+  accent-color: var(--osp-check); /* neutral warm-silver — subtle, not a status colour */
   cursor: pointer;
 }
 .lil-gui .lil-title .osp-hud-titlebox {
