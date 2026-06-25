@@ -92,4 +92,28 @@ describe('FormationSequence', () => {
     expect(seq.done).toBe(false);
     expect(driver.began).toBe(2);
   });
+
+  it('fires onDone when it settles, and again after a replay (drives the panel reappear)', () => {
+    const seq = new FormationSequence(new StubDriver(), { value: 1 }, { duration: 6 });
+    let calls = 0;
+    seq.onDone = () => {
+      calls += 1;
+    };
+    runToEnd(seq);
+    expect(calls).toBe(1);
+    seq.restart();
+    runToEnd(seq);
+    expect(calls).toBe(2);
+  });
+
+  it('fires onDone on a skip too', () => {
+    const seq = new FormationSequence(new StubDriver(), { value: 1 }, { duration: 6 });
+    let calls = 0;
+    seq.onDone = () => {
+      calls += 1;
+    };
+    for (let i = 0; i < 60; i++) seq.update(0.016); // past the skip guard
+    seq.skip();
+    expect(calls).toBe(1);
+  });
 });

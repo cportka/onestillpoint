@@ -5,6 +5,11 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.23.x — warm-fuzzy reveal + leaner intro
 
+- **0.23.2** — **Hide the control panel during a Replay.** Triggering **Replay intro** now
+  collapses *and* hides the lil-gui panel for the whole replayed intro, so it doesn't float over
+  the black/splash/dolly. It reappears — folded — only once the replayed intro has finished
+  settling, driven by a new `FormationSequence.onDone` hook (fired at the end of the dolly, or on
+  a skip). No-op on first load (the panel is already shown).
 - **0.23.1** — **Share actually produces an mp4 on the desktop (the PNG fallback bug).**
   - **Root cause #1 (Chrome): `latencyMode: 'realtime'`.** It biased the encoder toward a
     *hardware* H.264 path that, on desktop, frequently omits the `avcC` decoder config from its
