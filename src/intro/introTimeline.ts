@@ -50,8 +50,9 @@ export const INTRO_DIALS = {
   creationSpeed: 1,
   /** (d) Splash animation speed (× its CSS durations). */
   splashSpeed: 1,
-  /** How long the creation plays as its own beat before handing to the splash. */
-  creationBeatMs: 340,
+  /** How long the creation plays as its own beat before handing to the splash. Tuned so
+   *  the splash reveals (creationBeatMs + creationFadeMs after the burst) by ~0.95s. */
+  creationBeatMs: 240,
   /** (e) Creation→splash crossfade *overlap*: when the splash starts relative to the
    *  creation fade — negative = splash a touch *before* the fade (overlap, no gap),
    *  positive = a black gap. */

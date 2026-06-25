@@ -3,6 +3,27 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.21.x — modular intro + the intro lab
+
+- **0.21.0** — **Modularize the intro, add a dev "intro lab", and two recording fixes.**
+  The whole intro — the moment-of-creation markup, the splash markup, and the inline boot
+  script that sequences them — now lives in **one source of truth**,
+  [`src/intro/overlay.html`](src/intro/overlay.html). A small Vite plugin (`introOverlay()`
+  in [`vite.config.ts`](vite.config.ts)) inlines it into both the app (`index.html`) and a
+  new dev-only **intro lab** (`intro-lab.html`), so the lab previews the *exact* intro the
+  site ships and can't drift. The lab ([`src/intro/lab.ts`](src/intro/lab.ts) — `npm run
+  dev` → `/intro-lab.html`) loops the intro behind a panel of **sliders bound live to every
+  dial** (`window.__ospDials`): adjust the visual sequence, watch it loop (or hit **Replay
+  now**), then **Copy values** and paste the snippet back into the source. It isn't part of
+  the production build (`intro-lab.html` isn't a Vite input) but is typechecked/linted with
+  `src`, and a new README **"Tuning the intro"** section documents it. Two fixes from a
+  screen recording: (1) **Replay intro now plays the moment of creation** — the burst's CSS
+  animations finished on first load, and a parent reflow doesn't restart reused children, so
+  Replay jumped straight to the splash; the burst is now genuinely restarted
+  (`animation:'none'` → reflow → `''`), so Replay matches the first-load sequence exactly.
+  (2) **The splash lands earlier** — the creation beat is now **240 ms** (was 340), so the
+  splash is fully revealed by ~0.95 s and the **~1.0–1.14 s black gap is gone**.
+
 ## 0.20.x — the intro prelude (black → test pattern → birth)
 
 - **0.20.7** — **Explicit intro dials + three splash fixes.** Every intro timing/speed is

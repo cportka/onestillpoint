@@ -63,8 +63,9 @@ if (!CHROME) {
 }
 const headlessFlag = /headless_shell/.test(CHROME) ? [] : ['--headless=old'];
 
-// Pull the splash markup + its inline script out of the live index.html.
-const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+// Pull the splash markup + its inline script out of the shared intro overlay
+// (src/intro/overlay.html — the single source inlined into index.html).
+const html = readFileSync(join(ROOT, 'src/intro/overlay.html'), 'utf8');
 const div = html.match(/<div id="osp-splash"[\s\S]*?<\/div>\s*<\/div>/)[0];
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const freeze = `<script>var T=Number(new URLSearchParams(location.search).get('t')||0);
