@@ -5,6 +5,19 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.25.x — the scrub bar, always on
 
+- **0.25.1** — **Prefetch the engine chunk for a faster first load (roadmap #6).** A thorough
+  bundle investigation found the engine bytes are at three.js's floor (~808 KB raw / ~222 KB
+  gzip) with no *safe* shrink — so instead of trimming bytes, this speeds their *delivery*: a
+  lowest-priority `<link rel="prefetch">` for the three.js vendor chunk (`prefetchEngineChunk()`
+  in `vite.config.ts`) downloads it during the splash's idle network time and caches it, so it's
+  already local when the deferred `__ospBoot` import fires. It is **not** `modulepreload` — no
+  early compile, so the carefully-tuned splash timing is untouched. The benefit is
+  connection-dependent (verify on real hardware; `vite preview` sends `no-cache`, so reuse only
+  shows on a cacheable host like GitHub Pages). `docs/future-improvements.md` #6 now records the
+  full investigation: every rejected approach (core dedupe → no-op; `manualChunks` → conserves
+  bytes; terser ≈ esbuild; the WebGL2 fallback statically baked into the prebuilt bundle) and the
+  one real byte lever left (dropping the WebGL2 fallback, ~30% — an L-effort product call).
+
 - **0.25.0** — **The history scrub bar is now always on, tracks the last 2 minutes, and the info
   popover gets a colour key.** The bar no longer waits for Pause — it rides along the bottom the
   whole time the control panel is up, its playhead tracking the live edge as the sim plays:

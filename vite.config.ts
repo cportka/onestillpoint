@@ -11,6 +11,58 @@ import { readFileSync } from 'node:fs';
 const OVERLAY_MARKER = '<!-- @osp-intro-overlay -->';
 const overlayUrl = new URL('./src/intro/overlay.html', import.meta.url);
 
+/**
+ * Warm the heavy engine chunk during the splash. The bundle is deliberately loaded *late* — the
+ * inline boot (`window.__ospBoot`, see index.html) only `import()`s it once the splash is up, so
+ * the ~800 KB parse + WebGPU compile happen under cover instead of starving the prelude. That
+ * deferral is right, but it also means the *download* doesn't start until the splash hands off —
+ * a serial waterfall (entry → main → three) on a cold connection.
+ *
+ * A `rel="prefetch"` for the three.js vendor chunk closes that gap without disturbing the timing:
+ * the browser fetches it at the *lowest* priority, filling the network's idle time while the
+ * (GPU/CSS-driven) splash plays, and parks it in the HTTP cache. It is **not** `modulepreload` —
+ * prefetch never compiles or executes the module, so it can't steal main-thread time from the
+ * prelude (the hazard index.html guards against). When `__ospBoot` finally imports the engine,
+ * the bytes are already local. The chunk filename is content-hashed, so resolve it from the
+ * emitted bundle at build time. Dev (`serve`) has no bundle → the hook is a no-op there.
+ */
+function prefetchEngineChunk(): Plugin {
+  let base = '/';
+  return {
+    name: 'osp-prefetch-engine',
+    configResolved(config): void {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html; // dev server: nothing emitted to prefetch
+        // The engine lives in the three.js vendor chunk; fall back to the largest chunk if the
+        // naming ever changes, so we always prefetch the dominant payload.
+        let engine: { fileName: string; code: string } | undefined;
+        let largest: { fileName: string; code: string } | undefined;
+        for (const output of Object.values(ctx.bundle)) {
+          if (output.type !== 'chunk') continue;
+          if (/three/i.test(output.fileName)) engine = output;
+          if (!largest || output.code.length > largest.code.length) largest = output;
+        }
+        const target = engine ?? largest;
+        if (!target) return html;
+        return {
+          html,
+          tags: [
+            {
+              tag: 'link',
+              attrs: { rel: 'prefetch', href: base + target.fileName, as: 'script', crossorigin: '' },
+              injectTo: 'head',
+            },
+          ],
+        };
+      },
+    },
+  };
+}
+
 function introOverlay(): Plugin {
   return {
     name: 'osp-intro-overlay',
@@ -45,7 +97,7 @@ function introOverlay(): Plugin {
 // Only index.html is a build input (the default) — the live site is just the app.
 export default defineConfig({
   base: '/',
-  plugins: [introOverlay()],
+  plugins: [introOverlay(), prefetchEngineChunk()],
   build: {
     // The WebGPU/TSL stack and our bootstrap rely on modern output.
     target: 'esnext',

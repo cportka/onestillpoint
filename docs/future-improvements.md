@@ -134,21 +134,72 @@ boundary).
 
 ## 6. Shrink the bundle further
 
-*Progressed in v0.18–0.19* — the control panel (lil-gui + `Controls`) and the GPU
-physics engine are both lazy `import()`s (their own chunks). The bulk that remains is
-**three.js / WebGPU** (~808 kB raw / ~222 kB gzip in the latest build). The real lever
-left is tree-shaking / trimming unused Three add-ons, or splitting the WebGL2 fallback
-path out of the initial load.
+*Progressed in v0.18–0.19* (the control panel + GPU physics engine are lazy `import()`s) and
+**investigated in depth in v0.25.1.** The conclusion: **the engine bytes are at three.js's
+floor — ~808 KB raw / ~222 KB gzip — and no *safe* change shrinks them.** What v0.25.1 shipped
+instead is a **first-load latency** win (prefetch, below). The remaining byte lever is a product
+decision (drop the WebGL2 fallback), not a quick patch.
 
-- **Effort:** M.
-- **Risks / bugs:** Three's TSL/WebGPU surface is large and interdependent — aggressive
-  trimming can break the raymarch or the bloom node graph; a WebGL2 split roughly
-  doubles the path test matrix.
-- **Viz / perf:** faster first load (cold cache / mobile) — which **feeds directly into
-  problem 1**, since less main-thread parse competes with the intro. No visual change
-  if done carefully.
-- **Notes:** the build's chunk report names the target (`three.tsl`). Touches:
-  `vite.config.ts`, the `three` import surface.
+### What the bytes actually are
+
+`import { WebGPURenderer } from 'three/webgpu'` resolves to a **prebuilt bundle**
+(`node_modules/three/build/three.webgpu.js`, ~2 MB unminified) — not the granular `src/` tree.
+It is one tightly-interconnected module that Rollup can neither split nor tree-shake meaningfully,
+and it **statically `import`s the WebGL2 fallback backend** (`WebGPURenderer.js` →
+`webgl-fallback/WebGLBackend.js`), so the fallback ships whether or not WebGPU is used.
+
+### What shipped (v0.25.1): prefetch the engine chunk
+
+The engine bundle is loaded *late on purpose* — the inline `window.__ospBoot` (see `index.html`)
+only `import()`s it once the splash is up, so the ~800 KB parse + WebGPU compile happen under
+cover instead of starving the cheap CSS prelude. Correct, but it also delays the *download* to
+the splash hand-off (a serial entry → main → three waterfall on a cold connection). A
+`rel="prefetch"` for the three chunk (`prefetchEngineChunk()` in `vite.config.ts`) fills the
+network's idle time *during* the splash at lowest priority and parks the bytes in cache —
+**without** `modulepreload`'s compile, so it can't steal main-thread time from the prelude. Net:
+same tuned execution timing, engine bytes already local when boot fires. **Verify on real
+hardware** — the benefit is connection-dependent, and `vite preview` sends `Cache-Control:
+no-cache` so the prefetch isn't reused there (a preview artifact; GitHub Pages serves hashed
+assets cacheable, so production reuses it as a single download).
+
+### Approaches measured and rejected (so we don't re-derive them)
+
+- **Dedupe three's core** (`from 'three'` vs `from 'three/webgpu'`) — *no-op.* Both prebuilt
+  bundles re-export a shared `three.core.js`, which Rollup already includes **once**. An exact
+  `^three$ → three/webgpu` alias produced a **byte-identical** chunk (same hash). No duplication
+  exists.
+- **`manualChunks`** to split three apart — *conserves bytes.* It only moves the ~25 KB of core
+  primitives between `main` and the vendor chunk (e.g. `main` 82 → 57 KB, three 808 → 833 KB);
+  total ~890 KB raw either way. A caching nicety at best; three is already its own chunk.
+- **terser instead of esbuild** — *no change* (808.5 vs 808.3 KB). three's own
+  `three.webgpu.min.js` is smaller (~623 KB) only because three's build mangles its internal
+  module properties before publishing; we can't replicate that on the consumed bundle.
+- **Split the WebGL2 fallback out of the initial load** — *not possible without forking three.*
+  It's statically imported and inlined into the prebuilt `three.webgpu.js`.
+- **`modulepreload` the chunk earlier** — *rejected.* It would fetch **and compile** the module
+  early — exactly the main-thread contention `index.html`'s boot comment guards against
+  (starving the prelude's timers / first paint). `prefetch` (download-only) was chosen instead.
+
+### The one real byte lever left (a product call)
+
+**Drop / lazy-load the WebGL2 fallback (~30% of the engine).** This is the only change that
+meaningfully shrinks the bytes, and it's an **L-effort, fragile** bet: it needs three patched so
+`WebGLBackend` is a dynamic `import()` (or excluded), and **non-WebGPU browsers** then lose the
+app or depend on an untested lazy path — contradicting the Phase-0 acceptance that *both* paths
+render (see `Renderer.ts`, the `?webgl` force). A granular `three/src` tree-shake is the other
+theoretical path, but three's package `exports` don't expose `src`, and `WebGPURenderer`'s static
+fallback import means even that wouldn't auto-split. Either way: **not a quick patch**, and the
+prize trades against browser reach.
+
+- **Effort:** the byte win is **L** (fork/patch three, double the path test matrix); the shipped
+  prefetch was **S**.
+- **Risks / bugs:** dropping the fallback breaks WebGL2-only browsers; granular `src` imports can
+  break the raymarch / bloom node graph and aren't a supported entry point.
+- **Viz / perf:** faster first load (cold/mobile), feeding **problem 1** (less competing with the
+  intro). The prefetch helps delivery; only the WebGL2 drop helps the byte/parse cost. No visual
+  change.
+- **Notes:** the build's chunk report names the target (`three.tsl`). Touches: `vite.config.ts`,
+  `Renderer.ts` (the fallback path), the `three` import surface.
 
 ## 7. Swarm / galaxy mode → let the GPU path finally pay off
 
