@@ -301,7 +301,11 @@ export class Scene {
         const s = Math.sin(angle);
         const f = b.plungeFrom;
         b.position.set((f.x * c - f.z * s) * radial, f.y * radial, (f.x * s + f.z * c) * radial);
+        const wasInside = (b.absorbing ?? 0) > 0;
         b.absorbing = Math.max(0, (b.plunging - 0.5) * 2); // shrink + redshift over the inner half
+        // The removed body crossing into the centre is a merger too — mark it (timeline tick) and
+        // fire the ringdown ripple, so the − button is an on-demand way to see the cue.
+        if (!wasInside && b.absorbing > 0) this.onEvent?.('absorb');
         continue;
       }
       // Natural merge: a body the physics has carried to the centre begins the
