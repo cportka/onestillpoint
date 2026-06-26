@@ -68,6 +68,10 @@ describe('History', () => {
     expect(h.peek(0)).toBeNull();
   });
 
+  it('defaults to a ~2-minute scrub window', () => {
+    expect(new History().capacity).toBe(7200); // ~2 min at 60 fps
+  });
+
   it('tracks total frames recorded (monotonic) and the current-generation span', () => {
     const h = new History(8);
     const primary = body(0, new Vector3(), new Vector3(), true);

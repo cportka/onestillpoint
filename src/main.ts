@@ -158,26 +158,45 @@ async function main(): Promise<void> {
     }
     window.setTimeout(dismissSplash, Math.max(0, started + MIN_SPLASH_MS - performance.now()));
   };
-  // The history scrub bar (shown on Pause). The loop records each running frame into
-  // `history` (a bounded, zero-allocation ring → "old is lost"); `events` logs the
-  // colour-coded transient moments (adds / absorptions / escapes), each tagged with the
-  // frame counter so it holds its position as the window scrolls.
+  // The history scrub bar (shown with the control panel — always on, hidden during Replay).
+  // The loop records each running frame into `history` (a bounded ~2-min ring → "old is lost");
+  // `events` logs the colour-coded transient moments (adds / absorptions / escapes), each
+  // tagged with the frame counter so it holds its position as the window scrolls.
   const history = new History();
   const events = new EventLog();
   scene.onEvent = (type) => events.add(type, history.recorded);
-  // Scrub: restore the frame at a 0..1 position (clamped to the span the *current* body
-  // layout can still restore), and let the paused render loop show it. Returns the clamped
-  // position so the bar can place its playhead there.
+  // While the user drags the bar we freeze the sim (skip stepping + recording, in the loop) so
+  // the physics doesn't walk the bodies off the restored frame mid-scrub.
+  let scrubbing = false;
+  // Scrubbing also *pauses* so the chosen moment stays on screen (else the live edge would
+  // immediately scroll past it). Controls overrides `pause` to also light its Pause button; the
+  // user resumes from there. A plain object so Controls can swap the method after it mounts.
+  const scrubUi = {
+    pause: (): void => {
+      time.paused = true;
+    },
+  };
+  // Scrub: restore the frame at a 0..1 position (clamped to the span the *current* body layout
+  // can still restore), and let the render loop show it. Returns the clamped position so the
+  // bar can place its playhead there.
   const scrubTo = (pos01: number): number => {
     const len = history.length;
     if (len < 1) return pos01;
     const boundary = len > 1 ? 1 - (history.restorableLength - 1) / (len - 1) : 0;
     const p = Math.min(1, Math.max(boundary, pos01));
     const frame = history.peek(Math.round((1 - p) * (len - 1)));
-    if (frame) history.restore(frame, scene.bodies); // the running (paused) loop renders it
+    if (frame) history.restore(frame, scene.bodies); // the render loop shows it next frame
     return p;
   };
-  const historyBar = createHistoryBar({ history, events, scrubTo });
+  const historyBar = createHistoryBar({
+    history,
+    events,
+    scrubTo,
+    onScrub: (active) => {
+      scrubbing = active;
+      if (active) scrubUi.pause(); // grab → pause at this moment so it's inspectable
+    },
+  });
 
   // "Replay intro": melt the live view inward toward the One Still Point (~2s), then
   // replay the whole intro from the black screen. onReplay (re-seed + restart the
@@ -239,7 +258,7 @@ async function main(): Promise<void> {
       blackHole, scene, physics, time, formation, renderer, scaler,
       bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
       bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
-      replaySplash, captureShare, historyBar,
+      replaySplash, captureShare, historyBar, scrubUi,
       setMaxFps: (fps: number) => {
         loop.maxFps = fps;
       },
@@ -275,8 +294,8 @@ async function main(): Promise<void> {
     uniforms.time.value += t.animDelta; // bounded dust clock (can ebb when stepping back)
     uniforms.timeBlur.value = t.timeBlur;
     physics.timeScale = t.orbitMul;
-    if (t.fd !== 0) physics.step(t.fd); // fd < 0 when stepping back (orbits reverse)
-    if (t.fd > 0) history.record(scene.bodies); // build the scrub timeline on forward progress
+    if (!scrubbing && t.fd !== 0) physics.step(t.fd); // fd < 0 when stepping back; frozen while scrubbing
+    if (!scrubbing && t.fd > 0) history.record(scene.bodies); // build the scrub timeline on forward progress
 
     updateBodyUniforms(bodyUniforms, scene, formation.progress);
     // The intro drives the camera (controls disabled) until it settles home.
@@ -303,6 +322,7 @@ async function main(): Promise<void> {
       timeScale: time.timeScale,
       gpu: physics.useGPU,
     });
+    historyBar.tick(); // keep the bottom scrub bar live (events scroll, playhead rides "now")
 
     if (warmFrames < WARM_FRAMES) {
       warmFrames += 1;

@@ -801,3 +801,19 @@ canvas {
   background: #fff0d8;
   box-shadow: 0 0 10px 2px rgba(255, 214, 150, 0.95);
 }
+
+/* Info popover: the "Timeline events" colour key (a glowing swatch + label per transient
+   event type — see ui/shortcuts.ts + ui/historyBar.ts). Sits below the keyboard shortcuts. */
+.osp-keys__title.osp-keys__sub {
+  margin-top: 10px;
+}
+.osp-keys__sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c, #fff);
+  box-shadow:
+    0 0 6px var(--c, #fff),
+    0 0 2px var(--c, #fff);
+}

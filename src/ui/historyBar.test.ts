@@ -1,5 +1,12 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { EventLog } from './historyBar';
+import type { History } from '../core/History';
+import { createHistoryBar, EventLog } from './historyBar';
+
+// A minimal History stand-in — the bar only reads length/recorded/restorableLength here.
+function stubHistory(): History {
+  return { length: 10, recorded: 10, restorableLength: 10, peek: () => null } as unknown as History;
+}
 
 describe('EventLog', () => {
   it('positions events 0..1 across the window and drops those outside it', () => {
@@ -28,5 +35,23 @@ describe('EventLog', () => {
     log.add('star', 1);
     log.clear();
     expect(log.inWindow(0, 10)).toEqual([]);
+  });
+});
+
+describe('HistoryBar.setVisible', () => {
+  it('is idempotent — a redundant show must not reset a scrubbed playhead', () => {
+    const bar = createHistoryBar({ history: stubHistory(), events: new EventLog(), scrubTo: (p) => p });
+    bar.setVisible(true);
+    const head = document.querySelector<HTMLElement>('.osp-history__head')!;
+    expect(head.style.left).toBe('100%'); // inits at the live edge ("now")
+
+    head.style.left = '40%'; // simulate a scrub having parked the playhead mid-window
+    bar.setVisible(true); // a redundant show (panel mount *and* formation.onDone both fire it)
+    expect(head.style.left).toBe('40%'); // …must leave the scrubbed position alone
+
+    bar.setVisible(false);
+    bar.setVisible(true); // a genuine hide→show (e.g. after a Replay) does re-init
+    expect(head.style.left).toBe('100%');
+    bar.dispose();
   });
 });
