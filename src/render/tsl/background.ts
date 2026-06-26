@@ -7,15 +7,36 @@ const TWO_PI = 6.2831853;
 const PI = 3.14159265;
 
 // --- Merger ringdown ripple (roadmap #6) — tuning dials -----------------------------------------
-// A decaying, expanding ring radiating from the hole (the merger point) across the Lattice grid,
-// fired by an absorption. `ripple` (uniform) is seconds since the event; large when idle → no-op.
-// First pass — expect to tune these against the look on real hardware.
+// A decaying, expanding ring radiating from the hole (the merger point), fired by an absorption.
+// Applied **globally** (in `background()`) by warping the sampled sky direction, so it reads the
+// SAME on every background — not just the Lattice grid. Subtle by design (the Lattice grid made it
+// look enormous; this is ~a tenth of that). `ripple` (uniform) is seconds since the event; large
+// when idle → no-op. Tune against the look on real hardware.
 const RIPPLE_SPEED = 0.55; // how fast the wavefront sweeps outward, in radians of sky-angle per second
 const RIPPLE_TAU = 2.2; // amplitude decay time (s) — the "ringdown" length
 const RIPPLE_WIDTH2 = 0.06; // squared angular half-width of the wavefront band (smaller = tighter ring)
 const RIPPLE_FREQ = 20; // spatial ringing frequency within the band (more = more wave crests)
-const RIPPLE_WARP = 0.22; // how far the grid is dragged radially at the crest (the visible distortion)
-const RIPPLE_GLOW = 2.8; // brightness of the soft glow riding the wavefront (reads across grid gaps)
+const RIPPLE_WARP = 0.022; // radians the sky is dragged at the crest — the distortion (was 0.22 on Lattice)
+const RIPPLE_GLOW = 0.28; // brightness of the faint glow riding the wavefront (was 2.8 on Lattice)
+
+/**
+ * The global ringdown distortion: warp the sampled sky direction `dir` radially in an expanding,
+ * decaying ring from the hole (`camFwd`). Returns the warped direction + the wavefront band (for a
+ * faint glow). Background-agnostic — every sky lenses the same way through it. Idle (`ripple` large)
+ * → wave ≈ 0 → `dir` unchanged.
+ */
+function rippleWarp(dir: Node<'vec3'>, camFwd: Node<'vec3'>, ripple: Node<'float'>) {
+  const cosT = clamp(dot(dir, camFwd), float(-0.9999), float(0.9999));
+  const theta = acos(cosT); // sky-angle from the merger point
+  const front = ripple.mul(RIPPLE_SPEED); // wavefront radius, expanding with time
+  const env = exp(ripple.div(-RIPPLE_TAU)).mul(smoothstep(float(0), float(0.08), ripple)); // rise → ringdown
+  const d = theta.sub(front);
+  const band = exp(d.mul(d).div(-RIPPLE_WIDTH2)); // gaussian band hugging the wavefront
+  const wave = sin(d.mul(RIPPLE_FREQ)).mul(band).mul(env); // ringing inside the band
+  const radial = normalize(dir.sub(camFwd.mul(cosT)).add(vec3(1e-4, 0, 0))); // outward (⟂ to centre)
+  const warped = normalize(dir.add(radial.mul(wave.mul(RIPPLE_WARP))));
+  return { dir: warped, glow: band.mul(env) };
+}
 
 /** Thin bright lines wherever `coord × count` lands on an integer. */
 function gridLines(coord: Node<'float'>, count: number) {
@@ -83,34 +104,17 @@ function filaments(dir: Node<'vec3'>) {
 
 /**
  * Mode 3 — a glowing spacetime lattice; lat/long lines bend through the lensing.
- * Major lines plus fainter minor lines four to a cell for a finer grid. When a merger fires
- * (`ripple` ≈ 0), a decaying ring sweeps outward from the hole (`camFwd` direction), dragging the
- * grid radially and trailing a soft glow — the **ringdown** cue (roadmap #6).
+ * Major lines plus fainter minor lines four to a cell for a finer grid. (The merger ripple is
+ * applied globally in `background()` now — see `rippleWarp` — so it reads the same on every sky.)
  */
-function lattice(dir: Node<'vec3'>, camFwd: Node<'vec3'>, ripple: Node<'float'>) {
-  // Sky-angle from the screen centre (the hole / merger point); 0 = straight at it.
-  const cosT = clamp(dot(dir, camFwd), float(-0.9999), float(0.9999));
-  const theta = acos(cosT);
-  const front = ripple.mul(RIPPLE_SPEED); // the wavefront radius, expanding with time
-  // Rise fast then decay (the ringdown), and ≈0 when idle (ripple large → exp underflows to 0).
-  const env = exp(ripple.div(-RIPPLE_TAU)).mul(smoothstep(float(0), float(0.08), ripple));
-  const d = theta.sub(front);
-  const band = exp(d.mul(d).div(-RIPPLE_WIDTH2)); // a gaussian band hugging the wavefront
-  const wave = sin(d.mul(RIPPLE_FREQ)).mul(band).mul(env); // ringing inside the band
-  // Drag the sampled direction radially (outward from the centre) by the wave → the grid
-  // bunches and stretches as the ring passes. `radial` is dir's component ⟂ to centre.
-  const radial = normalize(dir.sub(camFwd.mul(cosT)).add(vec3(1e-4, 0, 0)));
-  const warped = normalize(dir.add(radial.mul(wave.mul(RIPPLE_WARP))));
-
-  const lon = atan(warped.z, warped.x).div(TWO_PI).add(0.5);
-  const lat = asin(clamp(warped.y, float(-0.999), float(0.999))).div(PI).add(0.5);
+function lattice(dir: Node<'vec3'>) {
+  const lon = atan(dir.z, dir.x).div(TWO_PI).add(0.5);
+  const lat = asin(clamp(dir.y, float(-0.999), float(0.999))).div(PI).add(0.5);
   const major = max(gridLines(lon, 24), gridLines(lat, 12));
   const minor = max(gridLines(lon, 96), gridLines(lat, 48)).mul(0.3); // in-between lines
   // Greener and a touch less saturated than the old cyan (raised red toward the
   // others, lowered blue so green leads).
-  const grid = vec3(0.4, 0.66, 0.6).mul(max(major, minor));
-  const glow = vec3(0.5, 0.85, 0.8).mul(band.mul(env).mul(RIPPLE_GLOW)); // wavefront glow
-  return grid.add(glow).add(starfield(warped, float(0.35)));
+  return vec3(0.4, 0.66, 0.6).mul(max(major, minor)).add(starfield(dir, float(0.35)));
 }
 
 /**
@@ -129,11 +133,18 @@ export function background(
   camFwd: Node<'vec3'>,
   ripple: Node<'float'>,
 ) {
+  // Global merger ringdown: warp the sampled sky direction in an expanding ring (same on every
+  // background), so the selected sky lenses through the ripple identically. Idle → `sky` ≈ `dir`.
+  const ring = rippleWarp(dir, camFwd, ripple);
+  const sky = ring.dir;
+
   const col = vec3(0).toVar();
-  If(mode.lessThan(0.5), () => col.assign(starfield(dir, float(1.2))));
-  If(mode.greaterThan(0.5).and(mode.lessThan(1.5)), () => col.assign(nebula(dir)));
-  If(mode.greaterThan(1.5).and(mode.lessThan(2.5)), () => col.assign(filaments(dir)));
-  If(mode.greaterThan(2.5), () => col.assign(lattice(dir, camFwd, ripple)));
+  If(mode.lessThan(0.5), () => col.assign(starfield(sky, float(1.2))));
+  If(mode.greaterThan(0.5).and(mode.lessThan(1.5)), () => col.assign(nebula(sky)));
+  If(mode.greaterThan(1.5).and(mode.lessThan(2.5)), () => col.assign(filaments(sky)));
+  If(mode.greaterThan(2.5), () => col.assign(lattice(sky)));
+  // A faint cool glow riding the wavefront so the ripple reads on a sparse sky too.
+  col.addAssign(vec3(0.7, 0.85, 1.0).mul(ring.glow.mul(RIPPLE_GLOW)));
 
   // Universal post: saturation (toward luminance) → warm/cool tint → brightness.
   const luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
