@@ -12,6 +12,7 @@ import { ResolutionScaler } from './core/ResolutionScaler';
 import { TimeController } from './core/TimeController';
 import { PhysicsController } from './physics/PhysicsController';
 import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
+import { BirthTicker } from './core/BirthTicker';
 import { createPostPipeline } from './render/PostPipeline';
 import { RaymarchPass } from './render/RaymarchPass';
 import { createBlackHoleNode } from './render/tsl/raymarch';
@@ -183,6 +184,11 @@ async function main(): Promise<void> {
     // A body reaching the centre is a merger — fire the spacetime ringdown ripple (Lattice sky).
     if (type === 'absorb') uniforms.ripple.value = 0;
   };
+  // The seeded line-up is created silently, so the first stars and planets would never mark the
+  // timeline. This drops a creation tick for each as it swooshes in during the intro (and re-arms
+  // on replay) — firing the same `onEvent` a user-driven add would. Armed with the current seed.
+  const births = new BirthTicker((type) => scene.onEvent?.(type));
+  births.arm(scene.companions);
   // While the user drags the bar we freeze the sim (no stepping / recording / replay-advance, in
   // the loop) so the physics doesn't walk the bodies off the restored frame mid-scrub. A transient
   // freeze for the grab only — it never touches `time.paused` (scrubbing must not change Pause).
@@ -324,6 +330,8 @@ async function main(): Promise<void> {
     }
 
     updateBodyUniforms(bodyUniforms, scene, formation.progress);
+    // Mark the seeded line-up's "births" on the scrub bar as they swoosh in (re-armed on replay).
+    births.update(formation.progress, () => scene.companions);
     // The intro drives the camera (controls disabled) until it settles home.
     if (formation.done) rig.update();
     else formation.update(frameDelta);
@@ -374,7 +382,7 @@ async function main(): Promise<void> {
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline },
+    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline, events },
   });
 }
 
