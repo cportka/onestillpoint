@@ -57,24 +57,25 @@ export class EventLog {
 }
 
 export interface HistoryBar {
-  /** Show / hide the bar (now tied to the control panel's visibility, not Pause). */
+  /** Show / hide the bar (tied to the control panel's visibility, not Pause). */
   setVisible(on: boolean): void;
-  /** Drive the live view — call once per render frame. While the sim is advancing it
-   *  re-reads the window + events and rides the playhead at the live edge; while frozen
-   *  (paused or mid-scrub) it leaves the playhead where the user left it. */
+  /** Drive the markers — call once per render frame. It reflects the Timeline: the *current
+   *  marker* rides `currentPos` (the live edge while playing, the scrubbed/replaying frame
+   *  otherwise) and the *start marker* sits at `startPos` (the rewind limit). */
   tick(): void;
   dispose(): void;
 }
 
 /**
- * The **history scrub bar** — a soft warm-neon line along the exact bottom of the screen,
- * shown alongside the control panel (always on; hidden during a Replay with it). It plots the
- * last ~2 min of simulation as a **live** rolling window: colour-coded **transient-event**
- * ticks (a body added / absorbed / escaped), a brighter "scrubable" fill over the part the
- * current body layout can still be restored to, and a glowing playhead that rides the live edge
- * while the sim plays. **Click** jumps to that moment; **click-and-drag** scrubs through it —
- * each position restores that frame's kinematics onto the bodies, and `onScrub` freezes the sim
- * for the drag so the physics doesn't fight the restore.
+ * The **history scrub bar** — a soft warm-neon line along the exact bottom of the screen, shown
+ * alongside the control panel (always on; hidden during a Replay with it). It plots the last
+ * ~2 min of simulation: colour-coded **transient-event** ticks (a body added / absorbed /
+ * escaped), a brighter "scrubable" fill over the part the current body layout can restore, a
+ * **start marker** at the rewind limit (how far back you can go), and a glowing **current
+ * marker** at the playback position. **Click** jumps to that moment; **click-and-drag** scrubs —
+ * each position restores that frame onto the bodies (`onScrub` freezes the sim for the drag). On
+ * release the sim plays on *from that frame* and the current marker walks back to the live edge
+ * (bottom-right), where new history is generated — all without touching Pause.
  */
 export function createHistoryBar(opts: {
   history: History;
@@ -82,11 +83,15 @@ export function createHistoryBar(opts: {
   /** Scrub to a normalized position 0..1 (0 = oldest, 1 = now). Returns the *clamped*
    *  position actually applied (restore only works within the current body layout). */
   scrubTo: (pos01: number) => number;
+  /** The current ("playback") marker position 0..1 — 1 = the live edge. */
+  currentPos: () => number;
+  /** The start-marker position 0..1 — the rewind limit (oldest restorable frame). */
+  startPos: () => number;
   /** Called on grab (true) / release (false) so the host can freeze the sim while the user
    *  drags — a clean scrub with no physics stepping the bodies off the restored frame. */
   onScrub?: (active: boolean) => void;
 }): HistoryBar {
-  const { history, events, scrubTo, onScrub } = opts;
+  const { history, events, scrubTo, currentPos, startPos, onScrub } = opts;
 
   const el = document.createElement('div');
   el.className = 'osp-history';
@@ -94,34 +99,30 @@ export function createHistoryBar(opts: {
     `<div class="osp-history__track">` +
     `<div class="osp-history__fill"></div>` + // brighter over the scrubable (current-generation) span
     `<div class="osp-history__events"></div>` + // colour-coded transient-event ticks
-    `<div class="osp-history__head"></div>` + // the playhead
+    `<div class="osp-history__live"></div>` + // the live edge ("now" — where new history accrues)
+    `<div class="osp-history__start"></div>` + // start marker — the rewind limit
+    `<div class="osp-history__head"></div>` + // current marker — the playback position
     `</div>`;
   document.body.appendChild(el);
 
   const track = el.querySelector<HTMLElement>('.osp-history__track')!;
   const fill = el.querySelector<HTMLElement>('.osp-history__fill')!;
   const eventsEl = el.querySelector<HTMLElement>('.osp-history__events')!;
+  const startEl = el.querySelector<HTMLElement>('.osp-history__start')!;
   const headEl = el.querySelector<HTMLElement>('.osp-history__head')!;
 
   let visible = false;
   let dragging = false;
-  let frames = 0; // throttle counter for the live re-render
-  let lastRecorded = -1; // detects whether the sim advanced since the last tick
-
-  // Position (0..1) of the oldest frame the current body layout can still restore — left of
-  // it the window holds an older layout (shown, but the playhead clamps here).
-  const boundaryPos = (): number => {
-    const len = history.length;
-    if (len <= 1) return 0;
-    return 1 - (history.restorableLength - 1) / (len - 1);
-  };
+  let frames = 0; // throttle counter for the slower-moving start marker + event ticks
 
   const setHead = (pos: number): void => {
     headEl.style.left = `${pos * 100}%`;
   };
 
-  const renderWindow = (): void => {
-    fill.style.left = `${boundaryPos() * 100}%`;
+  // The start marker + the restorable fill both sit at the rewind limit (startPos).
+  const setStart = (pos: number): void => {
+    startEl.style.left = `${pos * 100}%`;
+    fill.style.left = `${pos * 100}%`;
   };
 
   const renderEvents = (): void => {
@@ -172,30 +173,25 @@ export function createHistoryBar(opts: {
   return {
     setVisible(on: boolean): void {
       if (on === visible) return; // idempotent: a redundant show (panel mount *and* formation.onDone
-      // both fire it on first load) must not reset lastRecorded and snap the playhead off a scrub.
+      // both fire it on first load) must not snap the markers off a scrub.
       visible = on;
       el.classList.toggle('osp-history--on', on);
       if (on) {
         frames = 0;
-        lastRecorded = -1;
-        renderWindow();
+        setStart(startPos()); // the rewind-limit marker fades in with the bar
         renderEvents();
-        setHead(1); // start the playhead at the live edge ("now")
+        setHead(currentPos()); // the current marker (1 at the live edge)
       } else {
         dragging = false;
       }
     },
     tick(): void {
       if (!visible) return;
-      const rec = history.recorded;
-      const live = rec !== lastRecorded; // a new frame recorded since last tick → sim advancing
-      lastRecorded = rec;
-      if (!live) return; // paused or mid-scrub (recording frozen): hold the playhead + view
-      if (frames++ % 10 === 0) {
-        renderWindow();
+      setHead(currentPos()); // every frame — smooth as the marker rides "now" or replays forward
+      if (frames++ % 6 === 0) {
+        setStart(startPos()); // the rewind limit moves slowly (body-set changes / window eviction)
         renderEvents();
       }
-      if (!dragging) setHead(1); // ride the live edge while the sim plays
     },
     dispose(): void {
       el.remove();

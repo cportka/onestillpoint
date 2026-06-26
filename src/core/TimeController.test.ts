@@ -19,41 +19,45 @@ describe('TimeController', () => {
     expect(t.animDelta).toBe(0);
   });
 
-  it('advances exactly one frame per step() while paused', () => {
+  it('steps exactly one recorded frame forward per step() while paused', () => {
     const tc = new TimeController();
     tc.paused = true;
     tc.step();
-    expect(tc.tick(0.016).fd).toBeGreaterThan(0); // the single stepped frame
-    expect(tc.tick(0.016).fd).toBe(0); // step consumed → frozen again
+    const t = tc.tick(0.016);
+    expect(t.step).toBe(1); // one frame forward along the recorded tape
+    expect(t.fd).toBe(0); // stepping walks the timeline, it doesn't drive live physics
+    expect(tc.tick(0.016).step).toBe(0); // step consumed → frozen again
   });
 
-  it('jumps forward ~1 second per step() while running', () => {
+  it('jumps ~1 second (a fixed frame burst) forward per step() while running', () => {
     const tc = new TimeController();
-    tc.step(); // not paused → a one-burst fast-forward
-    expect(tc.tick(0.016).fd).toBe(1); // ~1 second (20 frames < 1s at 60fps)
-    expect(tc.tick(0.016).fd).toBe(0.016); // burst consumed → normal frame
+    tc.step(); // not paused → a one-burst fast-forward along the tape
+    const t = tc.tick(0.016);
+    expect(t.step).toBe(60); // STEP_BURST_FRAMES forward
+    expect(t.fd).toBe(0); // the burst is a timeline jump, not a live frame
+    expect(tc.tick(0.016).fd).toBe(0.016); // burst consumed → normal forward play
   });
 
-  it('steps at least 20 frames when running at a low frame rate', () => {
+  it('the running step burst is a fixed frame count, independent of frame rate', () => {
     const tc = new TimeController();
     tc.step();
-    expect(tc.tick(0.1).fd).toBeCloseTo(2, 10); // 20 × 0.1s = 2s, beats the 1s floor
+    expect(tc.tick(0.1).step).toBe(60); // same 60 recorded frames whether the display is fast or slow
   });
 
-  it('rewinds exactly one frame per stepBack() while paused', () => {
+  it('steps exactly one recorded frame back per stepBack() while paused', () => {
     const tc = new TimeController();
     tc.paused = true;
     tc.stepBack();
     const t = tc.tick(0.016);
-    expect(t.fd).toBeCloseTo(-1 / 60, 10); // one frame, backward
-    expect(t.animDelta).toBeLessThan(0); // the dust clock ebbs with the orbits
-    expect(tc.tick(0.016).fd).toBe(0); // step consumed → frozen again
+    expect(t.step).toBe(-1); // one frame backward along the tape
+    expect(t.fd).toBe(0);
+    expect(tc.tick(0.016).step).toBe(0); // step consumed → frozen again
   });
 
   it('jumps back ~1 second per stepBack() while running, then resumes forward', () => {
     const tc = new TimeController();
-    tc.stepBack(); // not paused → a one-burst rewind
-    expect(tc.tick(0.016).fd).toBe(-1); // ~1 second backward
+    tc.stepBack(); // not paused → a one-burst rewind along the tape
+    expect(tc.tick(0.016).step).toBe(-60); // ~1 second backward
     expect(tc.tick(0.016).fd).toBe(0.016); // burst consumed → normal forward frame
   });
 

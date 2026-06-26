@@ -707,11 +707,12 @@ canvas {
   }
 }
 
-/* History scrub bar — a soft, warm-neon line along the exact bottom of the screen,
-   shown only while Paused (Controls toggles .osp-history--on). Click jumps to a moment;
-   click-and-drag scrubs. A dim base line spans the whole recorded window; a brighter warm
-   fill marks the part the current body layout can still restore; colour-coded transient-
-   event ticks rise from it; a glowing playhead marks the scrub position. See ui/historyBar.ts. */
+/* History scrub bar — a soft, warm-neon line along the exact bottom of the screen, shown with
+   the control panel (Controls toggles .osp-history--on). Click jumps to a moment; click-and-drag
+   scrubs. A dim base line spans the whole recorded window; a brighter warm fill marks the part the
+   current body layout can still restore; colour-coded transient-event ticks rise from it. A cool
+   __start marker sits at the rewind limit (how far back you can go); the warm __head is the current
+   (playback) marker; a soft __live pulse at the right is where new history accrues. historyBar.ts. */
 .osp-history {
   position: fixed;
   left: 0;
@@ -800,6 +801,54 @@ canvas {
   border-radius: 50%;
   background: #fff0d8;
   box-shadow: 0 0 10px 2px rgba(255, 214, 150, 0.95);
+}
+/* The start marker — the rewind limit. A cooler, dimmer tick (vs the warm head) with a small
+   cap, so "how far back you can go" reads as a boundary, not the playhead. JS sets its left. */
+.osp-history__start {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 15px;
+  margin-left: -1px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(150, 226, 220, 0), rgba(150, 226, 220, 0.7));
+  box-shadow: 0 0 7px rgba(120, 220, 210, 0.6);
+}
+.osp-history__start::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(190, 240, 236, 0.95);
+  box-shadow: 0 0 7px 1px rgba(120, 220, 210, 0.7);
+}
+/* The live edge — pinned to the right, a soft pulse marking "now", where new history accrues
+   (the current marker walks here after a scrub, then rejoins it). */
+.osp-history__live {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  width: 6px;
+  height: 6px;
+  margin-right: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: rgba(255, 240, 216, 0.9);
+  box-shadow: 0 0 9px 1px rgba(255, 214, 150, 0.85);
+  animation: osp-history-live 1.8s ease-in-out infinite;
+}
+@keyframes osp-history-live {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Info popover: the "Timeline events" colour key (a glowing swatch + label per transient

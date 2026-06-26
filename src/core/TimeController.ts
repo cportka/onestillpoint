@@ -6,10 +6,17 @@ const ORBIT_BASE = 80;
 const ANIM_CAP = 8;
 // Orbits can accelerate further than the turbulence before they read as a blur.
 const ORBIT_CAP = 40;
+// A *running* ←/→ "jump" moves this many frames along the recorded timeline (~1 s, since the loop
+// records once per render frame). A *paused* ←/→ moves a single frame.
+const STEP_BURST_FRAMES = 60;
 
 export interface TimeStep {
-  /** Effective frame seconds for the physics (0 when paused, fixed when stepping). */
+  /** Effective frame seconds for **live** advancement / the dust clock (0 when paused or stepping). */
   fd: number;
+  /** Discrete move along the recorded timeline this frame, in frames: + forward, − back, 0 = none.
+   *  Nonzero only on a ←/→ step; the loop walks the {@link Timeline} (or extends it live at the
+   *  edge) rather than integrating, so Step-back is clamped to the recorded rewind limit. */
+  step: number;
   /** Advance for the dust clock (bounded, so it never strobes). */
   animDelta: number;
   /** Multiplier to apply to the body integrator this frame. */
@@ -40,31 +47,33 @@ export class TimeController {
     else this.stepBurst = 1;
   }
 
-  /** Step backward — the mirror of step(). The gravitational orbits integrate
-   *  cleanly in reverse (velocity-Verlet is time-reversible). Note that
-   *  *irreversible* events do not un-happen: a body that was absorbed / removed
-   *  stays gone, and the one-shot intro doesn't rewind. */
+  /** Step backward — the mirror of step(). Stepping walks the recorded {@link Timeline} (so it is
+   *  clamped to the rewind limit — the scrub bar's start marker), rather than reverse-integrating.
+   *  Irreversible events do not un-happen: a body that was absorbed / removed stays gone, and the
+   *  one-shot intro doesn't rewind. */
   stepBack(): void {
     if (this.paused) this.stepFrame = -1;
     else this.stepBurst = -1;
   }
 
   tick(frameDelta: number): TimeStep {
-    let fd: number;
+    let fd = 0;
+    let step = 0;
     if (this.paused) {
-      fd = this.stepFrame / 60; // one deterministic frame (±), else frozen
-      this.stepFrame = 0;
-    } else {
-      fd = frameDelta;
-      if (this.stepBurst !== 0) {
-        // ~1 second, or ≥20 frames at the current rate (whichever is larger),
-        // forward or back, in one burst — the adaptive substeps keep it stable.
-        fd = this.stepBurst * Math.max(1, 20 * frameDelta);
-        this.stepBurst = 0;
+      if (this.stepFrame !== 0) {
+        step = this.stepFrame; // one frame along the recorded tape (±)
+        this.stepFrame = 0;
       }
+      // else frozen: fd = 0, step = 0
+    } else if (this.stepBurst !== 0) {
+      step = this.stepBurst * STEP_BURST_FRAMES; // jump ~1 s along the tape (forward extends it live)
+      this.stepBurst = 0;
+    } else {
+      fd = frameDelta; // continuous play (drives live physics + the dust clock)
     }
     return {
       fd,
+      step,
       animDelta: fd * Math.min(this.timeScale, ANIM_CAP),
       orbitMul: ORBIT_BASE * Math.min(this.timeScale, ORBIT_CAP),
       timeBlur: this.timeBlur,

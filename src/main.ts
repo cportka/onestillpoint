@@ -2,6 +2,7 @@ import { CameraRig } from './core/CameraRig';
 import { prefersReducedMotion } from './core/device';
 import { FormationSequence } from './core/FormationSequence';
 import { History } from './core/History';
+import { Timeline } from './core/Timeline';
 import { Loop } from './core/Loop';
 import { meltInward } from './intro/melt';
 import { INTRO_DIALS, MELT_MS, SPLASH_COVERS_AT_MS } from './intro/introTimeline';
@@ -164,31 +165,27 @@ async function main(): Promise<void> {
   // tagged with the frame counter so it holds its position as the window scrolls.
   const history = new History();
   const events = new EventLog();
-  scene.onEvent = (type) => events.add(type, history.recorded);
-  // While the user drags the bar we freeze the sim (skip stepping + recording, in the loop) so
-  // the physics doesn't walk the bodies off the restored frame mid-scrub. This is a transient
-  // freeze for the duration of the grab only — it deliberately does **not** touch `time.paused`
-  // (scrubbing must not change the Pause state): release while running and the sim plays on from
-  // the scrubbed frame; release while paused and it stays paused there.
-  let scrubbing = false;
-  // Scrub: restore the frame at a 0..1 position (clamped to the span the *current* body layout
-  // can still restore), and let the render loop show it. Returns the clamped position so the
-  // bar can place its playhead there.
-  const scrubTo = (pos01: number): number => {
-    const len = history.length;
-    if (len < 1) return pos01;
-    const boundary = len > 1 ? 1 - (history.restorableLength - 1) / (len - 1) : 0;
-    const p = Math.min(1, Math.max(boundary, pos01));
-    const frame = history.peek(Math.round((1 - p) * (len - 1)));
-    if (frame) history.restore(frame, scene.bodies); // the render loop shows it next frame
-    return p;
+  // The timeline playhead over the recorded history — a DVR position decoupled from Pause. Scrub /
+  // step / replay move it (clamped to the rewind limit); live physics runs only at the live edge.
+  // A body added/removed makes the recorded "future" a different layout, so any transient event
+  // snaps it back to live.
+  const timeline = new Timeline(history, () => scene.bodies);
+  scene.onEvent = (type) => {
+    events.add(type, history.recorded);
+    timeline.reset();
   };
+  // While the user drags the bar we freeze the sim (no stepping / recording / replay-advance, in
+  // the loop) so the physics doesn't walk the bodies off the restored frame mid-scrub. A transient
+  // freeze for the grab only — it never touches `time.paused` (scrubbing must not change Pause).
+  let scrubbing = false;
   const historyBar = createHistoryBar({
     history,
     events,
-    scrubTo,
+    scrubTo: (pos01) => timeline.scrubTo(pos01),
+    currentPos: () => timeline.currentPos,
+    startPos: () => timeline.startPos,
     onScrub: (active) => {
-      scrubbing = active; // freeze the sim for the grab; the Pause state is left untouched
+      scrubbing = active;
     },
   });
 
@@ -285,11 +282,34 @@ async function main(): Promise<void> {
     }
 
     const t = time.tick(frameDelta);
-    uniforms.time.value += t.animDelta; // bounded dust clock (can ebb when stepping back)
+    uniforms.time.value += t.animDelta; // bounded dust clock
     uniforms.timeBlur.value = t.timeBlur;
     physics.timeScale = t.orbitMul;
-    if (!scrubbing && t.fd !== 0) physics.step(t.fd); // fd < 0 when stepping back; frozen while scrubbing
-    if (!scrubbing && t.fd > 0) history.record(scene.bodies); // build the scrub timeline on forward progress
+    // Drive the DVR timeline over the recorded history. A drag freezes everything; otherwise a ←/→
+    // step walks the recorded tape (extending it live past the edge), and continuous play either
+    // replays recorded frames (when scrubbed back, the current marker walking toward "now") or runs
+    // live physics + records (at the live edge). None of this reads `time.paused` for the body
+    // position — Pause just gates whether the timeline advances.
+    if (!scrubbing) {
+      if (t.step < 0) {
+        timeline.stepBack(-t.step); // clamped at the rewind limit (the start marker)
+      } else if (t.step > 0) {
+        const overflow = timeline.stepForward(t.step); // toward "now"; overflow past the edge…
+        if (overflow > 0) {
+          physics.step(overflow / 60); // …extends the recording live (~1 frame = 1/60 s)
+          history.record(scene.bodies);
+        }
+      } else if (!time.paused) {
+        if (timeline.live) {
+          if (t.fd > 0) {
+            physics.step(t.fd);
+            history.record(scene.bodies); // build the timeline on forward progress
+          }
+        } else {
+          timeline.advance(); // replay one recorded frame toward the live edge
+        }
+      }
+    }
 
     updateBodyUniforms(bodyUniforms, scene, formation.progress);
     // The intro drives the camera (controls disabled) until it settles home.
@@ -342,7 +362,7 @@ async function main(): Promise<void> {
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history },
+    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline },
   });
 }
 
