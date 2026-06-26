@@ -38,20 +38,36 @@ describe('EventLog', () => {
   });
 });
 
-describe('HistoryBar.setVisible', () => {
-  it('is idempotent — a redundant show must not reset a scrubbed playhead', () => {
-    const bar = createHistoryBar({ history: stubHistory(), events: new EventLog(), scrubTo: (p) => p });
+describe('HistoryBar', () => {
+  const opts = () => ({
+    history: stubHistory(),
+    events: new EventLog(),
+    scrubTo: (p: number) => p,
+    currentPos: () => 1, // live edge
+    startPos: () => 0.25, // rewind limit a quarter in
+  });
+
+  it('setVisible is idempotent — a redundant show must not reset a scrubbed marker', () => {
+    const bar = createHistoryBar(opts());
     bar.setVisible(true);
     const head = document.querySelector<HTMLElement>('.osp-history__head')!;
     expect(head.style.left).toBe('100%'); // inits at the live edge ("now")
 
-    head.style.left = '40%'; // simulate a scrub having parked the playhead mid-window
+    head.style.left = '40%'; // simulate a scrub having parked the current marker mid-window
     bar.setVisible(true); // a redundant show (panel mount *and* formation.onDone both fire it)
     expect(head.style.left).toBe('40%'); // …must leave the scrubbed position alone
 
     bar.setVisible(false);
     bar.setVisible(true); // a genuine hide→show (e.g. after a Replay) does re-init
     expect(head.style.left).toBe('100%');
+    bar.dispose();
+  });
+
+  it('places the start marker at the rewind limit when it fades in', () => {
+    const bar = createHistoryBar(opts());
+    bar.setVisible(true);
+    const start = document.querySelector<HTMLElement>('.osp-history__start')!;
+    expect(start.style.left).toBe('25%'); // startPos() = 0.25
     bar.dispose();
   });
 });

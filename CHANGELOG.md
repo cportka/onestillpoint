@@ -3,6 +3,23 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.26.x — scrub-bar markers + DVR replay
+
+- **0.26.0** — **The scrub bar grows two markers and a DVR-style replay.** The recorded history is
+  now a proper timeline you can rewind into and watch play back — all without touching Pause:
+  - **Start marker.** A cool tick fades in with the bar at the **rewind limit** — the oldest frame
+    the current body layout can restore. **Scrubbing *and* Step-back are clamped to it** (you can't
+    rewind before it; adding/removing a body moves it up, since the recorded "future" is then a
+    different layout).
+  - **Current marker + replay.** Scrub (or Step-back) to a past moment and a warm **current marker**
+    parks there. If the sim is running it then **replays the recorded frames forward**, the marker
+    walking back toward the **live edge** (a soft pulse at the bottom-right, where new history
+    accrues) — then live simulation + recording resume. Paused, the marker just holds. The Pause
+    state is never changed either way.
+  - Under the hood: a new, unit-tested [`Timeline`](src/core/Timeline.ts) owns a single DVR
+    `offset` into `History`; `TimeController` now emits a discrete `step` (in recorded frames) so
+    ←/→ walks the tape (Step-back clamped to the rewind limit) instead of reverse-integrating.
+
 ## 0.25.x — the scrub bar, always on
 
 - **0.25.2** — **Scrubbing no longer changes the Pause state.** Grabbing the history bar (click
