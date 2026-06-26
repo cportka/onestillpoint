@@ -60,15 +60,11 @@ export function createControls(ctx: {
   captureShare: () => Promise<File | null>;
   /** The bottom history scrub bar — always on, hidden only during a Replay intro. */
   historyBar: HistoryBar;
-  /** Pause-on-scrub hook: the loop calls this when a drag/click grabs the bar, so the
-   *  picked moment holds on screen. We override it here to also light the Pause button. */
-  scrubUi: { pause: () => void };
   /** Cap the render rate (0 = uncapped). Drives the optional cinematic frame cap. */
   setMaxFps: (fps: number) => void;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, historyBar, scrubUi, setMaxFps } =
-    ctx;
+  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, historyBar, setMaxFps } = ctx;
   const gui = new GUI({ title: 'One Still Point' });
   // The single persisted blob (localStorage). Defaults here; saved values are
   // applied control-by-control at the end (so a stored value overrides a preset).
@@ -262,12 +258,6 @@ export function createControls(ctx: {
   };
   onPauseClick = (): void => {
     time.paused = !time.paused;
-    refreshPause();
-  };
-  // Grabbing the scrub bar pauses at that moment; route it through the same refresh so the
-  // Pause button lights up (red "Resume") to show time is stopped — the user resumes from there.
-  scrubUi.pause = (): void => {
-    time.paused = true;
     refreshPause();
   };
   pauseCtrl.domElement.classList.add('osp-pausebtn');

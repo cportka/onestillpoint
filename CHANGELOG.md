@@ -5,6 +5,13 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.25.x — the scrub bar, always on
 
+- **0.25.2** — **Scrubbing no longer changes the Pause state.** Grabbing the history bar (click
+  or drag) used to *pause* at the picked frame (and light the Pause button); now it only freezes
+  the sim for the **duration of the grab** and leaves Pause untouched. Release while running and
+  the sim plays on from the scrubbed frame (the playhead rides back to the live edge); release
+  while paused and it stays paused there (the playhead holds). To hold a moment, pause first, then
+  scrub. (Reverts the v0.25.0 auto-pause-on-scrub; the redundant-`setVisible` playhead fix stays.)
+
 - **0.25.1** — **Prefetch the engine chunk for a faster first load (roadmap #6).** A thorough
   bundle investigation found the engine bytes are at three.js's floor (~808 KB raw / ~222 KB
   gzip) with no *safe* shrink — so instead of trimming bytes, this speeds their *delivery*: a
