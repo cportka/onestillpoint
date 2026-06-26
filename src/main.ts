@@ -1,7 +1,7 @@
 import { CameraRig } from './core/CameraRig';
 import { prefersReducedMotion } from './core/device';
 import { FormationSequence } from './core/FormationSequence';
-import { History } from './core/History';
+import { History, type HistoryFrame } from './core/History';
 import { Timeline } from './core/Timeline';
 import { Loop } from './core/Loop';
 import { meltInward } from './intro/melt';
@@ -169,7 +169,14 @@ async function main(): Promise<void> {
   // step / replay move it (clamped to the rewind limit); live physics runs only at the live edge.
   // A body added/removed makes the recorded "future" a different layout, so any transient event
   // snaps it back to live.
-  const timeline = new Timeline(history, () => scene.bodies);
+  // Restore a recorded frame onto the scene: rebuild the roster (revive bodies absorbed/removed
+  // since, drop ones added since) so we can rewind clean *across* a merger, then write the
+  // kinematics. Rebuild the GPU buffers only when the roster actually changed (cheap on replay).
+  const applyFrame = (frame: HistoryFrame): void => {
+    if (scene.restoreRoster(frame.ids)) physics.syncBodies();
+    history.restore(frame, scene.bodies);
+  };
+  const timeline = new Timeline(history, applyFrame);
   scene.onEvent = (type) => {
     events.add(type, history.recorded);
     timeline.reset();

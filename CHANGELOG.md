@@ -3,6 +3,19 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.28.x — rewind across mergers (full-history scrub)
+
+- **0.28.0** — **The scrub bar can now rewind *across* an absorption — a body that fell in comes
+  back.** Previously the rewind limit jumped to the last body-set change (you couldn't scrub before
+  an absorption/add). Now the **whole recorded window is restorable**: each restored frame rebuilds
+  the **roster as well as the kinematics** — reviving bodies that were absorbed or removed since (from
+  a per-id registry of their identity) and dropping ones added since — so scrubbing before a merger
+  shows the line-up exactly as it was, and replaying forward re-enacts the absorption. The start
+  marker now sits at the true start of the buffer; the "locked event" dimming from v0.26.2 simply
+  stops triggering (nothing is locked any more). Implemented via `Scene.restoreRoster(ids)` + a
+  registry; `Timeline` now restores through an `applyFrame` hook (roster + kinematics + GPU resync).
+  New `Scene` + `Timeline` tests; verified in real Chromium (remove a star → scrub back → it revives).
+
 ## 0.27.x — the ringdown ripple (roadmap #6 begins)
 
 - **0.27.0** — **A spacetime ringdown ripple on the Lattice (first pass, for tuning).** When a body

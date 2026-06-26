@@ -103,6 +103,27 @@ describe('Scene', () => {
     expect(scene.removeOne('hole')).toBe(false); // no orbiting holes to remove
     expect(scene.bodies[0]!.fixed).toBe(true); // the primary is untouched
   });
+
+  it('restoreRoster revives gone bodies (from the registry) and drops ones added since', () => {
+    const scene = new Scene();
+    scene.clearCompanions(); // start from just the primary
+    const a = scene.addStar(30);
+    const b = scene.addPlanet(40);
+    const snap = new Int32Array([a.id, b.id]); // the roster {a, b}
+
+    // …time passes: a + b are gone, and a new star c is added.
+    scene.clearCompanions();
+    const c = scene.addStar(50);
+    expect(scene.companions.map((x) => x.id)).toEqual([c.id]);
+
+    // Rewind to the snapshot: revive a + b (from the registry), drop c, in order.
+    expect(scene.restoreRoster(snap)).toBe(true);
+    expect(scene.companions.map((x) => x.id)).toEqual([a.id, b.id]);
+    expect(scene.companions.map((x) => x.type)).toEqual(['star', 'planet']); // identities preserved
+    expect(scene.bodies[0]!.fixed).toBe(true); // primary untouched
+
+    expect(scene.restoreRoster(snap)).toBe(false); // already that roster → no rebuild
+  });
 });
 
 describe('bodyCap', () => {
