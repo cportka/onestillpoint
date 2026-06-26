@@ -55,6 +55,12 @@ export function createUniforms() {
      *  settle as the scene sharpens into reality. Read by PostPipeline; 0 in steady
      *  state, so the veil is a no-op once the intro has resolved. */
     fuzz: uniform(0),
+
+    /** Seconds since the last merger/absorption — drives the **spacetime ripple** on the Lattice
+     *  background (a decaying ring radiating from the hole). Set to 0 on an `absorb` event and
+     *  advanced each frame; large when idle, so the ripple envelope is 0 and the effect is a
+     *  no-op. Only the Lattice sky reads it (see render/tsl/background.ts). */
+    ripple: uniform(99),
   };
 }
 

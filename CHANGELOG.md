@@ -3,6 +3,18 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.27.x — the ringdown ripple (roadmap #6 begins)
+
+- **0.27.0** — **A spacetime ringdown ripple on the Lattice (first pass, for tuning).** When a body
+  reaches the centre (an `absorb` event — a merger), a decaying ring now radiates outward from the
+  hole across the **Lattice** background: it drags the lat/long grid radially and trails a soft glow,
+  then rings down over ~1.5 s. This is the cheap, dramatic first half of roadmap #6 (the merger /
+  gravitational-wave cue) — the two-hole *inspiral dynamics* come later. Implemented as a `ripple`
+  uniform (seconds since the event, aged in wall-clock and capped so it's a no-op when idle) read by
+  `lattice()` in `render/tsl/background.ts`, with six clearly-marked **tuning dials** (wavefront
+  speed, ringdown time, band width, ringing frequency, grid-warp amount, glow) to dial in against
+  the look on real hardware. Only the Lattice sky reads it; the other backgrounds are untouched.
+
 ## 0.26.x — scrub-bar markers + DVR replay
 
 - **0.26.2** — **Scrub bar: make "where history begins" obvious (no-history vs history).** Frequent
