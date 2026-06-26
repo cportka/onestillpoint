@@ -3,6 +3,21 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.30.x — the torn stream (roadmap #8)
+
+- **0.30.0** — **The torn stream is now dramatic — a long, thin, tidally *heated* filament.** The
+  spaghettification was underwhelming: a modest ~5.5× radial blob that only stretched at the merge
+  and never changed colour, so a doomed star just looked a bit oval. Now a star/planet is drawn out
+  into a genuine **stream** as it falls in — elongated up to **~9×** and thinned right down across
+  (`render/tsl/raymarch.ts`) — and, crucially, it is **tidally heated**: the part of the stream
+  nearest the hole (the end being devoured) glows **brighter and blue-white hot**, cooling to the
+  body's own colour along its trailing length, then redshifting as it is finally taken in. The heat
+  gradient is graded by the ray sample's distance from the hole (free — no extra hit-test), so it
+  runs the length of the stream. Verified end-to-end in Chromium: send a body in with **−** and it
+  spirals in, tears (the `tidal` factor ramps to 1), heats, then absorbs and is freed — the modified
+  shader compiles and the whole sequence runs. *Next on #8 (documented): the stream **feeding the
+  disk** — coupling the torn mass into `medium.ts` as real mass exchange.*
+
 ## 0.29.x — deeper spaghettification (roadmap #8 begins)
 
 - **0.29.2** — **The − button now sends a body on a long, graceful inspiral — and absorbs it exactly

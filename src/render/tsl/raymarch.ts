@@ -165,20 +165,20 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         If(radius.greaterThan(0), () => {
           const center = slot.posRadius.xyz;
           const appear = slot.appear;
-          // Spaghettification: as a body is taken in (absorb 0 → 1) tidal forces
-          // stretch it along the line to the hole (radial) and thin it across,
-          // then it redshifts (blue, then green, fade before red) and fades out.
-          // At absorb 0 the stretch/squash are 1 and `fade` is 1, so a live body
-          // renders exactly as a plain sphere.
+          // Spaghettification: a doomed star/planet is drawn out into a long, thin,
+          // tidally **heated** radial stream as it falls in — blue-white hot where it
+          // is nearest the hole (being devoured), cooling to the body's own colour
+          // along its trailing length — then it redshifts and fades as it is finally
+          // taken in. At zero tear the stretch/squash are 1 and `fade` is 1, so a
+          // live body renders exactly as a plain sphere.
           const absorb = slot.absorb;
           // Drive the stretch by the *stronger* of the Roche-gated tidal disruption (on approach,
-          // roadmap #8) and the absorb fade — so a star tears into a radial stream well before the
-          // merge, not just at it. `fade`/redshift stay tied to absorb (the body keeps its colour
-          // while stretching, then redshifts + fades as it is finally taken in).
-          const t = max(absorb, slot.tidal);
+          // roadmap #8) and the absorb fade — so a star tears into a stream well before the merge,
+          // not just at it. Dramatic now: up to ~9× elongation, thinned right down into a filament.
+          const tear = max(absorb, slot.tidal);
           const axis = normalize(center); // hole (origin) → body: the stretch direction
-          const stretch = float(1).add(t.mul(4.5)); // elongate radially into a stream, up to ~5.5×
-          const squash = max(float(0.05), float(1).sub(t.mul(0.72))); // thin across
+          const stretch = float(1).add(tear.mul(8)); // elongate radially into a long stream (~9× max)
+          const squash = max(float(0.1), float(1).sub(tear.mul(0.78))); // thin it across into a filament
           const fade = float(1).sub(smoothstep(float(0.5), float(1), absorb)); // hold, then fade
           // Opaque emissive (lensed + occluded by the curved-space march), gated on
           // `appear` so a body still swooshing in during the intro neither occludes
@@ -186,9 +186,16 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
           If(
             appear.greaterThan(0.02).and(segmentHitsStretched(pos, newPos, center, radius, axis, stretch, squash)),
             () => {
+              // Tidal heating, graded by this sample's distance from the hole (`r`, the ray's radius
+              // where it crosses the stream): the part nearest the hole glows hottest (brighter +
+              // blue-white), the trailing length keeps the body's colour. `inner` is 1 at the merge
+              // radius → 0 at the Roche radius, so the gradient runs the length of the stream.
+              const inner = float(1).sub(smoothstep(float(3), float(14), r));
+              const heat = tear.mul(inner);
+              const heated = mix(slot.color, slot.color.mul(vec3(0.7, 0.85, 1.25)).mul(2.5), heat);
               const k = float(1).sub(absorb);
-              const redshift = vec3(float(1), k, k.mul(k)); // lose blue, then green
-              bodyColor.assign(slot.color.mul(redshift).mul(appear).mul(fade));
+              const redshift = vec3(float(1), k, k.mul(k)); // lose blue, then green as it is absorbed
+              bodyColor.assign(heated.mul(redshift).mul(appear).mul(fade));
               bodyHit.assign(1);
             },
           );
