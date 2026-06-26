@@ -3,6 +3,23 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.32.x — the stream feeds the disk (roadmap #8)
+
+- **0.32.0** — **The torn stream now feeds the accretion disk — real mass exchange.** Until now the
+  spaghettified stream was a self-contained body effect; the disk it was falling into didn't react.
+  Now a star/planet shedding mass within the Roche radius **dumps it into the accretion flow**: a new
+  `streamFeed` (`render/tsl/medium.ts`) adds a hot, semi-dense **streak** to the disk at the tearing
+  body's azimuth — banded from the disk's inner edge out to the body, tapered by how near the body is
+  to the disk plane — so the torn stream visibly *connects* to the disk and brightens it, the hotspot
+  tracking the body as it spirals in. (Bodies tear within the Roche radius 14→3, which overlaps the
+  disk's 6→20 span, so the streak lives right in the disk.) The whole sweep is gated on a new
+  `feedingActive` flag (set in `bodyUniforms` when anything is tearing), so it costs a single branch
+  per disk sample whenever nothing is being torn — the default scene pays nothing. New `feedingActive`
+  unit tests; verified in Chromium — the flag lights up while a removed body tears through the disk
+  (`tidal` 0→1) and clears once it's absorbed, and the modified shader compiles. Tunable dials at the
+  top of `medium.ts` (`FEED_DENSITY` / `FEED_FLARE` / `FEED_WEDGE` / `FEED_COLOR`) for the fine-tune
+  pass. *Roadmap #8 is now end-to-end: tear → stream → feed the disk → absorb → ringdown.*
+
 ## 0.31.x — creation marked on the timeline
 
 - **0.31.0** — **The first stars and planets now mark the history scrub bar where they're born.**

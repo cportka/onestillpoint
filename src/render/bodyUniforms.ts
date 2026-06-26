@@ -31,6 +31,9 @@ export function createBodyUniforms() {
     // 1 when any body lenses, so the (otherwise-skipped) secondary-deflection
     // block in the geodesic does nothing — zero cost — in the default scene.
     lensingActive: uniform(0),
+    // 1 when any body is tearing (tidal > 0), so the disk-feeding streak block is
+    // skipped entirely — zero cost — whenever nothing is being torn into the disk.
+    feedingActive: uniform(0),
   };
 }
 
@@ -69,6 +72,7 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
   const bodies = scene.bodies;
   let maxR = 0;
   let lensing = 0;
+  let feeding = 0;
   let n = 0; // active companion slots filled
 
   for (let i = 0; i < bodies.length && n < MAX_BODIES; i++) {
@@ -92,6 +96,7 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
       slot.tidal.value = body.type === 'hole' ? 0 : smoothstep(TIDAL_ROCHE, TIDAL_MERGE, r);
       maxR = Math.max(maxR, r + body.radius);
       if (body.lensMass > 0) lensing = 1;
+      if (slot.tidal.value > 0) feeding = 1; // a body is shedding mass into the disk
     } else {
       clearSlot(slot);
     }
@@ -102,4 +107,5 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
 
   bodyUniforms.sceneRadius.value = n > 0 ? maxR + 6 : 0;
   bodyUniforms.lensingActive.value = lensing;
+  bodyUniforms.feedingActive.value = feeding;
 }

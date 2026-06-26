@@ -27,7 +27,7 @@ import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
 import { segmentHitsStretched } from './bodies';
 import { background } from './background';
-import { mediumDensity, mediumSource } from './medium';
+import { mediumDensity, mediumSource, streamFeed } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
 import { secondaryDisk } from './secondaryDisk';
 
@@ -150,9 +150,13 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
       If(inSlab, () => {
         volSamples.assign(volSamples.add(1));
         const midPos = mix(pos, newPos, 0.5);
-        const density = mediumDensity(midPos, u.time, u.timeBlur, bh).mul(u.formation);
+        const diskDen = mediumDensity(midPos, u.time, u.timeBlur, bh);
+        // Roadmap #8: torn mass feeding the disk — a hot, semi-dense streak where a tearing body
+        // sheds into the accretion flow (a single branch when nothing tears, via `feedingActive`).
+        const feed = streamFeed(midPos, bodies, bh);
+        const density = diskDen.add(feed.density).mul(u.formation);
         If(density.greaterThan(0.001), () => {
-          const source = mediumSource(midPos, vel, density, bh);
+          const source = mediumSource(midPos, vel, diskDen.mul(u.formation), bh).add(feed.emission.mul(u.formation));
           radiance.assign(radiance.add(transmittance.mul(source).mul(dl)));
           transmittance.assign(transmittance.mul(exp(density.mul(bh.extinction).mul(dl).mul(-1))));
         });
