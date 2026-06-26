@@ -90,15 +90,28 @@ describe('Scene', () => {
     const scene = new Scene();
     const stars = () => scene.companions.filter((b) => b.type === 'star').length;
     const before = stars();
+    const events: string[] = [];
+    scene.onEvent = (e) => events.push(e);
 
     expect(scene.removeOne('star')).toBe(true);
     expect(scene.removing).toBe(true); // a removal is animating
-    expect(stars()).toBe(before); // still present — plunging into the centre, not deleted
+    expect(stars()).toBe(before); // still present — spiralling into the centre, not deleted
 
-    // A second removal is blocked until the first lands (one at a time).
-    for (let i = 0; i < 6; i++) scene.prune(0.5); // > PLUNGE_DURATION (1.5s)
+    // Partway through the long inspiral it is still on its way in (not yet freed),
+    // so a second removal stays blocked (one at a time).
+    for (let i = 0; i < 4; i++) scene.prune(0.5); // 2 s < the full plunge + absorption
+    expect(stars()).toBe(before); // still spiralling in
+    expect(scene.removing).toBe(true);
+
+    // Past the whole inspiral + absorption window it is freed and removals unblock.
+    for (let i = 0; i < 6; i++) scene.prune(0.5); // +3 s → well clear of the centre
     expect(stars()).toBe(before - 1);
     expect(scene.removing).toBe(false);
+
+    // − routes through the *same* absorption a natural merge does: exactly one
+    // 'absorb' tick fires (when it crosses the merge radius), so it drops the same
+    // timeline mark and fires the same ringdown ripple — no special-casing.
+    expect(events.filter((e) => e === 'absorb')).toEqual(['absorb']);
 
     expect(scene.removeOne('hole')).toBe(false); // no orbiting holes to remove
     expect(scene.bodies[0]!.fixed).toBe(true); // the primary is untouched

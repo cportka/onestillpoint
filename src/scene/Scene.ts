@@ -29,11 +29,21 @@ const MERGE_RADIUS = 3;
 // redshifting in the shader) before it is finally freed — so it eases out of the
 // scene rather than popping out of existence the instant it reaches the centre.
 const ABSORB_DURATION = 0.6;
-// Seconds a user-removed (− stepper) body spends plunging into the centre before
-// it is absorbed and freed. The UI blocks another removal until this completes.
-const PLUNGE_DURATION = 1.5;
-// How many turns the plunge winds as it spirals in (a less direct, prettier fall).
-const PLUNGE_TURNS = 1.75;
+// Seconds the user-removed (− stepper) body's spiral takes to wind from its orbit
+// down to the merge radius, where it hands off to the *same* absorption a natural
+// merge uses. A long, graceful inspiral (the body reaches the centre in ~0.8 of
+// this, then the absorption fade adds ~ABSORB_DURATION on top). The UI blocks
+// another removal until the whole thing completes.
+const PLUNGE_DURATION = 3.5;
+// How many turns the plunge winds as it spirals in — more turns = a less direct,
+// prettier fall (it reads as an inspiral, not a straight dive to the centre).
+const PLUNGE_TURNS = 3.5;
+
+/** Hermite smoothstep, clamped — 0 at edge0, 1 at edge1, eased at both ends. */
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
 
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
@@ -261,9 +271,9 @@ export class Scene {
   }
 
   /** Remove the most recently added companion of a type (the − stepper button) by
-   *  sending it *plunging into the centre* over ~1.5 s (then absorbed) rather than
-   *  deleting it instantly. It is freed when the plunge completes (see prune).
-   *  Returns whether a body was sent plunging. */
+   *  sending it on a graceful *inspiral* down to the merge radius, where it is
+   *  absorbed exactly as a natural merger is (see prune) — rather than deleting it
+   *  instantly. It is freed when that completes. Returns whether one was sent in. */
   removeOne(type: BodyType): boolean {
     for (let i = this.bodies.length - 1; i >= 0; i--) {
       const b = this.bodies[i]!;
@@ -287,29 +297,28 @@ export class Scene {
   prune(frameDelta = 0): boolean {
     for (const b of this.bodies) {
       if (b.fixed) continue;
-      // User-initiated removal: animate the body *spiralling* into the centre
-      // (accelerating inward, winding ~1.75 turns), then hand off to the
-      // absorption fade over its inner half. Wall-clock driven, so it's a steady
-      // ~1.5 s at any Speed; the body is held on this path so the physics can't
-      // move it.
-      if (b.plunging !== undefined && b.plungeFrom) {
+      // User-initiated removal: spiral the body gracefully inward — the controlled
+      // "approach" — winding several turns on a smooth (eased) descent, *until it
+      // reaches the merge radius*, where it falls through to the exact same
+      // absorption a natural merge uses below. So − tears (tidal, radius-gated),
+      // ripples and fades identically; it just delivers the body there itself.
+      // Wall-clock driven (steady at any Speed); the body is held on this path so
+      // the physics can't move it.
+      if (b.plunging !== undefined && b.plungeFrom && b.absorbing === undefined) {
         b.plunging = Math.min(1, b.plunging + frameDelta / PLUNGE_DURATION);
-        const ease = b.plunging * b.plunging; // ease-in: accelerate toward the centre
-        const radial = 1 - ease;
-        const angle = b.plunging * PLUNGE_TURNS * Math.PI * 2; // wind inward
+        const t = b.plunging;
+        const radial = 1 - smoothstep(0, 1, t); // 1 → 0, eased out of the orbit and into the centre
+        const angle = t * PLUNGE_TURNS * Math.PI * 2; // wind inward
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         const f = b.plungeFrom;
         b.position.set((f.x * c - f.z * s) * radial, f.y * radial, (f.x * s + f.z * c) * radial);
-        const wasInside = (b.absorbing ?? 0) > 0;
-        b.absorbing = Math.max(0, (b.plunging - 0.5) * 2); // shrink + redshift over the inner half
-        // The removed body crossing into the centre is a merger too — mark it (timeline tick) and
-        // fire the ringdown ripple, so the − button is an on-demand way to see the cue.
-        if (!wasInside && b.absorbing > 0) this.onEvent?.('absorb');
-        continue;
+        if (b.position.length() > MERGE_RADIUS && t < 1) continue; // still approaching → keep spiralling
+        // Reached the merge radius (or fully wound in) → fall through to the natural merge.
       }
-      // Natural merge: a body the physics has carried to the centre begins the
-      // in-place absorption fade rather than vanishing the instant it arrives.
+      // Natural merge (and the tail of a − plunge, identical from here): a body
+      // carried to the centre begins the in-place absorption fade rather than
+      // vanishing the instant it arrives.
       if (b.absorbing === undefined && b.position.length() <= MERGE_RADIUS) {
         b.absorbing = 0; // just reached the centre — begin the absorption fade
         b.absorbAnchor = b.position.clone();
