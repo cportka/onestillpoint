@@ -3,6 +3,18 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.31.x — creation marked on the timeline
+
+- **0.31.0** — **The first stars and planets now mark the history scrub bar where they're born.**
+  The default line-up is *seeded silently* (a bulk reseed isn't a user action, so it fires no
+  events), which meant the timeline opened blank even though six bodies are **created** right there
+  in the intro. A new `BirthTicker` (`core/BirthTicker.ts`) watches the formation and drops a
+  creation tick for each seeded body as it swooshes in — keyed off the same `appearFor` curve that
+  fades it in — so the stars mark first (a gold cluster) and the planets a moment later (a blue
+  one), exactly when they appear. It re-arms on Replay (the formation restarting from the top with
+  a fresh line-up). New `BirthTicker` unit tests; verified end-to-end in Chromium — the intro fires
+  3 star + 3 planet creation ticks, stars before planets, at their appropriate positions.
+
 ## 0.30.x — the torn stream (roadmap #8)
 
 - **0.30.0** — **The torn stream is now dramatic — a long, thin, tidally *heated* filament.** The
