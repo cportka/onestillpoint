@@ -10,12 +10,12 @@ const PI = 3.14159265;
 // A decaying, expanding ring radiating from the hole (the merger point) across the Lattice grid,
 // fired by an absorption. `ripple` (uniform) is seconds since the event; large when idle → no-op.
 // First pass — expect to tune these against the look on real hardware.
-const RIPPLE_SPEED = 0.75; // how fast the wavefront sweeps outward, in radians of sky-angle per second
-const RIPPLE_TAU = 1.4; // amplitude decay time (s) — the "ringdown" length
-const RIPPLE_WIDTH2 = 0.02; // squared angular half-width of the wavefront band (smaller = tighter ring)
-const RIPPLE_FREQ = 34; // spatial ringing frequency within the band (more = more wave crests)
-const RIPPLE_WARP = 0.07; // how far the grid is dragged radially at the crest (the visible distortion)
-const RIPPLE_GLOW = 1.3; // brightness of the soft glow riding the wavefront (reads across grid gaps)
+const RIPPLE_SPEED = 0.55; // how fast the wavefront sweeps outward, in radians of sky-angle per second
+const RIPPLE_TAU = 2.2; // amplitude decay time (s) — the "ringdown" length
+const RIPPLE_WIDTH2 = 0.06; // squared angular half-width of the wavefront band (smaller = tighter ring)
+const RIPPLE_FREQ = 20; // spatial ringing frequency within the band (more = more wave crests)
+const RIPPLE_WARP = 0.22; // how far the grid is dragged radially at the crest (the visible distortion)
+const RIPPLE_GLOW = 2.8; // brightness of the soft glow riding the wavefront (reads across grid gaps)
 
 /** Thin bright lines wherever `coord × count` lands on an integer. */
 function gridLines(coord: Node<'float'>, count: number) {

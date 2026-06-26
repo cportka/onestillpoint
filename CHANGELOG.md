@@ -5,6 +5,15 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.28.x — rewind across mergers (full-history scrub)
 
+- **0.28.1** — **Ringdown ripple: much bolder, and it fires on the − button too** (tunes the
+  v0.27.0 cue). The first pass was barely visible and only fired on a *natural* merge (a body the
+  physics carried to the centre), so there was no on-demand way to see it. Now the dials are cranked
+  up (grid-warp ×3, glow ×2, wider + slower wavefront, longer ringdown) so the **outward** ring from
+  the hole reads clearly, and **removing a body with the − stepper also fires it** (and drops an
+  `absorb` tick on the timeline) — so on the **Lattice** background you can trigger the cue whenever
+  you like. *(To be clear: it's an **outward** ring radiating from the hole / merger point, not an
+  inward one.)* Tune the six dials at the top of `render/tsl/background.ts` to taste.
+
 - **0.28.0** — **The scrub bar can now rewind *across* an absorption — a body that fell in comes
   back.** Previously the rewind limit jumped to the last body-set change (you couldn't scrub before
   an absorption/add). Now the **whole recorded window is restorable**: each restored frame rebuilds
