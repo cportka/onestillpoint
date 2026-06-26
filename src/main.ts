@@ -173,6 +173,8 @@ async function main(): Promise<void> {
   scene.onEvent = (type) => {
     events.add(type, history.recorded);
     timeline.reset();
+    // A body reaching the centre is a merger — fire the spacetime ringdown ripple (Lattice sky).
+    if (type === 'absorb') uniforms.ripple.value = 0;
   };
   // While the user drags the bar we freeze the sim (no stepping / recording / replay-advance, in
   // the loop) so the physics doesn't walk the bodies off the restored frame mid-scrub. A transient
@@ -280,6 +282,9 @@ async function main(): Promise<void> {
     if (uniforms.fuzz.value > 0) {
       uniforms.fuzz.value = Math.max(0, uniforms.fuzz.value - frameDelta / FUZZ_FADE_S);
     }
+    // Age the merger ringdown ripple in wall-clock (it expands + decays after an absorb). Capped so
+    // it parks at a large value when idle — the shader envelope is 0 there, so the ripple is a no-op.
+    if (uniforms.ripple.value < 100) uniforms.ripple.value += frameDelta;
 
     const t = time.tick(frameDelta);
     uniforms.time.value += t.animDelta; // bounded dust clock
