@@ -1,8 +1,10 @@
+import { EVENT_COLOR, EVENT_LEGEND } from './historyBar';
+
 /**
- * The keyboard-shortcuts cheat-sheet, toggled with "?" (or "/"). Not a modal — a
- * small translucent panel pinned to the **top-left** (mirroring the control panel
- * top-right), at the same opacity as the dropdown. Tap it, or press ? / / / Esc,
- * to dismiss.
+ * The general **info popover**, toggled with "?" (or "/"): the keyboard shortcuts plus a colour
+ * key for the history scrub bar's transient-event ticks. Not a modal — a small translucent panel
+ * pinned to the **top-left** (mirroring the control panel top-right), at the same opacity as the
+ * dropdown. Tap it, or press ? / / / Esc, to dismiss.
  */
 const SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
   ['Esc', 'About dialog'],
@@ -25,14 +27,22 @@ export function createShortcutsOverlay(): ShortcutsOverlay {
   const panel = document.createElement('div');
   panel.className = 'osp-keys';
   panel.hidden = true;
-  const rows = SHORTCUTS.map(
+  const keyRows = SHORTCUTS.map(
     ([keys, label]) =>
       `<div class="osp-keys__row"><span class="osp-keys__k">${keys
         .split(' ')
         .map((k) => `<kbd>${k}</kbd>`)
         .join(' ')}</span><span class="osp-keys__d">${label}</span></div>`,
   ).join('');
-  panel.innerHTML = `<div class="osp-keys__title">Keyboard shortcuts</div>${rows}`;
+  // Colour key for the history scrub bar's transient-event ticks (palette in historyBar.ts).
+  const legendRows = EVENT_LEGEND.map(
+    ([type, label]) =>
+      `<div class="osp-keys__row"><span class="osp-keys__sw" style="--c:${EVENT_COLOR[type]}"></span>` +
+      `<span class="osp-keys__d">${label}</span></div>`,
+  ).join('');
+  panel.innerHTML =
+    `<div class="osp-keys__title">Keyboard shortcuts</div>${keyRows}` +
+    `<div class="osp-keys__title osp-keys__sub">Timeline events</div>${legendRows}`;
   document.body.appendChild(panel);
 
   const close = (): void => {

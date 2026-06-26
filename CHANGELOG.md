@@ -3,6 +3,27 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.25.x — the scrub bar, always on
+
+- **0.25.0** — **The history scrub bar is now always on, tracks the last 2 minutes, and the info
+  popover gets a colour key.** The bar no longer waits for Pause — it rides along the bottom the
+  whole time the control panel is up, its playhead tracking the live edge as the sim plays:
+  - **De-coupled from Pause.** It now shows/hides *with the dropdown panel* (mounts with it,
+    hidden during a Replay intro and brought back once the replayed intro settles). A new `tick()`
+    drives a live rolling window — events scroll, the playhead rides "now" — so you can watch the
+    timeline fill without freezing the scene.
+  - **A 2-minute window.** `History`'s ring buffer grows from ~10 s to **~2 min** (capacity
+    `600 → 7200` at 60 fps); older frames are still lost past the edge.
+  - **Scrub pauses at that moment.** Grabbing the bar (click *or* drag) now pauses at the picked
+    frame so it stays on screen and inspectable — and lights the **Pause** button (→ "Resume") so
+    it's clear time is held. You resume from there; the bar then rides the live edge again.
+  - **Colour key.** The shortcuts overlay is reframed as a general **info popover** (still `?`)
+    and gains a **Timeline events** colour key — a swatch per transient (star/planet/hole added,
+    absorbed, escaped) sharing one palette with the bar's ticks (single source of truth).
+  - Fixes a redundant `setVisible(true)` (panel mount *and* `formation.onDone` both fire it on
+    first load) that would reset the playhead off a scrub — `setVisible` is now idempotent, with
+    a regression test. Plus the new `History` capacity test and the always-on wiring.
+
 ## 0.24.x — the history scrub bar
 
 - **0.24.0** — **A history scrub bar along the bottom (on Pause).** Pause the sim and a soft,

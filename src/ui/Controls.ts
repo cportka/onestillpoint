@@ -58,13 +58,17 @@ export function createControls(ctx: {
   /** The share-ready capture for the Share button — a short rolling video clip of the
    *  last few seconds where the platform can record canvas video, else a still PNG. */
   captureShare: () => Promise<File | null>;
-  /** The bottom history scrub bar — shown on Pause, hidden on resume. */
+  /** The bottom history scrub bar — always on, hidden only during a Replay intro. */
   historyBar: HistoryBar;
+  /** Pause-on-scrub hook: the loop calls this when a drag/click grabs the bar, so the
+   *  picked moment holds on screen. We override it here to also light the Pause button. */
+  scrubUi: { pause: () => void };
   /** Cap the render rate (0 = uncapped). Drives the optional cinematic frame cap. */
   setMaxFps: (fps: number) => void;
 }): GUI {
   const { blackHole: bh, scene, physics, time, formation, renderer, scaler, bloom } = ctx;
-  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, historyBar, setMaxFps } = ctx;
+  const { hud, autoTier, applyQuality, background, bgLook, replaySplash, captureShare, historyBar, scrubUi, setMaxFps } =
+    ctx;
   const gui = new GUI({ title: 'One Still Point' });
   // The single persisted blob (localStorage). Defaults here; saved values are
   // applied control-by-control at the end (so a stored value overrides a preset).
@@ -224,6 +228,7 @@ export function createControls(ctx: {
     // formation.onDone (below) only once the replayed intro has finished settling.
     gui.close();
     gui.hide();
+    historyBar.setVisible(false); // the scrub bar rides with the panel — hide it for the Replay
     replaySplash(() => {
       scene.reseed(); // fresh orbits for the current composition
       physics.syncBodies(); // rebuild GPU buffers for the new bodies
@@ -231,9 +236,12 @@ export function createControls(ctx: {
       formation.restart();
     });
   };
-  // Reveal the panel again the moment the (replayed) intro finishes its dolly. Harmless on
-  // first load — the panel is already shown, so this is a no-op there.
-  formation.onDone = () => gui.show();
+  // Reveal the panel + scrub bar again the moment the (replayed) intro finishes its dolly.
+  // Harmless on first load — both are already shown, so this is a no-op there.
+  formation.onDone = () => {
+    gui.show();
+    historyBar.setVisible(true);
+  };
   tip(
     gui.add({ replay: replayIntro }, 'replay').name('Replay intro'),
     'Melt the current view inward toward the centre (~2s), then replay the whole intro from the ' +
@@ -251,10 +259,15 @@ export function createControls(ctx: {
     pauseCtrl.name(time.paused ? 'Resume' : 'Pause'); // text only — no glyphs
     pauseCtrl.domElement.classList.toggle('osp-paused', time.paused); // red = stopped
     pauseCtrl.domElement.classList.toggle('osp-running', !time.paused); // green = running
-    historyBar.setVisible(time.paused); // the bottom history scrub bar shows only while paused
   };
   onPauseClick = (): void => {
     time.paused = !time.paused;
+    refreshPause();
+  };
+  // Grabbing the scrub bar pauses at that moment; route it through the same refresh so the
+  // Pause button lights up (red "Resume") to show time is stopped — the user resumes from there.
+  scrubUi.pause = (): void => {
+    time.paused = true;
     refreshPause();
   };
   pauseCtrl.domElement.classList.add('osp-pausebtn');
@@ -499,6 +512,9 @@ export function createControls(ctx: {
   topRow.append(about.button, createShareButton(captureShare), createVersionBadge(VERSION));
   gui.$children.prepend(topRow);
   gui.close();
+  // The panel is now mounted + visible (collapsed) → bring the scrub bar up with it. From here
+  // the bar tracks the panel: hidden during a Replay (above), back on settle (formation.onDone).
+  historyBar.setVisible(true);
 
   // Keyboard shortcuts (see keybindings.ts): Esc About · ? this list · Space
   // Pause · ←/→ Step · ↑/↓ Speed · R Replay · C Clear · F HUD.

@@ -37,7 +37,7 @@ export class History {
   private generation = 0;
   private prevIds: number[] = [];
 
-  constructor(capacity = 600 /* ~10 s at 60 fps */) {
+  constructor(capacity = 7200 /* ~2 min at 60 fps — the scrub bar's tracked window */) {
     this.capacity = capacity;
     this.state = new Float32Array(capacity * SLOTS * STRIDE);
     this.ids = new Int32Array(capacity * SLOTS);
