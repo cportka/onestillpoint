@@ -54,3 +54,30 @@ describe('tidal disruption factor (spaghettification onset)', () => {
     expect(tidalAt(5, 'hole')).toBe(0);
   });
 });
+
+describe('feedingActive (the disk is fed only while something is tearing)', () => {
+  it('is 1 when a body is within the Roche radius, 0 otherwise', () => {
+    const scene = new Scene();
+    scene.clearCompanions();
+    const star = scene.addStar();
+    const bu = createBodyUniforms();
+
+    star.position.set(30, 0, 0); // far out on its orbit — whole, not feeding
+    updateBodyUniforms(bu, scene, 1);
+    expect(bu.feedingActive.value).toBe(0);
+
+    star.position.set(8, 0, 0); // fallen within the Roche radius — shedding into the disk
+    updateBodyUniforms(bu, scene, 1);
+    expect(bu.feedingActive.value).toBe(1);
+  });
+
+  it('a lone black hole never feeds the disk (it is compact)', () => {
+    const scene = new Scene();
+    scene.clearCompanions();
+    const hole = scene.addBlackHole();
+    hole.position.set(5, 0, 0); // deep in, but compact — no tidal stream
+    const bu = createBodyUniforms();
+    updateBodyUniforms(bu, scene, 1);
+    expect(bu.feedingActive.value).toBe(0);
+  });
+});

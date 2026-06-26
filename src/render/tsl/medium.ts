@@ -1,10 +1,21 @@
-import { exp, float, length, max, pow, smoothstep, vec2, vec3 } from 'three/tsl';
+import { dot, exp, float, If, length, max, normalize, pow, smoothstep, vec2, vec3 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import type { BlackHole } from '../../scene/BlackHole';
+import type { BodyUniforms } from '../bodyUniforms';
 import { blackbody } from './blackbody';
 import { diskTemperature, relativisticShift } from './disk';
 import { advectedCoord } from './flow';
 import { fbm } from './turbulence';
+
+// --- Roadmap #8: the torn stream feeding the disk -----------------------------------------------
+// A star/planet shedding mass within the Roche radius (`tidal` > 0) dumps it into the accretion
+// flow. We model that as a hot, semi-dense **streak** added to the disk at the body's azimuth,
+// spanning from the inner edge out to the body — so the torn stream visibly *connects* to the disk
+// and brightens it (real mass exchange), tracking the body as it spirals in. Tunable dials:
+const FEED_DENSITY = 0.6; // extinction the feeding matter adds, relative to the disk's own density
+const FEED_FLARE = 7; // brightness of the shock-heated feeding glow (× the disk's emissiveStrength)
+const FEED_WEDGE = 40; // angular tightness of the streak along the body's azimuth (higher = narrower)
+const FEED_COLOR = vec3(1.0, 0.88, 0.72); // hot white-gold accretion glow
 
 /**
  * Dust density at a world point and time: a radial envelope (smooth from the
@@ -58,4 +69,40 @@ export function mediumSource(
   const scatter = vec3(0.7, 0.8, 1.0).mul(illum.mul(illum)).mul(bh.scatterStrength);
 
   return emission.add(scatter).mul(density);
+}
+
+/**
+ * The torn stream feeding the disk (roadmap #8). For a sample point `p` in the disk slab, returns
+ * the extra `{density, emission}` contributed by any body currently shedding mass (`tidal` > 0):
+ * a hot streak at the body's azimuth, banded radially from the disk's inner edge out to the body,
+ * and tapered by how near the body is to the disk plane. The whole sweep is gated on
+ * `feedingActive`, so it costs a single branch per sample whenever nothing is being torn.
+ */
+export function streamFeed(p: Node<'vec3'>, bodies: BodyUniforms, bh: BlackHole) {
+  const density = float(0).toVar();
+  const emission = vec3(0).toVar();
+  If(bodies.feedingActive.greaterThan(0.5), () => {
+    const sampR = length(vec2(p.x, p.z));
+    const sampDir = normalize(vec2(p.x, p.z).add(vec2(1e-5, 0))); // sample's in-plane direction
+    bodies.slots.forEach((slot) => {
+      If(slot.tidal.greaterThan(0.01), () => {
+        const c = slot.posRadius.xyz;
+        const bodyR = length(vec2(c.x, c.z));
+        const bodyDir = normalize(vec2(c.x, c.z).add(vec2(1e-5, 0)));
+        // A tight streak along the body's azimuth, banded from the inner edge out to the body.
+        const wedge = pow(max(float(0), dot(sampDir, bodyDir)), float(FEED_WEDGE));
+        const band = smoothstep(bh.diskInner.sub(1), bh.diskInner.add(1), sampR) // rises at the inner edge
+          .mul(smoothstep(bodyR.add(2), bodyR.sub(2), sampR)); // falls off at the body's radius
+        const yn = c.y.div(bh.diskThickness.mul(6));
+        const planeNear = exp(yn.mul(yn).mul(-1)); // feeds most when the body is near the disk plane
+        const s = slot.tidal.mul(wedge).mul(band).mul(planeNear);
+        density.addAssign(s);
+        emission.addAssign(FEED_COLOR.mul(s));
+      });
+    });
+  });
+  return {
+    density: density.mul(bh.diskDensity).mul(FEED_DENSITY),
+    emission: emission.mul(bh.emissiveStrength).mul(FEED_FLARE),
+  };
 }
