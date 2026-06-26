@@ -5,6 +5,17 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.29.x — deeper spaghettification (roadmap #8 begins)
 
+- **0.29.2** — **The − button now sends a body on a long, graceful inspiral — and absorbs it exactly
+  like a natural merge.** The old removal was a quick (~1.5 s), fairly direct dive that ramped its own
+  fade far out, so it didn't read like the real thing. Now − winds the body in on a smooth, eased
+  spiral over ~3.5 turns (`PLUNGE_DURATION 1.5 → 3.5`, `PLUNGE_TURNS 1.75 → 3.5`, smoothstep descent),
+  and — crucially — it now just *delivers the body to the merge radius* and **falls through to the
+  identical natural-merge absorption** from there. So − and a physics-driven merger now tear (the
+  Roche-gated `tidal` stream, radius-gated off the live position), drop the same `absorb` timeline
+  tick, fire the same ringdown ripple, and fade the same way — one code path, no special-casing.
+  Updated the plunge test to assert it's still spiralling partway through and freed once the whole
+  inspiral + absorption completes.
+
 - **0.29.1** — **The ringdown ripple is now the same on every background, and ~10× subtler.** It was
   a Lattice-only grid distortion that went enormous on a plunge; the *background* shouldn't change
   the merger effect. So the ripple now warps the **sampled sky direction globally** (in
