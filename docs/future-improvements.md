@@ -1,12 +1,15 @@
 # Future improvements — roadmap
 
-A living backlog, **flattened into one loose roadmap** (top = next). It distills the
-development sessions — screen-recording reviews, perf audits, feature asks — into a
-single ordered list rather than tiered buckets. The first two items are *active
-problems*; the rest run roughly fix → polish/brand → features → big physics.
+A living backlog, **flattened into one loose roadmap** (top = next), aimed at a polished
+**1.0.0**. It distills the development sessions — screen-recording reviews, perf audits,
+feature asks — into a single ordered list rather than tiered buckets. The first two items
+are *active problems*; the rest run roughly fix → polish/brand → features → big physics, and
+the **[Road to 1.0.0](#road-to-100--the-sequence)** below makes that sequence explicit.
 
-The intro/splash is considered **fully tuned for now** — its remaining cost shows up
-only as item 1 below (the engine takeover), not as more splash dialing.
+The intro/splash is considered **fully tuned for now** — its remaining cost shows up only as
+item 1 below (the engine takeover), not as more splash dialing. The **history scrub bar /
+timeline** (former item 5) is **shipped** (v0.24.0 → v0.26.0: always-on, 2-min window, colour
+key, start/current markers, DVR replay) — see the [CHANGELOG](../CHANGELOG.md).
 
 Each item is annotated:
 
@@ -18,6 +21,27 @@ Each item is annotated:
 
 This is a wish-list, not a commitment. When something here ships, move it to the
 [CHANGELOG](../CHANGELOG.md) and delete it here.
+
+---
+
+## Road to 1.0.0 — the sequence
+
+A suggested build order (the numbered items below detail each). The two **active problems**
+gate quality; **polish/brand** follows; then the new viz/physics features run **cheap →
+expensive**, with **Kerr deliberately last** — it's the trophy, but it *worsens* problem 1, so
+it waits until 1 is solved and gets its own step budget.
+
+1. **Fix what's broken** — #1 engine-takeover lag · #2 Share → mp4. (Quality gates for any "1.0".)
+2. **Polish + brand** — #3 theme/logo · #4 README live clip · #5 bundle (delivery done; the
+   WebGL2-drop lever is optional).
+3. **Cheap dramatic wins** — #6 merger ripple (the two-hole render already exists; the lattice
+   ripple is ~free) → #7 precession (the position-only r⁻³ route is low-risk and validatable).
+4. **Bigger set pieces** — #8 TDE faked stream → #9 swarm / galaxy (the GPU path's payoff).
+5. **The trophy, last** — #10 Kerr, only after #1 is solved and behind its own step budget.
+
+Net (from the items-8–11 review): the discipline is all about **#8/Kerr** — it's the one in
+active tension with problem 1. The other three physics items are tractable, and **#7/precession
+is genuinely low-risk once you keep the perturbation position-only** (see its entry).
 
 ---
 
@@ -111,28 +135,7 @@ freeze under virtual time); a live clip needs a real-time grab.
 - **Notes:** the new `clipRecorder` (mp4) could back an in-app "record this" path and
   double as the capture source. Touches: `scripts/`, `README.md`, `assets/`.
 
-## 5. A true timeline / scrub bar (supersedes Step back's limits)
-
-*Foundation laid in v0.18.0* — [`src/core/History.ts`](../src/core/History.ts) is a
-bounded, zero-allocation ring buffer that records the bodies' kinematics each forward
-frame (generation-tagged, so a restore is valid only while the body set matches),
-unit-tested, and the loop already records into it. **Remaining:** the UI — a draggable
-scrub bar that calls `history.restore()` (pausing the sim while scrubbing) — plus
-deciding how to present scrubbing **across a body-set change** (the generation
-boundary).
-
-- **Effort:** M.
-- **Risks / bugs:** the generation boundary (adding/removing a body invalidates older
-  frames) must be legible in the UI — you can't scrub past it; scrubbing must pause the
-  integrator so it doesn't fight the restore; irreversible events (absorptions,
-  plunges, the one-shot intro) don't come back, matching Step back's caveat; ring-wrap
-  vs the scrub range.
-- **Viz / perf:** a flagship UX feature; `History` is cheap (zero-GC) and the scrub-bar
-  redraw is trivial — no perf risk as long as the recorder stays zero-allocation.
-- **Notes:** Touches: `src/core/TimeController.ts`, `src/core/History.ts`, a new
-  scrub-bar component, `src/ui/Controls.ts`.
-
-## 6. Shrink the bundle further
+## 5. Shrink the bundle further
 
 *Progressed in v0.18–0.19* (the control panel + GPU physics engine are lazy `import()`s) and
 **investigated in depth in v0.25.1.** The conclusion: **the engine bytes are at three.js's
@@ -201,7 +204,75 @@ prize trades against browser reach.
 - **Notes:** the build's chunk report names the target (`three.tsl`). Touches: `vite.config.ts`,
   `Renderer.ts` (the fallback path), the `three` import surface.
 
-## 7. Swarm / galaxy mode → let the GPU path finally pay off
+## 6. Merger ringdown / gravitational-wave cue
+
+The splash *fakes* a binary merger; the live scene could show a real one — two holes that
+inspiral, merge, and ring down, with a spacetime-ripple cue on the **Lattice** background.
+**Better value than its size suggests: it splits cleanly, and most of it is already built.**
+
+- **Effort:** M, front-loaded with done work. The two-hole *render* already exists (a secondary
+  hole + `secondaryDisk` + weak-field lensing). What's missing is the **dynamics** and the **cue**.
+- **Risks / bugs:** the **inspiral** is the only real work, and it splits well. Newtonian gravity
+  at close separation *slingshots* (and `SOFTENING2` keeps it from merging cleanly), so a
+  believable spiral-in needs an **energy-loss / radiation-reaction** term. That term is
+  *dissipative → irreversible* — but that is **consistent with the existing model** (absorption is
+  already one-way and isn't rewound), so the merged pair just stays merged and it **does not break
+  Step-back / the DVR timeline** (unlike #7's naive route). The inspiral can also simply be
+  *scripted* rather than dynamical.
+- **Viz / perf:** dramatic set piece, and **cheap**. The ripple is a perfect fit for `lattice()`
+  in `background.ts` — a time-decaying distortion of the lat/long grid radiating from the merger
+  point (a few flops). The inspiral is just the N-body you already run.
+- **Science:** phenomenological — a scripted / drag-driven inspiral and a *metaphorical* ripple,
+  **not** a real waveform or metric perturbation. Frame it honestly.
+- **Notes:** start with the ripple cue — the hook is sitting right there. Touches: `src/scene/Scene.ts`
+  (inspiral / merge), `src/render/tsl/background.ts` (`lattice()` ripple).
+
+## 7. Relativistic companion orbits (perihelion precession)
+
+Companions integrate with Newtonian N-body gravity; a slowly **precessing ellipse** is visible,
+correct-looking, and on-theme. **The sharper framing: the old "preserve reversibility" note was
+the trap, not the fix — there's a route that sidesteps it entirely.**
+
+- **Effort:** S–M — the **lowest-risk physics item**, *if* you take the effective-potential route.
+- **Risks / bugs:** the obvious implementation — a true **1PN** correction `a(x, v)` — is
+  **velocity-dependent**, which **breaks** the velocity-Verlet (KDK) reversibility identity (it
+  holds *only* for position-only forces — `integrators.test.ts` proves exactly this). That loses
+  bit-exact Step-back and symplecticity → orbits drift over a session, and the new DVR timeline
+  leans on that reversibility even harder. **The move:** a **position-only inverse-cube (r⁻³)**
+  effective-potential perturbation tuned to the GR precession rate. A `1/r² + 1/r³` force precesses
+  the ellipse *analytically*; match the r⁻³ coefficient to the leading-order GR advance for
+  near-circular orbits. One extra force term, reversibility + symplecticity intact,
+  precession-per-orbit closed-form.
+- **Viz / perf:** subtle, correct-*looking*; negligible cost (one force term).
+- **Science:** "right observable, wrong mechanism" — a Newtonian-shaped perturbation that
+  reproduces the GR rate, not true 1PN. For a look-driven visualizer that's the right trade, and
+  the closed form drops straight into `validate-orbit`.
+- **Notes:** Touches: `src/physics/integrators.ts` (`computeAccelerations` — add the r⁻³ term to
+  the primary's pull), `scripts/validate-orbit.mjs`.
+
+## 8. Deeper spaghettification / tidal disruption event
+
+v0.16.0 added a tidal-stretch absorption (the `absorbing` shrink + redshift). A real **TDE** — a
+star pulled into a stream that wraps and feeds the disk, gated by the Roche limit — would be a
+striking set piece. **Mind the trap the old note soft-pedaled.**
+
+- **Effort:** M–L — and the *faked* version and the *honest* version are very different projects.
+- **Risks / bugs:** **"feeds the disk" has no coupling point.** The disk is *procedural* —
+  `mediumDensity(pos, time, …)` is evaluated analytically from `fbm`; bodies and disk are marched
+  independently and **never exchange mass**. So feeding it means either **(a)** render a *separate
+  stream volume* that visually fuses with the disk — **faked, tractable**, the place to start — or
+  **(b)** graft a procedural stream **source** into `medium.ts` gated on the body's state (there's
+  a `mediumSource` hook already) — the *honest* version and the real 80% of the work. The stream
+  itself is a particle / zone system the current single-body absorption doesn't model.
+- **Viz / perf:** memorable; moderate — one more marched volume, **bounded** if gated like the
+  existing secondary-disk slab tests.
+- **Science:** the **Roche-gated trigger** is legit (the only checkable number); the
+  stream-feeding-disk is **art-directed**, not accretion modeling. Say so.
+- **Notes:** build the faked stream first; the coupled version is its own project. Touches:
+  `src/scene/Scene.ts` (Roche trigger + stream state), `src/render/tsl/medium.ts` (the stream
+  volume / source), `src/render/tsl/bodies.ts`.
+
+## 9. Swarm / galaxy mode → let the GPU path finally pay off
 
 With CPU/GPU now chosen **automatically** by body count (v0.22.0 —
 `PhysicsController.autoSelect`, threshold `GPU_AUTO_BODIES = 256`), the missing half is
@@ -218,69 +289,36 @@ The switch is already wired — this item is now *"raise the cap + author the mo
   first cross-threshold enable lazy-loads the GPU engine + builds buffers (a one-time
   hitch); hand-placed orbit radii don't scale — a swarm needs a seeded distribution.
 - **Viz / perf:** exactly what the GPU compute path was built for; a galaxy/swarm is a
-  striking new mode. Watch the **render** budget (lensing N), not just the sim.
+  striking new mode. Watch the **render** budget (lensing N), not just the sim — the same
+  per-body-lensing ceiling that gates #10/Kerr.
 - **Notes:** Touches: `src/render/bodyUniforms.ts` (slot count), `src/scene/Scene.ts`
   (seeding), `src/physics/PhysicsController.ts` (threshold), `src/render/tsl/bodies.ts`
   (a cheap-body path).
 
-## 8. Kerr (spinning) black hole
+## 10. Kerr (spinning) black hole — the trophy, deliberately last
 
-The headline scientific upgrade: a spin parameter brings frame-dragging, an
-ergosphere, the off-centre/asymmetric shadow, and the characteristic one-sided photon
-ring. The metric is **Schwarzschild-only** today.
+The headline scientific upgrade: a spin parameter brings frame-dragging, an ergosphere, the
+off-centre **D-shaped** shadow, and the one-sided photon ring — the most impressive thing on the
+list. The metric is **Schwarzschild-only** today. **Sequenced last on purpose: highest payoff
+*and* highest cost, and it directly worsens active problem #1.**
 
-- **Effort:** L.
-- **Risks / bugs:** Kerr geodesics are materially harder per-ray than Schwarzschild
-  (more state, stiffer near the horizon) → a real raymarch cost; numerical stability
-  near the ergosphere; the validation scripts assume Schwarzschild and need Kerr
-  analogues; a spin control + persistence.
-- **Viz / perf:** the most scientifically impressive feature — and the heaviest per-ray
-  cost, so it likely wants its own quality/step-budget consideration.
-- **Notes:** Touches: `src/render/tsl/schwarzschild.ts` (→ Kerr geodesics),
-  `src/render/tsl/disk.ts`, `src/render/tsl/raymarch.ts`, the validation scripts.
-
-## 9. Deeper spaghettification / tidal disruption event
-
-v0.16.0 added a tidal-stretch absorption. A real **tidal disruption event** — a star
-pulled into a stream that wraps and feeds the disk, gated by the Roche limit — would be
-a striking, physically-motivated set piece.
-
-- **Effort:** M–L.
-- **Risks / bugs:** a stream is a particle/zone system the current single-body
-  absorption doesn't model; *feeding the disk* means coupling the body system to the
-  disk shader (today they're independent); performance of a fragment stream; tuning the
-  Roche threshold so it triggers believably rather than constantly.
-- **Viz / perf:** a memorable visual; moderate render cost for the stream.
-- **Notes:** Touches: `src/scene/Scene.ts`, `src/render/tsl/bodies.ts`,
-  `src/render/tsl/medium.ts`.
-
-## 10. Relativistic companion orbits (perihelion precession)
-
-Companions integrate with Newtonian N-body gravity. A post-Newtonian correction (or
-geodesic orbits in the primary's field) would add **perihelion precession** — visible,
-correct, and on-theme.
-
-- **Effort:** M.
-- **Risks / bugs:** a PN term changes the force law — it must **preserve
-  time-reversibility** (Step back / the History buffer rely on it) and not destabilize
-  orbits over a session; tuning so precession is visible but bounded; the orbit
-  validation script needs updating.
-- **Viz / perf:** subtle but correct; negligible perf cost (a force-law term).
-- **Notes:** Touches: `src/physics/integrators.ts`, the orbit validation script.
-
-## 11. Merger ringdown / gravitational-wave cue
-
-The splash *fakes* a binary merger beautifully; the live scene could show a real one —
-two holes that actually inspiral, merge, and ring down, with a subtle spacetime-ripple
-cue (a natural fit for the **Lattice** background).
-
-- **Effort:** M.
-- **Risks / bugs:** a real inspiral→merge needs more than Newtonian gravity at close
-  separation (otherwise it just slingshots); the ringdown ripple is a shader cue that
-  must read on the Lattice without looking gimmicky; sequencing/coupling with the
-  existing absorption.
-- **Viz / perf:** a dramatic set piece; the ripple is a cheap background-shader effect.
-- **Notes:** Touches: `src/scene/Scene.ts`, `src/render/tsl/background.ts`.
+- **Effort:** L — and it's **render-engine** risk, not physics-engine: it lives in
+  `schwarzschild.ts` → a new `kerr.ts`; the CPU N-body is untouched.
+- **Risks / bugs:** today's geodesic is *almost free* — a tiny central force with a single
+  conserved `h²` per ray. **Kerr kills that trick:** the full geodesic RHS (or the Hamiltonian
+  form with `E`, `Lz`, and the **Carter constant**), frame-dragging from the off-diagonal `g_tφ`,
+  and **stiffer steps near the ergosphere** — more per-ray state, more per-step math, no clean
+  conserved scalar to lean on. It **invalidates `validate-geodesic`**; you'd write Kerr analogues
+  (prograde / retrograde photon-orbit radii, the asymmetric shadow boundary).
+- **Viz / perf:** **the worst on the list — realistically 2–4× the per-ray cost of the dominant
+  pass**, which is the very pass that hitches at takeover (problem 1). **Do not ship until problem
+  #1 is solved, and gate it behind its own step budget / quality tier.**
+- **Science:** a big real gain — **but only if companion lensing is upgraded too.** Companions
+  lens in the **weak field**; an exact-Kerr primary ringed by Newtonian-approx companions is a
+  fidelity mismatch.
+- **Notes:** Touches: `src/render/tsl/schwarzschild.ts` (→ `kerr.ts`), `src/render/tsl/disk.ts`,
+  `src/render/tsl/raymarch.ts`, `src/render/tsl/bodies.ts` (companion lensing), the validation
+  scripts.
 
 ---
 
@@ -290,11 +328,12 @@ cue (a natural fit for the **Lattice** background).
 deepest coverage (`integrators` incl. reversibility, `Scene`, `TimeController`,
 `GPUPhysicsEngine` packing, `FormationSequence`, `ResolutionScaler`, `quality`,
 `bodyUniforms`), with `tagline` guarding the README mirror, plus UI smoke tests
-(`keybindings`, `hudFolder`) and the `History` suite. v0.22.0 added
-`PhysicsController.autoSelect` (the CPU/GPU decision) and a `hud` detail-line suite
-(the S/P/B breakdown + compute token). Default env is Node (fast); DOM tests opt in
-per-file with `// @vitest-environment jsdom`. Next gaps worth covering: `stepper`
-add/remove caps and the `Controls` speed/clamp math.
+(`keybindings`, `hudFolder`, `historyBar` markers) and the `History` suite. v0.22.0 added
+`PhysicsController.autoSelect` (the CPU/GPU decision) and a `hud` detail-line suite (the S/P/B
+breakdown + compute token); v0.26.0 added the `Timeline` (DVR scrub / step / replay clamp) suite
+and rewrote the `TimeController` step tests around the new discrete `step`. Default env is Node
+(fast); DOM tests opt in per-file with `// @vitest-environment jsdom`. Next gaps worth covering:
+`stepper` add/remove caps and the `Controls` speed/clamp math.
 
 **Headless splash capture.** Headless *virtual-time* does **not** advance compositor
 CSS animations — freeze them with a Web-Animations `currentTime` (the canvas, on

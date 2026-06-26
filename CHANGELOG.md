@@ -5,6 +5,15 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.26.x — scrub-bar markers + DVR replay
 
+- **0.26.1** — **Docs: roadmap rewrite toward 1.0.0.** `docs/future-improvements.md` gains a
+  **Road to 1.0.0** sequence and folds in an external review of the physics items (8–11): the
+  now-shipped scrub bar is retired from the list; the merger-ringdown, precession, and TDE items
+  are reordered cheap→expensive with the review's sharper engineering notes (precession via a
+  reversibility-preserving position-only **r⁻³** term; the TDE "feeds the disk" coupling gap; the
+  ringdown's irreversible-but-consistent inspiral); and **Kerr is deliberately sequenced last** —
+  highest payoff, highest cost, and in active tension with problem #1, so it waits behind its own
+  step budget. Docs only — no code change.
+
 - **0.26.0** — **The scrub bar grows two markers and a DVR-style replay.** The recorded history is
   now a proper timeline you can rewind into and watch play back — all without touching Pause:
   - **Start marker.** A cool tick fades in with the bar at the **rewind limit** — the oldest frame
