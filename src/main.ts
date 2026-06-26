@@ -166,16 +166,11 @@ async function main(): Promise<void> {
   const events = new EventLog();
   scene.onEvent = (type) => events.add(type, history.recorded);
   // While the user drags the bar we freeze the sim (skip stepping + recording, in the loop) so
-  // the physics doesn't walk the bodies off the restored frame mid-scrub.
+  // the physics doesn't walk the bodies off the restored frame mid-scrub. This is a transient
+  // freeze for the duration of the grab only — it deliberately does **not** touch `time.paused`
+  // (scrubbing must not change the Pause state): release while running and the sim plays on from
+  // the scrubbed frame; release while paused and it stays paused there.
   let scrubbing = false;
-  // Scrubbing also *pauses* so the chosen moment stays on screen (else the live edge would
-  // immediately scroll past it). Controls overrides `pause` to also light its Pause button; the
-  // user resumes from there. A plain object so Controls can swap the method after it mounts.
-  const scrubUi = {
-    pause: (): void => {
-      time.paused = true;
-    },
-  };
   // Scrub: restore the frame at a 0..1 position (clamped to the span the *current* body layout
   // can still restore), and let the render loop show it. Returns the clamped position so the
   // bar can place its playhead there.
@@ -193,8 +188,7 @@ async function main(): Promise<void> {
     events,
     scrubTo,
     onScrub: (active) => {
-      scrubbing = active;
-      if (active) scrubUi.pause(); // grab → pause at this moment so it's inspectable
+      scrubbing = active; // freeze the sim for the grab; the Pause state is left untouched
     },
   });
 
@@ -258,7 +252,7 @@ async function main(): Promise<void> {
       blackHole, scene, physics, time, formation, renderer, scaler,
       bloom: post.bloom, hud, autoTier, applyQuality, background: uniforms.background,
       bgLook: { brightness: uniforms.bgBrightness, saturation: uniforms.bgSaturation, tint: uniforms.bgTint },
-      replaySplash, captureShare, historyBar, scrubUi,
+      replaySplash, captureShare, historyBar,
       setMaxFps: (fps: number) => {
         loop.maxFps = fps;
       },
