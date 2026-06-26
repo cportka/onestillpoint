@@ -1,5 +1,4 @@
-import type { Body } from '../scene/Body';
-import type { History } from './History';
+import type { History, HistoryFrame } from './History';
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x));
@@ -10,13 +9,15 @@ function clamp01(x: number): number {
  *
  * `offset` is how many recorded frames we are **behind the live edge** (0 = "now", live physics +
  * recording). Scrubbing or stepping back moves it into the past — clamped to the **rewind limit**
- * (`history.restorableLength − 1`, the oldest frame the current body layout can restore; the scrub
- * bar's *start marker*). While the sim plays *behind* the edge it **replays** the recorded frames
- * one per tick (`advance()`), walking the *current marker* back toward the live edge, where new
- * history resumes. None of this touches `time.paused`: paused holds the marker, playing moves it.
+ * (the oldest frame in the buffer; the scrub bar's *start marker*). Each move calls `applyFrame`,
+ * which restores **both the roster and the kinematics** of that frame — so you can rewind clean
+ * *across* an absorption/add (a body that fell in comes back). While the sim plays *behind* the
+ * edge it **replays** the recorded frames one per tick (`advance()`), walking the *current marker*
+ * back toward the live edge, where new history resumes. None of this touches `time.paused`: paused
+ * holds the marker, playing moves it.
  *
- * A body added/removed mid-replay changes the layout (and the recorded "future" is a different
- * generation), so `reset()` snaps back to the live edge.
+ * `reset()` snaps back to the live edge — used when fresh live input (a manual add) means we should
+ * stop replaying and resume recording from "now".
  */
 export class Timeline {
   /** Frames behind the live edge: 0 = live, >0 = scrubbed / replaying back. */
@@ -24,7 +25,8 @@ export class Timeline {
 
   constructor(
     private readonly history: History,
-    private readonly bodies: () => Body[],
+    /** Restore a recorded frame onto the scene — roster (revive/drop bodies) **and** kinematics. */
+    private readonly applyFrame: (frame: HistoryFrame) => void,
   ) {}
 
   /** At "now" — the loop should run live physics + record this frame. */
@@ -32,9 +34,10 @@ export class Timeline {
     return this.offset === 0;
   }
 
-  /** The rewind limit: the oldest frame the current body layout can still restore. */
+  /** The rewind limit: the oldest frame still in the buffer. Every frame is restorable now (the
+   *  roster is rebuilt from the registry), so the whole recorded window can be rewound into. */
   private get maxOffset(): number {
-    return Math.max(0, this.history.restorableLength - 1);
+    return Math.max(0, this.history.length - 1);
   }
 
   /** Current ("playback") marker position 0..1 across the visible window — 1 = live edge. */
@@ -91,6 +94,6 @@ export class Timeline {
 
   private restore(): void {
     const frame = this.history.peek(this.offset);
-    if (frame) this.history.restore(frame, this.bodies());
+    if (frame) this.applyFrame(frame);
   }
 }

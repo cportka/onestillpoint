@@ -45,11 +45,26 @@ const PLUNGE_TURNS = 1.75;
  *  type), absorbed at the centre, or flung clear of the scene. */
 export type SceneEvent = BodyType | 'absorb' | 'escape';
 
+/** The immutable identity of a body — enough to *revive* one the timeline rewinds back across an
+ *  absorption/removal (its kinematics come from the History frame). Kept per id forever, so a body
+ *  that fell in can be put back exactly where it was when you scrub before the merger. */
+interface BodyTemplate {
+  id: number;
+  type: BodyType;
+  mass: number;
+  lensMass: number;
+  radius: number;
+  color: Vector3;
+}
+
 export class Scene {
   readonly blackHole: BlackHole;
   readonly physics: PhysicsEngine;
   bodies: Body[] = [];
   private nextId = 1;
+  /** Every movable body ever created, by id — so `restoreRoster` can revive absorbed/removed ones
+   *  when the timeline rewinds across the event that took them out. */
+  private readonly registry = new Map<number, BodyTemplate>();
   /** Fired when the body set changes during simulation (pruning), so the UI
    *  count can refresh. */
   onChange?: () => void;
@@ -178,10 +193,59 @@ export class Scene {
       color,
     };
     this.bodies.push(body);
+    this.registry.set(body.id, { id: body.id, type, mass, lensMass, radius, color: color.clone() });
     this.physics.bodies = this.bodies;
     this.physics.reset();
     if (!this.seeding) this.onEvent?.(type); // a user-driven add → a timeline event
     return body;
+  }
+
+  /** Make the movable roster *exactly* match `ids` (in order): revive any that were absorbed/removed
+   *  (from the registry) and drop any added since, so the timeline can restore a frame from **before**
+   *  a merger — not just kinematics, the whole line-up. Returns whether anything changed (so the
+   *  caller can rebuild the GPU buffers). Kinematics are written by the History restore that follows. */
+  restoreRoster(ids: Int32Array): boolean {
+    const want = Array.from(ids);
+    const current = this.companions;
+    // Already the right set in the right order? (the common case during replay → no rebuild)
+    if (current.length === want.length && current.every((b, i) => b.id === want[i])) return false;
+    const byId = new Map(current.map((b) => [b.id, b]));
+    const primary = this.bodies.filter((b) => b.fixed);
+    const movable: Body[] = [];
+    for (const id of want) {
+      const existing = byId.get(id);
+      if (existing) {
+        // Rewound to a moment this body was live — clear any absorption/plunge animation state.
+        delete existing.absorbing;
+        delete existing.absorbAnchor;
+        delete existing.plunging;
+        delete existing.plungeFrom;
+        movable.push(existing);
+      } else {
+        const tmpl = this.registry.get(id);
+        if (tmpl) movable.push(this.reviveBody(tmpl)); // back from the dead at its recorded slot
+      }
+    }
+    this.bodies = [...primary, ...movable];
+    this.physics.bodies = this.bodies;
+    this.physics.reset();
+    this.onChange?.(); // the count changed → refresh the Bodies panel
+    return true;
+  }
+
+  /** Re-create a body from its template (placeholder kinematics — the History restore sets them). */
+  private reviveBody(t: BodyTemplate): Body {
+    return {
+      id: t.id,
+      type: t.type,
+      mass: t.mass,
+      lensMass: t.lensMass,
+      fixed: false,
+      position: new Vector3(),
+      velocity: new Vector3(),
+      radius: t.radius,
+      color: t.color.clone(),
+    };
   }
 
   clearCompanions(): void {
