@@ -738,7 +738,9 @@ canvas {
   cursor: pointer;
   touch-action: none; /* scrub gestures, not scroll */
 }
-/* The dim base line spanning the whole recorded window, hugging the very bottom edge. */
+/* The base line spans the whole window, but reads as the **no-history** backing: a dim, *cool*
+   grey (no warm glow), so the part of the bar you can't scrub to recedes. The warm fill (below)
+   lights up only the scrubable span over it — that contrast is "where history begins". */
 .osp-history__track::after {
   content: '';
   position: absolute;
@@ -746,20 +748,22 @@ canvas {
   right: 0;
   bottom: 0;
   height: 2px;
-  background: rgba(255, 168, 102, 0.26);
-  box-shadow: 0 0 6px rgba(255, 150, 80, 0.28);
+  background: rgba(150, 168, 180, 0.16);
+  box-shadow: 0 0 4px rgba(140, 160, 175, 0.12);
 }
-/* The brighter warm fill over the scrubable (current-layout) span; JS sets its left. */
+/* The brighter warm fill over the scrubable (current-layout) span — the **history** you can
+   rewind into; JS sets its left to the rewind limit. Brighter + a touch taller than the base so
+   the boundary at the start marker is unmistakable. */
 .osp-history__fill {
   position: absolute;
   right: 0;
   bottom: 0;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
-  background: linear-gradient(90deg, rgba(255, 196, 138, 0.5), rgba(255, 216, 174, 0.92));
+  background: linear-gradient(90deg, rgba(255, 200, 144, 0.62), rgba(255, 222, 182, 1));
   box-shadow:
-    0 0 10px rgba(255, 170, 100, 0.6),
-    0 0 3px rgba(255, 202, 152, 0.85);
+    0 0 12px rgba(255, 174, 104, 0.75),
+    0 0 4px rgba(255, 206, 156, 0.95);
 }
 .osp-history__events {
   position: absolute;
@@ -778,6 +782,14 @@ canvas {
   box-shadow:
     0 0 7px var(--osp-ev, #ffd9a8),
     0 0 2px var(--osp-ev, #ffd9a8);
+}
+/* A *locked* event — one in the no-history span (older than the rewind limit; you can't scrub
+   to it). Kept visible as a record of what happened, but dimmed + shortened so it clearly sits
+   in the inactive past, not the scrubable present. */
+.osp-history__event--locked {
+  height: 8px;
+  opacity: 0.32;
+  box-shadow: none;
 }
 /* The playhead — a thin vertical line with a glowing cap at the bottom; JS sets its left. */
 .osp-history__head {
@@ -802,29 +814,32 @@ canvas {
   background: #fff0d8;
   box-shadow: 0 0 10px 2px rgba(255, 214, 150, 0.95);
 }
-/* The start marker — the rewind limit. A cooler, dimmer tick (vs the warm head) with a small
-   cap, so "how far back you can go" reads as a boundary, not the playhead. JS sets its left. */
+/* The start marker — where scrubable history begins (the rewind limit). A clear *cool* tick (vs
+   the warm head/fill) with a cap, so the boundary between the dim no-history past and the warm
+   scrubable span is obvious. JS sets its left. */
 .osp-history__start {
   position: absolute;
   bottom: 0;
   width: 2px;
-  height: 15px;
+  height: 18px;
   margin-left: -1px;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(150, 226, 220, 0), rgba(150, 226, 220, 0.7));
-  box-shadow: 0 0 7px rgba(120, 220, 210, 0.6);
+  background: linear-gradient(180deg, rgba(150, 226, 220, 0), rgba(168, 234, 228, 0.92));
+  box-shadow:
+    0 0 9px rgba(120, 220, 210, 0.8),
+    0 0 3px rgba(150, 230, 222, 0.9);
 }
 .osp-history__start::after {
   content: '';
   position: absolute;
   bottom: -1px;
   left: 50%;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: rgba(190, 240, 236, 0.95);
-  box-shadow: 0 0 7px 1px rgba(120, 220, 210, 0.7);
+  background: rgba(202, 244, 240, 0.98);
+  box-shadow: 0 0 9px 1px rgba(120, 220, 210, 0.85);
 }
 /* The live edge — pinned to the right, a soft pulse marking "now", where new history accrues
    (the current marker walks here after a scrub, then rejoins it). */

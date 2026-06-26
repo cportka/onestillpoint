@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.26.x — scrub-bar markers + DVR replay
 
+- **0.26.2** — **Scrub bar: make "where history begins" obvious (no-history vs history).** Frequent
+  absorptions/escapes bump the History generation, so the **rewind limit** often sits far to the
+  right — you can't scrub before the last body-set change, and the faint start marker made that
+  confusing. Now the contrast does the talking: the **scrubable span glows warm and brighter** (the
+  history you can rewind into), the **older span dims to a cool grey** (no scrubable history there),
+  the **start marker is a clear cool boundary**, and **event ticks before the limit are dimmed +
+  shortened** (locked — shown as a record, but you can't scrub to them). Behaviour is unchanged —
+  this is purely making the existing limit legible. (Rewinding *across* a body-set change — actually
+  restoring the old roster — remains future work; see roadmap.)
+
 - **0.26.1** — **Docs: roadmap rewrite toward 1.0.0.** `docs/future-improvements.md` gains a
   **Road to 1.0.0** sequence and folds in an external review of the physics items (8–11): the
   now-shipped scrub bar is retired from the list; the merger-ringdown, precession, and TDE items

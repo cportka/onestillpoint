@@ -70,4 +70,15 @@ describe('HistoryBar', () => {
     expect(start.style.left).toBe('25%'); // startPos() = 0.25
     bar.dispose();
   });
+
+  it('locks (dims) event ticks that fall before the rewind limit', () => {
+    const events = new EventLog();
+    events.add('absorb', 2); // pos ≈ 0.22 across the 10-frame window — before startPos 0.5 → locked
+    events.add('star', 8); // pos ≈ 0.89 — after the rewind limit → still scrubable
+    const bar = createHistoryBar({ ...opts(), events, startPos: () => 0.5 });
+    bar.setVisible(true);
+    expect(document.querySelectorAll('.osp-history__event').length).toBe(2);
+    expect(document.querySelectorAll('.osp-history__event--locked').length).toBe(1);
+    bar.dispose();
+  });
 });
