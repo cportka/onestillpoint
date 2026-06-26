@@ -5,6 +5,15 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.29.x — deeper spaghettification (roadmap #8 begins)
 
+- **0.29.1** — **The ringdown ripple is now the same on every background, and ~10× subtler.** It was
+  a Lattice-only grid distortion that went enormous on a plunge; the *background* shouldn't change
+  the merger effect. So the ripple now warps the **sampled sky direction globally** (in
+  `background()`), so every sky — Stars, Nebula, Filaments, Lattice — lenses through the same
+  expanding ring, plus a faint cool glow on the wavefront. Dialed right down (warp `0.22 → 0.022`,
+  glow `2.8 → 0.28`, ~a tenth of the old Lattice look) per feedback. Backgrounds can still be tuned
+  for their own contrast, but they no longer alter the plunge/merger effects. Verified it fires on
+  the default Stars background now; tune `RIPPLE_WARP`/`RIPPLE_GLOW` further to taste.
+
 - **0.29.0** — **Roche-gated tidal disruption — stars now spaghettify on the way in, not just at the
   merge.** Previously a body only stretched during the brief absorption fade *at* the centre, so you
   barely saw it. Now a new per-body `tidal` factor ramps 0→1 as a star/planet falls within a **Roche
