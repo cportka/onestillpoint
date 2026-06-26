@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { appearFor } from './bodyUniforms';
+import { Scene } from '../scene/Scene';
+import { appearFor, createBodyUniforms, updateBodyUniforms } from './bodyUniforms';
+
+/** The slot-0 `tidal` value for a single companion of `type` parked at radius `r`. */
+function tidalAt(r: number, type: 'star' | 'hole' = 'star'): number {
+  const scene = new Scene();
+  scene.clearCompanions();
+  const b = type === 'hole' ? scene.addBlackHole() : scene.addStar();
+  b.position.set(r, 0, 0); // override the random orbit placement
+  const bu = createBodyUniforms();
+  updateBodyUniforms(bu, scene, 1);
+  return bu.slots[0]!.tidal.value;
+}
 
 describe('appearFor (staggered formation entrance)', () => {
   it('is 0 before the intro and 1 once it is done', () => {
@@ -25,5 +37,20 @@ describe('appearFor (staggered formation entrance)', () => {
         prev = a;
       }
     }
+  });
+});
+
+describe('tidal disruption factor (spaghettification onset)', () => {
+  it('is 0 outside the Roche radius and ramps to 1 at the merge', () => {
+    expect(tidalAt(30)).toBe(0); // far out on its orbit — whole
+    expect(tidalAt(3)).toBeCloseTo(1, 5); // at the merge radius — fully torn
+    const mid = tidalAt(8);
+    expect(mid).toBeGreaterThan(0); // mid-fall — partly spaghettified
+    expect(mid).toBeLessThan(1);
+    expect(tidalAt(6)).toBeGreaterThan(tidalAt(11)); // tears further the closer it falls
+  });
+
+  it('never tears a black hole (it is compact)', () => {
+    expect(tidalAt(5, 'hole')).toBe(0);
   });
 });

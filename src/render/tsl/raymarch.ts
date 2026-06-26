@@ -171,9 +171,14 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
           // At absorb 0 the stretch/squash are 1 and `fade` is 1, so a live body
           // renders exactly as a plain sphere.
           const absorb = slot.absorb;
+          // Drive the stretch by the *stronger* of the Roche-gated tidal disruption (on approach,
+          // roadmap #8) and the absorb fade — so a star tears into a radial stream well before the
+          // merge, not just at it. `fade`/redshift stay tied to absorb (the body keeps its colour
+          // while stretching, then redshifts + fades as it is finally taken in).
+          const t = max(absorb, slot.tidal);
           const axis = normalize(center); // hole (origin) → body: the stretch direction
-          const stretch = float(1).add(absorb.mul(2.4)); // elongate radially, up to ~3.4×
-          const squash = max(float(0.05), float(1).sub(absorb.mul(0.62))); // thin across
+          const stretch = float(1).add(t.mul(4.5)); // elongate radially into a stream, up to ~5.5×
+          const squash = max(float(0.05), float(1).sub(t.mul(0.72))); // thin across
           const fade = float(1).sub(smoothstep(float(0.5), float(1), absorb)); // hold, then fade
           // Opaque emissive (lensed + occluded by the curved-space march), gated on
           // `appear` so a body still swooshing in during the intro neither occludes

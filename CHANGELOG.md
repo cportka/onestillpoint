@@ -3,6 +3,19 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.29.x — deeper spaghettification (roadmap #8 begins)
+
+- **0.29.0** — **Roche-gated tidal disruption — stars now spaghettify on the way in, not just at the
+  merge.** Previously a body only stretched during the brief absorption fade *at* the centre, so you
+  barely saw it. Now a new per-body `tidal` factor ramps 0→1 as a star/planet falls within a **Roche
+  radius** (`render/bodyUniforms.ts`, tunable `[ROCHE, MERGE]`), and the raymarch drives the existing
+  prolate-ellipsoid stretch from the *stronger* of `tidal` and `absorb` — so a doomed body tears into
+  a long radial **stream** (up to ~5.5× elongation) well before it's taken in, then redshifts + fades
+  as it merges. Black holes are compact, so they never tear. Trigger it on demand: send a body in with
+  the **−** stepper and watch it stretch. New `bodyUniforms` tidal tests; shader compiles + the factor
+  ramps on approach (verified in Chromium). *Next on #8 (documented): the torn stream **feeding the
+  disk** — a real mass-exchange coupling into `medium.ts`.*
+
 ## 0.28.x — rewind across mergers (full-history scrub)
 
 - **0.28.1** — **Ringdown ripple: much bolder, and it fires on the − button too** (tunes the

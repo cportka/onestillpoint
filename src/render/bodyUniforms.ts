@@ -8,6 +8,13 @@ import type { Scene } from '../scene/Scene';
  *  slots short-circuit in the shader, so the headroom is cheap when unused. */
 export const MAX_BODIES = 14;
 
+// Tidal disruption (spaghettification) onset, roadmap #8. A star/planet that falls within the
+// **Roche radius** is torn into a radial stream long *before* it reaches the merge; `tidal` ramps
+// 0→1 across [ROCHE, MERGE] and drives the stretch in the raymarch. (Toy values — tune to taste;
+// MERGE matches Scene's MERGE_RADIUS so tidal is full just as absorption begins.)
+const TIDAL_ROCHE = 14;
+const TIDAL_MERGE = 3;
+
 export function createBodyUniforms() {
   return {
     slots: Array.from({ length: MAX_BODIES }, () => ({
@@ -16,6 +23,7 @@ export function createBodyUniforms() {
       lensMass: uniform(0), // weak-field light-deflection mass (0 = no lensing)
       appear: uniform(1), // formation fade-in 0 → 1, staggered by body type
       absorb: uniform(0), // 0 = live, → 1 as it is absorbed at the centre (shrink + redshift fade)
+      tidal: uniform(0), // 0 = whole, → 1 as it is spaghettified falling within the Roche radius
     })),
     // How far the geodesic must integrate to reach the outermost body. 0 when
     // there are no companions, so rays escape at the camera radius (cheaper).
@@ -51,6 +59,7 @@ const clearSlot = (slot: BodyUniforms['slots'][number]): void => {
   slot.lensMass.value = 0;
   slot.appear.value = 0;
   slot.absorb.value = 0;
+  slot.tidal.value = 0;
 };
 
 export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, progress = 1): void {
@@ -77,7 +86,11 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
       slot.lensMass.value = body.lensMass;
       slot.appear.value = appearFor(body.type, progress);
       slot.absorb.value = body.absorbing ?? 0;
-      maxR = Math.max(maxR, p.length() + body.radius);
+      // Spaghettify on approach: a star/planet within the Roche radius is torn into a radial
+      // stream (holes are compact, so never). Ramps 0→1 across [ROCHE, MERGE].
+      const r = p.length();
+      slot.tidal.value = body.type === 'hole' ? 0 : smoothstep(TIDAL_ROCHE, TIDAL_MERGE, r);
+      maxR = Math.max(maxR, r + body.radius);
       if (body.lensMass > 0) lensing = 1;
     } else {
       clearSlot(slot);
