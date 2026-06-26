@@ -129,10 +129,13 @@ export function createHistoryBar(opts: {
     const len = history.length;
     const minAt = history.recorded - len; // oldest frame's absolute index
     const maxAt = history.recorded - 1; // newest (now)
+    const start = startPos(); // left of here is older history the current layout can't restore
     eventsEl.replaceChildren();
     for (const e of events.inWindow(minAt, maxAt)) {
       const tick = document.createElement('div');
-      tick.className = 'osp-history__event';
+      // Events before the rewind limit are *locked* (can't scrub to them) — dim them so the
+      // bright, scrubable span reads as "live history" against the dim "no-history" past.
+      tick.className = e.pos < start - 1e-3 ? 'osp-history__event osp-history__event--locked' : 'osp-history__event';
       tick.style.left = `${e.pos * 100}%`;
       const c = EVENT_COLOR[e.type];
       tick.style.setProperty('--osp-ev', c);
