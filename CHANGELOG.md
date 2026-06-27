@@ -5,6 +5,13 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.34.x — the rip follows the plunge
 
+- **0.34.1** — **More contrast in the settled disk — less milky wash.** The soft gradient was fine but
+  the disk settled to a low-contrast, too-bright haze. Pulled back the three things flooding it:
+  the cheap diffuse **scatter** fill (`scatterStrength 0.2 → 0.12`, `BlackHole.ts`), the **bloom**
+  strength (`0.6 → 0.45`, `PostPipeline.ts`), and the reveal **veil's extra glow** (`1.1 → 0.8`) so
+  the settling haze doesn't read as bright. The bright photon ring still blooms; the darks stay dark
+  — more range between the darkest dark and the lightest light. All three are live-tunable dials.
+
 - **0.34.0** — **The torn stream now trails along the spiral plunge path, not radially.** On the
   recording, the end of a plunge showed the spaghettified body as a bright spike pointing **toward
   *and* away from** the hole (two redshifted streaks flanking the shadow). That symmetric radial

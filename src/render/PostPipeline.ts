@@ -35,7 +35,10 @@ export function createPostPipeline(
   fuzz: Uniforms['fuzz'],
 ): PostPipeline {
   const scenePass = pass(scene, camera);
-  const bloomPass = bloom(scenePass, 0.6, 0.85, 0.0); // strength, radius, threshold
+  // Bloom strength is deliberately moderate (was 0.6): a heavy bloom flooded the soft disk to a
+  // low-contrast milky white when it settled. Lower strength keeps the bright photon ring blooming
+  // while letting the darks stay dark — more contrast between the darkest dark and the lightest light.
+  const bloomPass = bloom(scenePass, 0.45, 0.85, 0.0); // strength, radius, threshold
   const base = scenePass.add(bloomPass); // the normal HDR output
 
   // The warm, dreamy veil: a warm grade (more red, less blue) plus extra soft glow
@@ -45,7 +48,7 @@ export function createPostPipeline(
   // resolution cut — tune `warm`/the glow multiplier here, paired with `FUZZ_FADE_S`
   // (how long it lingers) and the tier `introScale` (how soft the reveal starts).
   const warm = base.mul(vec3(1.16, 1.0, 0.8));
-  const dreamy = warm.add(bloomPass.mul(1.1));
+  const dreamy = warm.add(bloomPass.mul(0.8)); // extra reveal glow (was 1.1 — the settling haze read too bright)
   // mix(base, dreamy, fuzz): fuzz=1 → full warm veil at the reveal; fuzz=0 → base.
   const composed = mix(base, dreamy, fuzz);
 
