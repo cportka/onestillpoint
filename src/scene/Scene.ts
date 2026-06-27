@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import { smoothstep } from '../core/mathUtils';
 import { SOFTENING2 } from '../physics/integrators';
 import { PhysicsEngine } from '../physics/PhysicsEngine';
 import type { Body, BodyType } from './Body';
@@ -38,12 +39,6 @@ const PLUNGE_DURATION = 4.5;
 // How many turns the plunge winds as it spirals in — more turns = a less direct,
 // prettier fall (it reads as an inspiral, not a straight dive to the centre).
 const PLUNGE_TURNS = 4;
-
-/** Hermite smoothstep, clamped — 0 at edge0, 1 at edge1, eased at both ends. */
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-}
 
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any

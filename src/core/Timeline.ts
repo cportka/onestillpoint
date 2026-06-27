@@ -1,8 +1,5 @@
+import { clamp01 } from './mathUtils';
 import type { History, HistoryFrame } from './History';
-
-function clamp01(x: number): number {
-  return Math.min(1, Math.max(0, x));
-}
 
 /**
  * The **timeline playhead** over the {@link History} ring — a DVR position, decoupled from Pause.

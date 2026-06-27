@@ -1,5 +1,6 @@
 import { Vector3, Vector4 } from 'three';
 import { uniform } from 'three/tsl';
+import { smoothstep } from '../core/mathUtils';
 import type { BodyType } from '../scene/Body';
 import type { Scene } from '../scene/Scene';
 
@@ -39,11 +40,6 @@ export function createBodyUniforms() {
 }
 
 export type BodyUniforms = ReturnType<typeof createBodyUniforms>;
-
-const smoothstep = (a: number, b: number, x: number): number => {
-  const t = Math.min(Math.max((x - a) / (b - a), 0), 1);
-  return t * t * (3 - 2 * t);
-};
 
 /**
  * Staggered entrance during the formation intro: the outer stars swoosh in
