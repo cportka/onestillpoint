@@ -169,26 +169,31 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         If(radius.greaterThan(0), () => {
           const center = slot.posRadius.xyz;
           const appear = slot.appear;
-          // Spaghettification: a doomed star/planet is drawn out into a long, thin,
-          // tidally **heated** radial stream as it falls in — blue-white hot where it
-          // is nearest the hole (being devoured), cooling to the body's own colour
-          // along its trailing length — then it redshifts and fades as it is finally
-          // taken in. At zero tear the stretch/squash are 1 and `fade` is 1, so a
-          // live body renders exactly as a plain sphere.
+          // Spaghettification: a doomed star/planet is drawn out into a long, thin, tidally
+          // **heated** stream as it falls in. The stream stretches **along the body's path** (its
+          // velocity — the spiral plunge) and **trails behind** it, so it follows the inspiral toward
+          // the horizon rather than spiking radially toward *and* away from the hole; it's blue-white
+          // hot where it is nearest the hole (being devoured) and redshifts + fades as it is finally
+          // taken in. At zero tear the stretch/squash are 1 and the trail offset is 0, so a live body
+          // renders exactly as a plain sphere.
           const absorb = slot.absorb;
           // Drive the stretch by the *stronger* of the Roche-gated tidal disruption (on approach,
           // roadmap #8) and the absorb fade — so a star tears into a stream well before the merge,
-          // not just at it. Dramatic now: up to ~9× elongation, thinned right down into a filament.
+          // not just at it. Dramatic: up to ~12× elongation, thinned right down into a filament.
           const tear = max(absorb, slot.tidal);
-          const axis = normalize(center); // hole (origin) → body: the stretch direction
-          const stretch = float(1).add(tear.mul(11)); // elongate radially into a long stream (~12× max)
+          const axis = slot.streamAxis; // along the body's velocity (the spiral path), set per-frame
+          const stretch = float(1).add(tear.mul(11)); // elongate into a long stream (~12× max)
           const squash = max(float(0.09), float(1).sub(tear.mul(0.82))); // thin it across into a filament
           const fade = float(1).sub(smoothstep(float(0.5), float(1), absorb)); // hold, then fade
+          // Trail the stream *behind* the body along its path: offset the ellipsoid centre back along
+          // `axis` so the body sits at the leading tip and the torn debris streams out behind it
+          // (0 offset at zero tear → a centred sphere for a live body).
+          const streamCenter = center.sub(axis.mul(radius.mul(stretch.sub(1))));
           // Opaque emissive (lensed + occluded by the curved-space march), gated on
           // `appear` so a body still swooshing in during the intro neither occludes
           // as a black disc nor flashes at full brightness.
           If(
-            appear.greaterThan(0.02).and(segmentHitsStretched(pos, newPos, center, radius, axis, stretch, squash)),
+            appear.greaterThan(0.02).and(segmentHitsStretched(pos, newPos, streamCenter, radius, axis, stretch, squash)),
             () => {
               // Tidal heating, graded by this sample's distance from the hole (`r`, the ray's radius
               // where it crosses the stream): the part nearest the hole glows hottest (brighter +

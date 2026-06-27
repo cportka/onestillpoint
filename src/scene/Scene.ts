@@ -312,7 +312,22 @@ export class Scene {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         const f = b.plungeFrom;
-        b.position.set((f.x * c - f.z * s) * radial, f.y * radial, (f.x * s + f.z * c) * radial);
+        const rx = f.x * c - f.z * s; // f rotated by the wind angle, in the xz-plane
+        const rz = f.x * s + f.z * c;
+        b.position.set(rx * radial, f.y * radial, rz * radial);
+        // Point velocity along the **analytic spiral tangent** (tangential early, curving inward as
+        // it dives), at a sane orbital magnitude. The render reads `body.velocity` for the torn-stream
+        // axis, so this is what makes the stream trail along the plunge path rather than spike
+        // radially. (A finite difference fails here — the physics pre-step moves the body first, and
+        // its gravity-driven velocity is ~radial.)
+        const radialP = -6 * t * (1 - t); // d(radial)/dt
+        const angleP = PLUNGE_TURNS * Math.PI * 2; // d(angle)/dt
+        const tx = rx * radialP - rz * angleP * radial;
+        const ty = f.y * radialP;
+        const tz = rz * radialP + rx * angleP * radial;
+        const tl = Math.hypot(tx, ty, tz) || 1;
+        const speed = Math.sqrt(PRIMARY_MASS / Math.max(b.position.length(), 2));
+        b.velocity.set((tx / tl) * speed, (ty / tl) * speed, (tz / tl) * speed);
         if (b.position.length() > MERGE_RADIUS && t < 1) continue; // still approaching → keep spiralling
         // Reached the merge radius (or fully wound in) → fall through to the natural merge.
       }
