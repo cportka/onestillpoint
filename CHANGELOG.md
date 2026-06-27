@@ -3,6 +3,29 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.36.x — OffscreenCanvas foundation (roadmap #1)
+
+- **0.36.0** — **Scaffolding for the OffscreenCanvas + Web Worker render path** — the real fix for
+  the first-load takeover lag (the resolution/haze dial-tuning only *masks* it). Moving the renderer
+  + engine into a worker drawing to an `OffscreenCanvas` takes the heavy first-frame work off the
+  main thread, so the splash / DOM / input never block. This lays the foundation, **off by default**
+  and purely additive — the live app still renders on the main thread, zero behaviour change:
+  - **`docs/offscreen-canvas.md`** — the full scope: the architecture (what moves to the worker vs
+    stays on main), the message protocol, the risks (the Controls surface, canvas readback for
+    Share/clip, input latency, fallback), and a **6-step incremental migration plan** ending in a
+    one-line clean switchover behind a `RenderHost` seam.
+  - **`src/worker/protocol.ts`** — the versioned, typed main↔worker message contract (init / resize /
+    pointer / wheel / control / command / dispose ↔ ready / status / event / error) + runtime guards.
+  - **`src/worker/capability.ts`** — `probeOffscreenEnv` + `canUseOffscreenRendering` (the master
+    gate: false until explicitly enabled *and* fully supported, with a `forceMain` override).
+  - **`src/worker/renderWorker.ts`** — a worker entry **stub** that completes the init → ready
+    handshake (and flags a protocol mismatch), ready for the engine to be moved in.
+  - Unit tests for all three (protocol guards, the capability matrix, the handshake) — the testing
+    system the incremental build grows against (139 tests total).
+
+  *Next: step 2 — construct the renderer + raymarch on the transferred canvas in the worker, behind
+  the flag, A/B against the main-thread path.*
+
 ## 0.35.x — the rip wraps the horizon
 
 - **0.35.1** — **Codebase tune-up.** A read-through audit found the codebase already clean (no dead

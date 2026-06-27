@@ -72,7 +72,9 @@ Mostly it's *already* multi-threaded — which is why "just thread it" isn't the
   renderer supports OffscreenCanvas, but it's an **L-effort architectural change** (the renderer,
   loop, resolution scaler and every uniform write move to the worker; scene/UI state crosses a
   message boundary) and it risks the same render/sim desync a physics Worker would. It's the right
-  big swing for 1.0 — not a patch.
+  big swing for 1.0 — not a patch. **Scaffolding started (v0.36.0)** — see
+  [`offscreen-canvas.md`](offscreen-canvas.md) for the full scope, the typed main↔worker message
+  protocol, and the 6-step incremental migration plan (build behind a flag, then a clean switchover).
 
 ### What v0.32.1 did (the cheap masking lever) + the tuning dials, defined
 
