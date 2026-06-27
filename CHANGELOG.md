@@ -3,6 +3,27 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.33.x — intro polish: anti-aliasing + a longer, deeper reveal
+
+- **0.33.0** — **Anti-aliased render, a deeper + longer intro reveal, and staggered creation ticks.**
+  Three intro/quality passes off the latest screen recording:
+  - **Anti-aliasing.** The raymarch renders below native (dynamic resolution, then CSS-upscaled), so
+    the photon ring and shadow rim stair-stepped — a low-res "pixel" look at the settled view. Added
+    an **FXAA** pass to the post pipeline (`PostPipeline.ts`): one cheap full-screen luma-edge blend
+    that smooths those edges (and softens the reveal too).
+  - **Deeper + longer reveal.** The splash→engine takeover is the heaviest the app gets and the lag
+    was still showing. Cut the reveal resolution **deeper** (high `introScale 0.30 → 0.22`, med
+    `0.27 → 0.20`, low `0.24 → 0.18`) and — instead of letting the scaler snap back to full the
+    instant frames have headroom — **ramp the ceiling** (`scaler.maxScale`) from the deep cut up to
+    native **over ~10 s** with an ease-in, so the image sharpens *gradually* across the whole
+    takeover, masked by the (now `2 → 8 s`) warm-fuzzy haze. The reveal owns the deep cut;
+    steady-state is unchanged.
+  - **Staggered creation ticks.** The seeded stars (and planets) share an appear window, so their
+    birth ticks landed on the same frame and stacked into one mark. The `BirthTicker` now spaces them
+    ~`0.22 s` apart, so the first stars and planets read as **separate events** on the history bar.
+  - Verified in Chromium: the FXAA pipeline compiles, the reveal ceiling ramps `0.22 → 1` over ~10 s,
+    and the six births land at six distinct frames.
+
 ## 0.32.x — the stream feeds the disk (roadmap #8)
 
 - **0.32.1** — **Smoother first-load reveal + plunge fine-tuning.** Two tuning passes:

@@ -130,10 +130,20 @@ async function main(): Promise<void> {
     if (scaler.scale > introScale) {
       scaler.scale = introScale;
       scaler.minScale = introScale; // let the floor follow the reveal down (restored as it climbs back)
+      scaler.maxScale = introScale; // …and pin the ceiling there too; the reveal ramp lifts it (below)
       scaler.resetSmoothing(); // don't let the prior full-res frame times drag it down further
       applySize();
     }
   };
+  // The intro reveal **resolution ramp**: rather than let the scaler snap back to full the instant
+  // frames have headroom, hold the deep `introScale` cut and lift the ceiling (`scaler.maxScale`)
+  // back to native over ~`INTRO_REVEAL_S`, so the image *sharpens gradually* across the whole heavy
+  // takeover window — masked by the (now longer) warm-fuzzy haze. `introRevealT` is seconds since the
+  // reveal began (-1 = idle); ticked in the loop. Tuning levers: how long → `INTRO_REVEAL_S`; how it
+  // paces → the `x*x` ease below; how deep it starts → `introScale` (quality.ts); the haze over it →
+  // `FUZZ_FADE_S`.
+  const INTRO_REVEAL_S = 10;
+  let introRevealT = -1;
 
   // The load splash (built by the inline window.__ospSplash in index.html). We
   // *hide* rather than remove it, so "Replay intro" can rebuild + replay it; the
@@ -143,6 +153,7 @@ async function main(): Promise<void> {
   const dismissSplash = (): void => {
     splash?.classList.add('osp-splash--hide');
     armIntroScale(); // the reveal + settle is the heaviest the engine gets — start cheap, then climb
+    introRevealT = 0; // begin the resolution ramp (+ the haze fade) over the takeover window
     uniforms.fuzz.value = 1; // …and reveal it "warm and out of focus", easing to reality in the loop
   };
   // Crossfade out only once the merger has had its minimum time on screen,
@@ -292,13 +303,26 @@ async function main(): Promise<void> {
   let warmFrames = 0;
   const WARM_FRAMES = 5;
   // How long the warm-fuzzy reveal veil takes to ease from full (at the reveal) to
-  // nothing — roughly the window the ResolutionScaler needs to climb back from the
-  // (now deeper) low intro scale to steady-state, so the warmth fades as the image
-  // sharpens. Lengthened with the deeper resolution cut so the haze covers the whole
-  // longer climb (the second half of the splash→engine tuning lever).
-  const FUZZ_FADE_S = 3.0;
+  // nothing — paced to the resolution ramp (`INTRO_REVEAL_S`) so the warmth fades as
+  // the image sharpens across the whole ~10 s takeover. Lengthened again with the
+  // deeper cut + longer ramp (the second half of the splash→engine tuning lever).
+  const FUZZ_FADE_S = 8.0;
 
   loop.onTick = (frameDelta) => {
+    // The intro reveal resolution ramp: hold the deep cut, then lift the scaler's ceiling from
+    // `introScale` back to native over `INTRO_REVEAL_S`, easing in (x*x) so it stays soft early and
+    // sharpens late — the whole heavy takeover masked by the haze. After the window, the scaler owns
+    // the full range again.
+    if (introRevealT >= 0) {
+      introRevealT += frameDelta;
+      const x = Math.min(1, introRevealT / INTRO_REVEAL_S);
+      const introScale = introResolutionScale(activeQuality);
+      scaler.maxScale = introScale + (1 - introScale) * (x * x);
+      if (x >= 1) {
+        scaler.maxScale = 1;
+        introRevealT = -1; // ramp complete — hand the full range back to the adaptive scaler
+      }
+    }
     if (scaler.update(frameDelta)) applySize();
     // The intro dropped the scaler's floor below steady state (a deep, haze-masked reveal cut); once
     // it has climbed back past the tier's own minScale, restore that floor so later under-load
@@ -346,8 +370,9 @@ async function main(): Promise<void> {
     }
 
     updateBodyUniforms(bodyUniforms, scene, formation.progress);
-    // Mark the seeded line-up's "births" on the scrub bar as they swoosh in (re-armed on replay).
-    births.update(formation.progress, () => scene.companions);
+    // Mark the seeded line-up's "births" on the scrub bar as they swoosh in (staggered so each lands
+    // as its own tick; re-armed on replay).
+    births.update(formation.progress, frameDelta, () => scene.companions);
     // The intro drives the camera (controls disabled) until it settles home.
     if (formation.done) rig.update();
     else formation.update(frameDelta);
