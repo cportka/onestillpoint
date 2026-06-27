@@ -25,13 +25,15 @@ import type { Node } from 'three/webgpu';
 import type { BodyUniforms } from '../bodyUniforms';
 import type { BlackHole } from '../../scene/BlackHole';
 import type { Uniforms } from '../uniforms';
-import { segmentHitsStretched } from './bodies';
+import { segmentHitsSphere, streamArcHit } from './bodies';
 import { background } from './background';
 import { mediumDensity, mediumSource, streamFeed } from './medium';
 import { photonAccel, staticObserverRay } from './schwarzschild';
 import { secondaryDisk } from './secondaryDisk';
 
 const MAX_STEPS = 512;
+const STREAM_EMIT = 0.12; // brightness of the additive torn-stream gas (× its HDR colour, per unit length)
+const STREAM_EXT = 0.25; // how much the stream gas occludes (Beer–Lambert) — semi-transparent
 
 /**
  * The black-hole shader. Per-pixel Schwarzschild photon geodesics by RK4
@@ -169,45 +171,45 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
         If(radius.greaterThan(0), () => {
           const center = slot.posRadius.xyz;
           const appear = slot.appear;
-          // Spaghettification: a doomed star/planet is drawn out into a long, thin, tidally
-          // **heated** stream as it falls in. The stream stretches **along the body's path** (its
-          // velocity — the spiral plunge) and **trails behind** it, so it follows the inspiral toward
-          // the horizon rather than spiking radially toward *and* away from the hole; it's blue-white
-          // hot where it is nearest the hole (being devoured) and redshifts + fades as it is finally
-          // taken in. At zero tear the stretch/squash are 1 and the trail offset is 0, so a live body
-          // renders exactly as a plain sphere.
+          // Spaghettification (roadmap #8): a doomed star/planet is torn into a hot stream of gas
+          // that **wraps along its orbital circle**, trailing the body around the hole toward the
+          // horizon — not a radial spike. The body **core shrinks** as it dissolves into the stream;
+          // the stream itself is an additive, semi-transparent emissive **arc** swept along the orbit
+          // (see `streamArcHit`), blue-white hot nearest the hole (being devoured) and redshifting as
+          // it is finally taken in. `tear` 0 → a plain sphere (live body), 1 → a long wrapping rip.
           const absorb = slot.absorb;
-          // Drive the stretch by the *stronger* of the Roche-gated tidal disruption (on approach,
-          // roadmap #8) and the absorb fade — so a star tears into a stream well before the merge,
-          // not just at it. Dramatic: up to ~12× elongation, thinned right down into a filament.
-          const tear = max(absorb, slot.tidal);
-          const axis = slot.streamAxis; // along the body's velocity (the spiral path), set per-frame
-          const stretch = float(1).add(tear.mul(11)); // elongate into a long stream (~12× max)
-          const squash = max(float(0.09), float(1).sub(tear.mul(0.82))); // thin it across into a filament
+          const tear = max(absorb, slot.tidal); // stronger of the Roche-gated approach tear and the absorb fade
           const fade = float(1).sub(smoothstep(float(0.5), float(1), absorb)); // hold, then fade
-          // Trail the stream *behind* the body along its path: offset the ellipsoid centre back along
-          // `axis` so the body sits at the leading tip and the torn debris streams out behind it
-          // (0 offset at zero tear → a centred sphere for a live body).
-          const streamCenter = center.sub(axis.mul(radius.mul(stretch.sub(1))));
-          // Opaque emissive (lensed + occluded by the curved-space march), gated on
-          // `appear` so a body still swooshing in during the intro neither occludes
-          // as a black disc nor flashes at full brightness.
-          If(
-            appear.greaterThan(0.02).and(segmentHitsStretched(pos, newPos, streamCenter, radius, axis, stretch, squash)),
-            () => {
-              // Tidal heating, graded by this sample's distance from the hole (`r`, the ray's radius
-              // where it crosses the stream): the part nearest the hole glows hottest (brighter +
-              // blue-white), the trailing length keeps the body's colour. `inner` is 1 at the merge
-              // radius → 0 at the Roche radius, so the gradient runs the length of the stream.
-              const inner = float(1).sub(smoothstep(float(3), float(14), r));
-              const heat = tear.mul(inner);
-              const heated = mix(slot.color, slot.color.mul(vec3(0.7, 0.85, 1.25)).mul(2.5), heat);
-              const k = float(1).sub(absorb);
-              const redshift = vec3(float(1), k, k.mul(k)); // lose blue, then green as it is absorbed
-              bodyColor.assign(heated.mul(redshift).mul(appear).mul(fade));
-              bodyHit.assign(1);
-            },
-          );
+          // Tidal heating, graded by this sample's distance from the hole (`r`): hottest (brighter +
+          // blue-white) nearest the hole, cooling along the trail; then redshift as it's absorbed.
+          const inner = float(1).sub(smoothstep(float(3), float(14), r));
+          const heat = tear.mul(inner);
+          const heated = mix(slot.color, slot.color.mul(vec3(0.7, 0.85, 1.25)).mul(2.5), heat);
+          const k = float(1).sub(absorb);
+          const redshift = vec3(float(1), k, k.mul(k)); // lose blue, then green as it is absorbed
+          const streamCol = heated.mul(redshift).mul(appear).mul(fade);
+
+          // The wrapping stream — additive glowing gas along the orbital arc, composited front-to-back
+          // like the dust. Only when actually tearing (gated), so live bodies and the default scene
+          // pay nothing here.
+          If(tear.greaterThan(0.02), () => {
+            const mid = mix(pos, newPos, 0.5);
+            const squash = max(float(0.12), float(1).sub(tear.mul(0.7))); // thin the tube as it tears
+            const arcI = streamArcHit(mid, center, slot.streamAxis, radius, tear, squash);
+            If(arcI.greaterThan(0.01), () => {
+              radiance.assign(radiance.add(transmittance.mul(streamCol).mul(arcI).mul(dl).mul(STREAM_EMIT)));
+              transmittance.assign(transmittance.mul(exp(arcI.mul(dl).mul(STREAM_EXT).mul(-1))));
+            });
+          });
+
+          // The body core: an opaque emissive sphere that **shrinks** as it tears (dissolving into the
+          // stream). A robust segment test, so a coarse geodesic step can't skip it; gated on `appear`
+          // so a body still swooshing in during the intro neither occludes as a black disc nor flashes.
+          const bodyR = radius.mul(float(1).sub(tear.mul(0.7)));
+          If(appear.greaterThan(0.02).and(segmentHitsSphere(pos, newPos, center, bodyR)), () => {
+            bodyColor.assign(streamCol);
+            bodyHit.assign(1);
+          });
 
           // A secondary black hole (lensMass > 0) carries its own compact
           // volumetric accretion disk — marched only where the ray crosses its
