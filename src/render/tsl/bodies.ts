@@ -1,5 +1,10 @@
-import { clamp, dot, float, length, max, vec3 } from 'three/tsl';
+import { atan, clamp, cos, cross, dot, float, length, max, normalize, sign, sin, smoothstep, vec3 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
+
+// --- Torn-stream arc (roadmap #8) — tuning dials -------------------------------------------------
+const STREAM_MAX_ARC = 4.5; // radians the stream wraps around the hole at full tear (~260°)
+const STREAM_SPIRAL = 0.05; // gentle outward spiral along the trail (the debris came from further out)
+const STREAM_MIN_TUBE = 0.12; // floor on the tube cross-section (so it never vanishes to a hairline)
 
 /**
  * Whether the segment [a, b] passes within `radius` of `center` — a robust
@@ -20,27 +25,39 @@ export function segmentHitsSphere(
 }
 
 /**
- * Whether the segment hits a prolate **ellipsoid** centred at `center`: a sphere
- * of `radius` stretched by `stretch` along the unit `axis` and squashed by
- * `squash` across it — the tidal "spaghettification" of a body falling in (the
- * axis points along the line to the hole). Warping each point into the frame
- * where the ellipsoid is a unit sphere reduces it to the sphere test above; the
- * warp is linear, so mapping the two endpoints is exact for the closest-approach.
+ * Intensity (0..1) of the **torn-stream arc** at a point `p`: a tube of gas swept along the body's
+ * orbital **circle**, starting at the body and **trailing behind** it (opposite its velocity) by an
+ * arc that grows with `tear`, wrapping the hole and spiralling gently outward — so the rip follows
+ * the event-horizon circle instead of spiking radially. `vel` is the body's velocity (its orbit
+ * tangent); `squash` thins the tube. A cheap point test — use it at a segment midpoint.
+ *
+ * Geometry: in the body's orbital plane (normal `n = center × vel`), `p` has an azimuth measured
+ * from the body; we clamp that azimuth to the trailing arc `[0, tear·MAX_ARC]` (the clamp gives
+ * rounded end-caps), find the point on the (gently spiralling) circle there, and shade by distance
+ * to it. At `tear = 0` the arc is a single point → a plain sphere at the body.
  */
-export function segmentHitsStretched(
-  a: Node<'vec3'>,
-  b: Node<'vec3'>,
+export function streamArcHit(
+  p: Node<'vec3'>,
   center: Node<'vec3'>,
+  vel: Node<'vec3'>,
   radius: Node<'float'>,
-  axis: Node<'vec3'>,
-  stretch: Node<'float'>,
+  tear: Node<'float'>,
   squash: Node<'float'>,
 ) {
-  const warp = (p: Node<'vec3'>): Node<'vec3'> => {
-    const rel = p.sub(center);
-    const along = axis.mul(dot(rel, axis));
-    const perp = rel.sub(along);
-    return along.div(stretch).add(perp.div(squash));
-  };
-  return segmentHitsSphere(warp(a), warp(b), vec3(0), radius);
+  const R = length(center);
+  const u = normalize(center); // radial unit — the body sits at azimuth 0
+  const n = normalize(cross(center, vel).add(vec3(1e-4, 1e-4, 1e-4))); // orbit normal (guarded)
+  const w = normalize(cross(n, u)); // in-plane tangent (increasing azimuth)
+  const trailSign = sign(dot(vel, w)).mul(-1); // the debris trails opposite the motion
+  const dn = dot(p, n);
+  const pPlane = p.sub(n.mul(dn));
+  const ang = atan(dot(pPlane, w), dot(pPlane, u)); // signed azimuth of p from the body
+  const phi = ang.mul(trailSign); // ≥ 0 in the trailing direction
+  const arcLen = tear.mul(STREAM_MAX_ARC);
+  const phiC = clamp(phi, float(0), arcLen); // nearest centreline azimuth (clamp → rounded caps)
+  const Rc = R.mul(float(1).add(phiC.mul(STREAM_SPIRAL))); // spirals gently outward along the trail
+  const dir = u.mul(cos(phiC)).add(w.mul(sin(phiC).mul(trailSign))); // unit dir to the centreline point
+  const dist = length(p.sub(dir.mul(Rc))); // distance to the swept centreline
+  const tubeR = radius.mul(max(squash, float(STREAM_MIN_TUBE)));
+  return smoothstep(tubeR, tubeR.mul(0.4), dist); // 1 in the tube core → 0 at its edge
 }

@@ -3,6 +3,22 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.35.x — the rip wraps the horizon
+
+- **0.35.0** — **The torn stream now wraps along the orbital circle around the hole, not a radial
+  spike.** v0.34.0 pointed the stream along the body's velocity, but late in a plunge that velocity
+  curves radial — so the rip still shot straight out from the hole. Now the stream is a hot **arc of
+  gas swept along the body's orbital circle**: a new `streamArcHit` primitive (`bodies.ts`) — a tube
+  that starts at the body and **trails behind it** (opposite its motion) by an arc that grows with
+  `tear` (up to ~260°), wrapping the hole and spiralling gently outward, staying in the orbital
+  plane. The body **core shrinks** as it dissolves into the stream, and the stream renders as
+  **additive, semi-transparent glowing gas** (composited front-to-back like the dust) — blue-white
+  hot nearest the hole, redshifting as it's taken in. At zero tear the arc collapses to a single
+  point → a plain sphere, so live bodies are unchanged. (Removed the now-unused `segmentHitsStretched`
+  ellipsoid test.) The arc geometry is numerically verified and compiles in Chromium; the wrapping
+  look is art-directed (the Roche trigger remains the only checkable number). Dials:
+  `STREAM_MAX_ARC` / `STREAM_SPIRAL` (`bodies.ts`), `STREAM_EMIT` / `STREAM_EXT` (`raymarch.ts`).
+
 ## 0.34.x — the rip follows the plunge
 
 - **0.34.1** — **More contrast in the settled disk — less milky wash.** The soft gradient was fine but
