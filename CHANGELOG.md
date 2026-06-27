@@ -5,6 +5,14 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.35.x — the rip wraps the horizon
 
+- **0.35.1** — **Codebase tune-up.** A read-through audit found the codebase already clean (no dead
+  code, no stray TODOs, exports documented), so this is a focused **DRY** pass: the CPU-side
+  `smoothstep` was hand-copied in both `Scene.ts` and `bodyUniforms.ts`, and `clamp01` in
+  `Timeline.ts` — all unified into one shared, unit-tested `core/mathUtils.ts` (`clamp` / `clamp01` /
+  `smoothstep`), so the plunge curve, the formation `appearFor`, and the timeline scrub can't drift
+  apart. No behaviour change — the formulas are identical and every existing test still passes (+ new
+  `mathUtils` tests).
+
 - **0.35.0** — **The torn stream now wraps along the orbital circle around the hole, not a radial
   spike.** v0.34.0 pointed the stream along the body's velocity, but late in a plunge that velocity
   curves radial — so the rip still shot straight out from the hole. Now the stream is a hot **arc of
