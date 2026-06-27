@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectQualityTier, introResolutionScale, INTRO_SCALE_DROP, QUALITY_TIERS, type QualityTier } from './quality';
+import { detectQualityTier, introResolutionScale, QUALITY_TIERS, type QualityTier } from './quality';
 
 describe('quality tiers', () => {
   it('orders cost from low to high', () => {
@@ -19,19 +19,19 @@ describe('quality tiers', () => {
 describe('intro resolution ramp', () => {
   const tiers = Object.keys(QUALITY_TIERS) as QualityTier[];
 
-  it('starts the reveal below the tier scale, but never below its floor', () => {
+  it('starts the reveal below the steady-state floor (a deep cut, masked by the haze)', () => {
     for (const tier of tiers) {
       const q = QUALITY_TIERS[tier];
       const start = introResolutionScale(q);
-      expect(start).toBeLessThan(q.scale); // cheaper than steady-state → the reveal is smooth
-      expect(start).toBeGreaterThanOrEqual(q.minScale); // never mushier than the device's own floor
+      expect(start).toBe(q.introScale); // the per-tier reveal scale
+      expect(start).toBeLessThan(q.scale); // much cheaper than steady-state → the reveal is smooth
+      expect(start).toBeLessThanOrEqual(q.minScale); // deliberately at/under the floor (only for the reveal)
+      expect(start).toBeGreaterThan(0.15); // …but not so low it can't be made intentional by the haze
     }
   });
 
-  it('drops by INTRO_SCALE_DROP unless that would cross the floor', () => {
-    for (const tier of tiers) {
-      const q = QUALITY_TIERS[tier];
-      expect(introResolutionScale(q)).toBe(Math.max(q.minScale, q.scale - INTRO_SCALE_DROP));
-    }
+  it('cuts deeper the heavier the tier needs it (ordered with the tiers)', () => {
+    expect(QUALITY_TIERS.low.introScale).toBeLessThan(QUALITY_TIERS.high.introScale);
+    expect(QUALITY_TIERS.medium.introScale).toBeLessThan(QUALITY_TIERS.high.introScale);
   });
 });

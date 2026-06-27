@@ -181,8 +181,8 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
           // not just at it. Dramatic now: up to ~9× elongation, thinned right down into a filament.
           const tear = max(absorb, slot.tidal);
           const axis = normalize(center); // hole (origin) → body: the stretch direction
-          const stretch = float(1).add(tear.mul(8)); // elongate radially into a long stream (~9× max)
-          const squash = max(float(0.1), float(1).sub(tear.mul(0.78))); // thin it across into a filament
+          const stretch = float(1).add(tear.mul(11)); // elongate radially into a long stream (~12× max)
+          const squash = max(float(0.09), float(1).sub(tear.mul(0.82))); // thin it across into a filament
           const fade = float(1).sub(smoothstep(float(0.5), float(1), absorb)); // hold, then fade
           // Opaque emissive (lensed + occluded by the curved-space march), gated on
           // `appear` so a body still swooshing in during the intro neither occludes

@@ -101,8 +101,10 @@ async function main(): Promise<void> {
   // Auto-detect a quality tier for this device and apply it (resolution, dust
   // step, DPR cap). Re-appliable from the Quality panel (Auto / Low / Med / High).
   const autoTier = detectQualityTier();
+  let activeQuality = QUALITY_TIERS[autoTier]; // the tier in force — its minScale is the steady-state floor
   const applyQuality = (tier: QualityTier): void => {
     const q = QUALITY_TIERS[tier];
+    activeQuality = q;
     scaler.scale = q.scale;
     scaler.minScale = q.minScale;
     blackHole.volumeStep.value = q.volumeStep;
@@ -119,10 +121,15 @@ async function main(): Promise<void> {
   // frames *and* the reveal at a lower scale, then let the adaptive ResolutionScaler
   // climb back to full quality as the scene calms (no permanent quality cut; the scaler
   // still drops further if a device genuinely can't keep up). Masked by the crossfade.
-  const introScale = introResolutionScale(QUALITY_TIERS[autoTier]);
+  // Arm the deep intro-reveal resolution cut: drop the scale — and, so it actually *holds* that low
+  // through the heavy reveal, the scaler's floor — to the tier's `introScale` (below the steady-state
+  // minScale). The floor is restored to minScale in the loop once the scaler has climbed back past it,
+  // so the deep cut belongs to the reveal alone. Masked + made intentional by the warm-fuzzy haze.
   const armIntroScale = (): void => {
+    const introScale = introResolutionScale(activeQuality);
     if (scaler.scale > introScale) {
       scaler.scale = introScale;
+      scaler.minScale = introScale; // let the floor follow the reveal down (restored as it climbs back)
       scaler.resetSmoothing(); // don't let the prior full-res frame times drag it down further
       applySize();
     }
@@ -286,11 +293,20 @@ async function main(): Promise<void> {
   const WARM_FRAMES = 5;
   // How long the warm-fuzzy reveal veil takes to ease from full (at the reveal) to
   // nothing — roughly the window the ResolutionScaler needs to climb back from the
-  // low intro scale to steady-state, so the warmth fades as the image sharpens.
-  const FUZZ_FADE_S = 2.0;
+  // (now deeper) low intro scale to steady-state, so the warmth fades as the image
+  // sharpens. Lengthened with the deeper resolution cut so the haze covers the whole
+  // longer climb (the second half of the splash→engine tuning lever).
+  const FUZZ_FADE_S = 3.0;
 
   loop.onTick = (frameDelta) => {
     if (scaler.update(frameDelta)) applySize();
+    // The intro dropped the scaler's floor below steady state (a deep, haze-masked reveal cut); once
+    // it has climbed back past the tier's own minScale, restore that floor so later under-load
+    // behaviour is unchanged — the deep cut was the reveal's alone. A genuinely weak device that
+    // never climbs back there simply keeps the lower floor (correct graceful degradation).
+    if (scaler.minScale < activeQuality.minScale && scaler.scale >= activeQuality.minScale) {
+      scaler.minScale = activeQuality.minScale;
+    }
     // Ease the warm-fuzzy reveal veil out as the scene settles into focus (PostPipeline).
     if (uniforms.fuzz.value > 0) {
       uniforms.fuzz.value = Math.max(0, uniforms.fuzz.value - frameDelta / FUZZ_FADE_S);

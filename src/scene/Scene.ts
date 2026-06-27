@@ -34,10 +34,10 @@ const ABSORB_DURATION = 0.6;
 // merge uses. A long, graceful inspiral (the body reaches the centre in ~0.8 of
 // this, then the absorption fade adds ~ABSORB_DURATION on top). The UI blocks
 // another removal until the whole thing completes.
-const PLUNGE_DURATION = 3.5;
+const PLUNGE_DURATION = 4.5;
 // How many turns the plunge winds as it spirals in — more turns = a less direct,
 // prettier fall (it reads as an inspiral, not a straight dive to the centre).
-const PLUNGE_TURNS = 3.5;
+const PLUNGE_TURNS = 4;
 
 /** Hermite smoothstep, clamped — 0 at edge0, 1 at edge1, eased at both ends. */
 function smoothstep(edge0: number, edge1: number, x: number): number {

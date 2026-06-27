@@ -5,6 +5,22 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.32.x — the stream feeds the disk (roadmap #8)
 
+- **0.32.1** — **Smoother first-load reveal + plunge fine-tuning.** Two tuning passes:
+  - **Boot:** the splash→engine takeover had gotten choppy again — the roadmap-#8 shader growth
+    lengthened the first-load compile and made each frame a touch heavier (*Replay* stays smooth
+    because the pipeline's already warm). Cut the reveal resolution **deeper**: each tier now starts
+    at an explicit `introScale` *below* its steady-state floor (high `0.40 → 0.30`, med `0.36 →
+    0.27`, low `0.30 → 0.24`), the scaler's floor following the reveal down and restored once it
+    climbs back — and **upped the warm-fuzzy haze** that masks it (warmer grade + more glow, fade
+    `2.0 → 3.0 s`). The boot picture and the resolution-ramp / haze **tuning levers** are now written
+    up in the roadmap (item 1) — including why "just multi-thread it" isn't a quick fix (the browser
+    already threads the WGSL compile and the download; the real lever is **OffscreenCanvas + a Web
+    Worker**, an L-effort 1.0 change).
+  - **Plunge:** longer and stretchier — `PLUNGE_DURATION 3.5 → 4.5 s`, `PLUNGE_TURNS 3.5 → 4`, and the
+    torn-stream elongation `~9× → ~12×` (a touch thinner across). The ringdown **glow was too
+    intense** — dialed down to **a quarter** (`RIPPLE_GLOW 0.28 → 0.07`).
+  - Housekeeping: roadmap #8 (TDE) marked **shipped** end-to-end and the Road-to-1.0.0 sequence updated.
+
 - **0.32.0** — **The torn stream now feeds the accretion disk — real mass exchange.** Until now the
   spaghettified stream was a self-contained body effect; the disk it was falling into didn't react.
   Now a star/planet shedding mass within the Roche radius **dumps it into the accretion flow**: a new
