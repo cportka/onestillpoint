@@ -34,44 +34,82 @@ it waits until 1 is solved and gets its own step budget.
 1. **Fix what's broken** — #1 engine-takeover lag · #2 Share → mp4. (Quality gates for any "1.0".)
 2. **Polish + brand** — #3 theme/logo · #4 README live clip · #5 bundle (delivery done; the
    WebGL2-drop lever is optional).
-3. **Cheap dramatic wins** — #6 merger ripple (the two-hole render already exists; the lattice
-   ripple is ~free) → #7 precession (the position-only r⁻³ route is low-risk and validatable).
-4. **Bigger set pieces** — #8 TDE faked stream → #9 swarm / galaxy (the GPU path's payoff).
+3. **Cheap dramatic wins** — #6 merger ripple (✅ shipped v0.27–0.29) → #7 precession (the
+   position-only r⁻³ route is low-risk and validatable).
+4. **Bigger set pieces** — ~~#8 TDE~~ (✅ shipped v0.29–0.32: tear → stream → feed the disk →
+   ringdown) → #9 swarm / galaxy (the GPU path's payoff).
 5. **The trophy, last** — #10 Kerr, only after #1 is solved and behind its own step budget.
 
-Net (from the items-8–11 review): the discipline is all about **#8/Kerr** — it's the one in
-active tension with problem 1. The other three physics items are tractable, and **#7/precession
-is genuinely low-risk once you keep the perturbation position-only** (see its entry).
+Net (from the items-8–11 review): with #8 and the #6 ripple now shipped, the remaining discipline
+is all about **Kerr** — it's the one in active tension with problem 1. The other physics items are
+tractable, and **#7/precession is genuinely low-risk once you keep the perturbation position-only**
+(see its entry).
 
 ---
 
 ## 1. Persistent lag as the physics visualizer takes over  ⚠️ active problem
 
-The single biggest remaining problem. The splash lifts cleanly, but the live
-raymarch engine still **hitches as it takes over** — the camera dolly + disk
-ignition at the reveal (~1–2 s in) is the heaviest the app ever is, and a fresh
-capture still shows sustained heavy frames / a choppy recovery before it settles.
-Three prior passes chipped at it — `compileAsync` pre-warm (v0.17.1), the
-engine-bundle deferral so the prelude runs unstarved (v0.20.2), and the intro
-resolution ramp that starts the reveal cheap and climbs back (v0.21.1) — but the
-takeover itself is not yet smooth.
+The single biggest remaining problem, and it **regressed again** with the roadmap-#8 work
+(v0.29–0.32): the torn-stream + disk-feeding additions grew the raymarch WGSL, so the
+**first-load** shader compile is longer and each live frame is a touch heavier. The tell is sharp —
+**"Replay intro" is smooth and near-flawless** (the pipeline is already compiled and the GPU caches
+are warm), while the **first** splash→engine takeover hitches: the camera dolly + disk ignition at
+the reveal (~1–2 s in) is the heaviest the app ever is, now landing on a cold, first-time pipeline.
 
-- **Effort:** M (could be **L** if the fix is a physics Worker or a per-frame render
-  budget scheduler).
-- **Risks / bugs:** device-dependent and hard to reproduce deterministically; pushing
-  `introResolutionScale` lower trades the hitch for a visibly soft reveal; a physics
-  Worker risks render/sim desync and adds message-passing latency; resetting the
-  scaler's smoothing too aggressively can let it overshoot.
-- **Viz / perf:** the highest-value perf win — it's the first impression. Levers to
-  try: drop the intro-scale floor a touch more and lengthen the climb-back; **stagger
-  the disk-ignition shader cost** over more frames; pre-compile more pipeline
-  permutations under the splash; or **cap raymarch steps for the first N live frames**
-  (a temporary step budget that ramps up as FPS recovers).
-- **Notes:** re-characterize with a *fresh* screen capture on the target Mac before
-  changing dials (the earlier analysis lives in `docs/`). Touches: `src/main.ts`
-  (`armIntroScale`, the pre-warm sequence), `src/core/ResolutionScaler.ts`,
-  `src/core/quality.ts` (`introResolutionScale`), `src/render/RaymarchPass.ts` (a
-  possible step budget), `src/physics/` (a Worker path).
+### Can we multi-thread the first download + load + render?
+
+Mostly it's *already* multi-threaded — which is why "just thread it" isn't the quick fix:
+
+- **Shader compile** — `createRenderPipelineAsync` (what our `compileAsync` pre-warm uses) compiles
+  WGSL on the browser's **GPU-process worker threads**, off our main thread, already. Growing the
+  shader (#8) lengthens that compile, but it's not blocking the main thread.
+- **Download** — the engine chunk is code-split and HTTP/2-multiplexed, and v0.25.1 added a
+  `prefetch` so the bytes land *during* the splash (item 5). Already parallel.
+- **What's left on the single main thread** is JS module eval + scene/pipeline setup and the
+  **first use** of each pipeline (the first draw can still stall while the driver finalises state).
+  The real lever to move *that* off the main thread is **OffscreenCanvas + a Web Worker** — run the
+  whole renderer in a worker so the main thread (splash, DOM, input) never blocks. three.js's WebGPU
+  renderer supports OffscreenCanvas, but it's an **L-effort architectural change** (the renderer,
+  loop, resolution scaler and every uniform write move to the worker; scene/UI state crosses a
+  message boundary) and it risks the same render/sim desync a physics Worker would. It's the right
+  big swing for 1.0 — not a patch.
+
+### What v0.32.1 did (the cheap masking lever) + the tuning dials, defined
+
+Cut the reveal resolution **deeper** and **lengthen the haze** that hides it — two halves of one
+dial. The pieces, so the next tuning pass has one map:
+
+- **Resolution ramp — the "steps".** Each tier now carries an explicit `introScale` *below* its
+  steady-state `minScale` (high `0.40 → 0.30`, med `0.36 → 0.27`, low `0.30 → 0.24`; `quality.ts`).
+  `armIntroScale` (`main.ts`) drops both the scale **and the scaler's floor** to it, so the reveal
+  actually *holds* that low through the heavy frames.
+- **How fast it sharpens.** The `ResolutionScaler` then climbs back at **`+0.07` every `0.4 s`** of
+  frame-time headroom (down-steps are `−0.1`); the floor is restored to the tier `minScale` the
+  moment it has climbed past it — so the deep cut belongs to the reveal alone, and a genuinely weak
+  device that never climbs back simply keeps the lower floor.
+- **How long the haze covers it.** The warm-fuzzy veil (`uniforms.fuzz` → `PostPipeline`) is
+  **stronger** (warmer grade + `+1.1×` bloom glow, was `+0.7×`) and **lingers longer**
+  (`FUZZ_FADE_S` `2.0 → 3.0 s`), so the softer/longer reveal reads as an intentional warm,
+  out-of-focus look the whole way through.
+
+**The dials, in one place:** how *deep* → `introScale` per tier (`quality.ts`); how *fast it
+sharpens* → the `+0.07 / 0.4 s` climb + cooldown (`ResolutionScaler.ts`); how *long the haze masks
+it* → `FUZZ_FADE_S` + the veil strength (`PostPipeline.ts`). Next finer steps to try: make the climb
+**rate a curve** (slow-hold-then-fast) rather than a fixed step, and/or a short **raymarch step
+budget** for the first N live frames that ramps up as FPS recovers.
+
+- **Effort:** S for more dial-tuning of the above; **L** for the real fix (OffscreenCanvas/Worker
+  render, or a per-frame render-budget scheduler).
+- **Risks / bugs:** device-dependent, hard to reproduce deterministically; pushing `introScale`
+  lower trades the hitch for a visibly soft reveal (the haze must keep pace); the OffscreenCanvas
+  move risks render/sim desync + message latency; restoring the scaler floor too eagerly can *pop*
+  the resolution.
+- **Viz / perf:** the highest-value perf win — it's the first impression.
+- **Notes:** re-characterise with a *fresh* screen capture on the target Mac before more dialing
+  (earlier analysis in `docs/`). Touches: `src/main.ts` (`armIntroScale`, the floor restore,
+  `FUZZ_FADE_S`, the pre-warm sequence), `src/core/ResolutionScaler.ts`, `src/core/quality.ts`
+  (`introScale`), `src/render/PostPipeline.ts` (the veil), `src/render/RaymarchPass.ts` (a possible
+  step budget), `src/physics/` (a Worker path).
 
 ## 2. Share saves a PNG, not an mp4  ⚠️ active problem
 
@@ -250,27 +288,21 @@ the trap, not the fix — there's a route that sidesteps it entirely.**
 - **Notes:** Touches: `src/physics/integrators.ts` (`computeAccelerations` — add the r⁻³ term to
   the primary's pull), `scripts/validate-orbit.mjs`.
 
-## 8. Deeper spaghettification / tidal disruption event
+## 8. Deeper spaghettification / tidal disruption event — ✅ shipped (v0.29.0–v0.32.0)
 
-v0.16.0 added a tidal-stretch absorption (the `absorbing` shrink + redshift). A real **TDE** — a
-star pulled into a stream that wraps and feeds the disk, gated by the Roche limit — would be a
-striking set piece. **Mind the trap the old note soft-pedaled.**
+Done end-to-end (see the [CHANGELOG](../CHANGELOG.md)). In four steps: a **Roche-gated `tidal`**
+factor (v0.29.0) tears a star into a **long, blue-hot, tidally-heated stream** (v0.30.0) as it falls
+within the Roche radius; the **−** removal was reworked into a graceful **inspiral** that absorbs
+exactly like a natural merge (v0.29.2); and the stream now **feeds the disk** — `streamFeed` in
+`medium.ts` adds a hot, semi-dense feeding streak (gated on `feedingActive`), i.e. the *honest*
+**(b)** "procedural stream source grafted into the disk" route from the original note, not the faked
+separate volume (v0.32.0). The whole arc reads as one event: **tear → stream → feed the disk →
+absorb → ringdown ripple.** Tuning dials live at the tops of `raymarch.ts` and `medium.ts`.
 
-- **Effort:** M–L — and the *faked* version and the *honest* version are very different projects.
-- **Risks / bugs:** **"feeds the disk" has no coupling point.** The disk is *procedural* —
-  `mediumDensity(pos, time, …)` is evaluated analytically from `fbm`; bodies and disk are marched
-  independently and **never exchange mass**. So feeding it means either **(a)** render a *separate
-  stream volume* that visually fuses with the disk — **faked, tractable**, the place to start — or
-  **(b)** graft a procedural stream **source** into `medium.ts` gated on the body's state (there's
-  a `mediumSource` hook already) — the *honest* version and the real 80% of the work. The stream
-  itself is a particle / zone system the current single-body absorption doesn't model.
-- **Viz / perf:** memorable; moderate — one more marched volume, **bounded** if gated like the
-  existing secondary-disk slab tests.
-- **Science:** the **Roche-gated trigger** is legit (the only checkable number); the
-  stream-feeding-disk is **art-directed**, not accretion modeling. Say so.
-- **Notes:** build the faked stream first; the coupled version is its own project. Touches:
-  `src/scene/Scene.ts` (Roche trigger + stream state), `src/render/tsl/medium.ts` (the stream
-  volume / source), `src/render/tsl/bodies.ts`.
+**What's still open (a smaller future item, if wanted):** the *honest* accretion is still
+art-directed — the **Roche trigger** is the only checkable number, and the stream is a radial streak,
+not a true **particle/zone stream that wraps** the hole before feeding it. A wrapping stream + real
+mass bookkeeping would be its own project; the current look is the intended phenomenological one.
 
 ## 9. Swarm / galaxy mode → let the GPU path finally pay off
 

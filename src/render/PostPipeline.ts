@@ -40,8 +40,11 @@ export function createPostPipeline(
   // The warm, dreamy veil: a warm grade (more red, less blue) plus extra soft glow
   // reused from the bloom (so there's no second blur pass to pay for). The low-res
   // buffer supplies the actual fuzz; this makes it read as warm and out-of-focus.
-  const warm = base.mul(vec3(1.12, 1.0, 0.85));
-  const dreamy = warm.add(bloomPass.mul(0.7));
+  // Strengthened (warmer grade + more glow) so it more fully masks the deeper intro
+  // resolution cut — tune `warm`/the glow multiplier here, paired with `FUZZ_FADE_S`
+  // (how long it lingers) and the tier `introScale` (how soft the reveal starts).
+  const warm = base.mul(vec3(1.16, 1.0, 0.8));
+  const dreamy = warm.add(bloomPass.mul(1.1));
   // mix(base, dreamy, fuzz): fuzz=1 → full warm veil at the reveal; fuzz=0 → base.
   const outputNode = mix(base, dreamy, fuzz);
 

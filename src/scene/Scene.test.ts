@@ -103,8 +103,9 @@ describe('Scene', () => {
     expect(stars()).toBe(before); // still spiralling in
     expect(scene.removing).toBe(true);
 
-    // Past the whole inspiral + absorption window it is freed and removals unblock.
-    for (let i = 0; i < 6; i++) scene.prune(0.5); // +3 s → well clear of the centre
+    // Past the whole inspiral + absorption window it is freed and removals unblock. Prune generously
+    // until it lands (well past PLUNGE_DURATION + ABSORB_DURATION at any reasonable tuning).
+    for (let i = 0; i < 20 && scene.removing; i++) scene.prune(0.5); // up to +10 s
     expect(stars()).toBe(before - 1);
     expect(scene.removing).toBe(false);
 

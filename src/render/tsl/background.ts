@@ -17,7 +17,7 @@ const RIPPLE_TAU = 2.2; // amplitude decay time (s) — the "ringdown" length
 const RIPPLE_WIDTH2 = 0.06; // squared angular half-width of the wavefront band (smaller = tighter ring)
 const RIPPLE_FREQ = 20; // spatial ringing frequency within the band (more = more wave crests)
 const RIPPLE_WARP = 0.022; // radians the sky is dragged at the crest — the distortion (was 0.22 on Lattice)
-const RIPPLE_GLOW = 0.28; // brightness of the faint glow riding the wavefront (was 2.8 on Lattice)
+const RIPPLE_GLOW = 0.07; // brightness of the glow riding the wavefront (¼ of 0.28 — the bright flash was too intense)
 
 /**
  * The global ringdown distortion: warp the sampled sky direction `dir` radially in an expanding,
