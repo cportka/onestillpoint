@@ -24,6 +24,7 @@ export function createBodyUniforms() {
       appear: uniform(1), // formation fade-in 0 → 1, staggered by body type
       absorb: uniform(0), // 0 = live, → 1 as it is absorbed at the centre (shrink + redshift fade)
       tidal: uniform(0), // 0 = whole, → 1 as it is spaghettified falling within the Roche radius
+      streamAxis: uniform(new Vector3(1, 0, 0)), // unit direction of motion — the torn stream stretches along this (the spiral path), not radially
     })),
     // How far the geodesic must integrate to reach the outermost body. 0 when
     // there are no companions, so rays escape at the camera radius (cheaper).
@@ -63,6 +64,7 @@ const clearSlot = (slot: BodyUniforms['slots'][number]): void => {
   slot.appear.value = 0;
   slot.absorb.value = 0;
   slot.tidal.value = 0;
+  slot.streamAxis.value.set(1, 0, 0);
 };
 
 export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, progress = 1): void {
@@ -94,6 +96,13 @@ export function updateBodyUniforms(bodyUniforms: BodyUniforms, scene: Scene, pro
       // stream (holes are compact, so never). Ramps 0→1 across [ROCHE, MERGE].
       const r = p.length();
       slot.tidal.value = body.type === 'hole' ? 0 : smoothstep(TIDAL_ROCHE, TIDAL_MERGE, r);
+      // The torn stream stretches along the body's *path* (its velocity) — so it trails the spiral
+      // plunge instead of spiking radially toward/away from the hole. Unit-normalized; falls back to
+      // the radial direction if the body is ~stationary.
+      const v = body.velocity;
+      const vl = Math.hypot(v.x, v.y, v.z);
+      if (vl > 1e-4) slot.streamAxis.value.set(v.x / vl, v.y / vl, v.z / vl);
+      else slot.streamAxis.value.set(p.x / (r || 1), p.y / (r || 1), p.z / (r || 1));
       maxR = Math.max(maxR, r + body.radius);
       if (body.lensMass > 0) lensing = 1;
       if (slot.tidal.value > 0) feeding = 1; // a body is shedding mass into the disk

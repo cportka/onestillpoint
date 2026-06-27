@@ -3,6 +3,25 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.34.x — the rip follows the plunge
+
+- **0.34.0** — **The torn stream now trails along the spiral plunge path, not radially.** On the
+  recording, the end of a plunge showed the spaghettified body as a bright spike pointing **toward
+  *and* away from** the hole (two redshifted streaks flanking the shadow). That symmetric radial
+  spike *is* the literal tidal stretch — the near side falls faster, the far side lags, so the body
+  is drawn out radially both ways — but it reads oddly and isn't the more dramatic (and also real,
+  at late times) look: debris **sheared along the orbit**, trailing the body as it spirals toward the
+  horizon. So the stream now stretches **along the body's velocity** (its path) and **trails behind**
+  it — the hot leading tip at the body, nearest the hole and being devoured, with the torn debris
+  streaming out behind along the inspiral. Wired by a new per-body `streamAxis` (`bodyUniforms`, the
+  unit velocity direction) used as the stretch axis in the raymarch, with the ellipsoid offset back
+  along it so the body sits at the leading edge (0 offset for a live body → still a plain sphere); the
+  − plunge drives `body.velocity` along the **analytic spiral tangent** (tangential early, curving
+  inward as it dives) so that axis is meaningful, and natural mergers use their physics velocity — so
+  both read the same. Verified in Chromium: the stream axis is now ~77° off radial (was exactly
+  radial). *(Aesthetic, not accretion modelling — the Roche-gated trigger remains the only checkable
+  number.)*
+
 ## 0.33.x — intro polish: anti-aliasing + a longer, deeper reveal
 
 - **0.33.0** — **Anti-aliased render, a deeper + longer intro reveal, and staggered creation ticks.**
