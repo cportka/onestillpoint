@@ -20,28 +20,42 @@ describe('BirthTicker', () => {
     const ticker = new BirthTicker((t) => fired.push(t));
     ticker.arm(lineup());
 
-    ticker.update(0, lineup); // the intro hasn't really begun — nobody is in yet
+    ticker.update(0, 0.3, lineup); // the intro hasn't really begun — nobody is in yet
     expect(fired).toEqual([]);
 
-    ticker.update(0.1, lineup); // still before the stars' half-in point (~0.115)
+    ticker.update(0.1, 0.3, lineup); // still before the stars' half-in point (~0.115)
     expect(fired).toEqual([]);
 
-    ticker.update(0.2, lineup); // the stars have swooshed in; the planets have not (need ~0.36)
+    // The stars are in (planets need ~0.36). Pump frames past the stagger gap to drain them.
+    for (let i = 0; i < 5; i++) ticker.update(0.2, 0.3, lineup);
     expect(count(fired, 'star')).toBe(3);
     expect(count(fired, 'planet')).toBe(0);
 
-    ticker.update(0.4, lineup); // now the planets are in too
+    for (let i = 0; i < 5; i++) ticker.update(0.4, 0.3, lineup); // now the planets are in too
     expect(count(fired, 'planet')).toBe(3);
-
-    ticker.update(1, lineup); // everyone already born — no double-fire
-    expect(fired.length).toBe(6);
+    expect(fired.length).toBe(6); // …and nobody is born twice
   });
 
-  it('never double-fires a body, sweeping the whole intro frame by frame', () => {
+  it('staggers the births — at most one per gap, even when several are eligible at once', () => {
     const fired: BodyType[] = [];
     const ticker = new BirthTicker((t) => fired.push(t));
     ticker.arm(lineup());
-    for (let p = 0; p <= 1.0001; p += 0.02) ticker.update(p, lineup);
+
+    ticker.update(1, 0.05, lineup); // all six eligible, but it's pre-charged → exactly one is born
+    expect(fired.length).toBe(1);
+    ticker.update(1, 0.05, lineup); // +0.05 s (< gap) → held
+    expect(fired.length).toBe(1);
+    ticker.update(1, 0.05, lineup); // +0.05 s (0.10 total, < gap) → still held
+    expect(fired.length).toBe(1);
+    ticker.update(1, 0.2, lineup); // crosses the gap → one more
+    expect(fired.length).toBe(2);
+  });
+
+  it('never double-fires, and drains the whole line-up given enough time', () => {
+    const fired: BodyType[] = [];
+    const ticker = new BirthTicker((t) => fired.push(t));
+    ticker.arm(lineup());
+    for (let i = 0; i < 60; i++) ticker.update(1, 0.1, lineup); // 6 s at full progress
     expect(count(fired, 'star')).toBe(3);
     expect(count(fired, 'planet')).toBe(3);
     expect(fired.length).toBe(6);
@@ -51,13 +65,13 @@ describe('BirthTicker', () => {
     const fired: BodyType[] = [];
     const ticker = new BirthTicker((t) => fired.push(t));
     ticker.arm(lineup());
-    ticker.update(1, lineup); // the whole line-up is born
+    for (let i = 0; i < 30; i++) ticker.update(1, 0.1, lineup); // the whole line-up is born
     expect(fired.length).toBe(6);
 
     // Replay: progress snaps back to the top (a sharp drop) → re-arm with a fresh line-up.
-    ticker.update(0.05, lineup); // re-armed, but 0.05 is before anyone's half-in point
+    ticker.update(0.05, 0.1, lineup); // re-armed, but 0.05 is before anyone's half-in point
     expect(fired.length).toBe(6);
-    ticker.update(1, lineup); // …and the fresh line-up is born again
+    for (let i = 0; i < 30; i++) ticker.update(1, 0.1, lineup); // …and the fresh line-up is born again
     expect(fired.length).toBe(12);
   });
 
@@ -65,7 +79,7 @@ describe('BirthTicker', () => {
     const fired: BodyType[] = [];
     const ticker = new BirthTicker((t) => fired.push(t));
     ticker.arm(lineup());
-    for (let p = 0; p <= 1.0001; p += 0.1) ticker.update(p, lineup);
+    for (let p = 0; p <= 1.0001; p += 0.02) ticker.update(p, 0.1, lineup); // monotonic, ~5 s
     expect(fired.length).toBe(6); // exactly one line-up — no spurious re-arm doubled it
   });
 });

@@ -1,5 +1,6 @@
 import type { Camera, Scene } from 'three';
 import BloomNode, { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { mix, pass, vec3 } from 'three/tsl';
 import { RenderPipeline } from 'three/webgpu';
 import type { WebGPURenderer } from 'three/webgpu';
@@ -46,7 +47,14 @@ export function createPostPipeline(
   const warm = base.mul(vec3(1.16, 1.0, 0.8));
   const dreamy = warm.add(bloomPass.mul(1.1));
   // mix(base, dreamy, fuzz): fuzz=1 → full warm veil at the reveal; fuzz=0 → base.
-  const outputNode = mix(base, dreamy, fuzz);
+  const composed = mix(base, dreamy, fuzz);
+
+  // Anti-alias the result with FXAA. The raymarch renders below native (dynamic resolution, then
+  // CSS-upscaled), so the high-contrast edges — the photon ring, the shadow rim — stair-step and
+  // read as a low-res "pixel" look at the settled view; FXAA's luma-edge blend smooths those for the
+  // cost of one cheap full-screen pass (no extra geometry samples). It also softens the deep-cut
+  // intro reveal. Runs last, on the composed image.
+  const outputNode = fxaa(composed);
 
   const pipeline = new RenderPipeline(renderer);
   pipeline.outputNode = outputNode;

@@ -12,7 +12,10 @@ export class ResolutionScaler {
   enabled = true;
   scale = 1;
   minScale = 0.5;
-  readonly maxScale = 1;
+  /** Ceiling the auto-scaler may climb to. Normally 1 (native); the intro reveal ramps it up from a
+   *  deep cut over the takeover window (see `main.ts`) so the resolution *sharpens gradually* under
+   *  the haze rather than snapping to full the moment frames have headroom. */
+  maxScale = 1;
   /** Frame rate the auto-scaler aims to hold (adjustable in Quality). */
   targetFps = 50;
 
