@@ -7,6 +7,18 @@ export interface RendererBundle {
   backend: 'webgpu' | 'webgl2';
 }
 
+export interface RendererOptions {
+  /** Draw target. Omitted on the main thread (three creates its own canvas, as before); the render
+   *  **worker** passes the transferred `OffscreenCanvas` (see `docs/offscreen-canvas.md`). */
+  canvas?: HTMLCanvasElement | OffscreenCanvas;
+  /** Initial drawing-buffer size. Defaults to the window on the main thread; required in a worker
+   *  (no `window`). */
+  width?: number;
+  height?: number;
+  /** Force the WebGL2 fallback (defaults to the `?webgl` URL flag where a `location` exists). */
+  forceWebGL?: boolean;
+}
+
 /**
  * Create and initialise the renderer.
  *
@@ -14,11 +26,16 @@ export interface RendererBundle {
  * automatically. Append `?webgl` to the URL to force the fallback path — Phase 0
  * acceptance requires confirming *both* that WebGPU is active on a capable
  * browser and that the WebGL2 fallback still renders.
+ *
+ * Pure DOM-free with explicit `canvas`/`width`/`height` (the worker path); with no options it keeps
+ * the original main-thread behaviour (its own canvas, sized to the window).
  */
-export async function createRenderer(): Promise<RendererBundle> {
-  const forceWebGL = new URLSearchParams(location.search).has('webgl');
+export async function createRenderer(opts: RendererOptions = {}): Promise<RendererBundle> {
+  const forceWebGL =
+    opts.forceWebGL ?? (typeof location !== 'undefined' && new URLSearchParams(location.search).has('webgl'));
 
   const renderer = new WebGPURenderer({
+    canvas: opts.canvas, // undefined on main → three creates its own canvas (unchanged)
     // The image is shader-generated, so there are no polygon edges to MSAA —
     // disabling antialias saves memory (matters on iOS Safari).
     antialias: false,
@@ -30,7 +47,9 @@ export async function createRenderer(): Promise<RendererBundle> {
   // ResolutionScaler), so keep the renderer's own ratio at 1 to avoid double
   // scaling.
   renderer.setPixelRatio(1);
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  const width = opts.width ?? (typeof window !== 'undefined' ? window.innerWidth : 1);
+  const height = opts.height ?? (typeof window !== 'undefined' ? window.innerHeight : 1);
+  renderer.setSize(width, height, false);
   renderer.setClearColor(0x000000, 1);
 
   // The accretion disk is HDR (relativistic beaming spans a huge dynamic
