@@ -3,6 +3,19 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.39.x — Bodies are absent in history before they're born
+
+- **0.39.0** — **Rewinding before a body's creation tick now shows it *absent*, not still orbiting.**
+  The seeded line-up (3 stars + 3 planets) is created at load, but its creation marks are dropped
+  *later*, staggered, as each body swooshes in during the formation intro — so rewinding to *before*
+  those marks used to still show the bodies orbiting, contradicting the timeline. Now a seeded body
+  starts **unborn**: it renders and orbits during the intro as before, but is **excluded from
+  `History.record`** until its creation tick fires (`BirthTicker` now hands the host the body itself,
+  which `Scene.markBorn` flips to born). So the recorded roster grows body-by-body in lockstep with
+  the ticks, and scrubbing back across a mark drops that body (the roster restore already revives /
+  drops bodies across a change). Verified headless: the recorded window opens with an empty pre-birth
+  span, and a rewind to the start shows **zero** companions, returning to six at the live edge.
+
 ## 0.38.x — Editing while rewound rewrites history from here
 
 - **0.38.0** — **A body change made while you're rewound now commits the timeline from that moment —

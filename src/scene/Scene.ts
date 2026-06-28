@@ -205,12 +205,22 @@ export class Scene {
       radius,
       color,
     };
+    // A *seeded* body starts **unborn**: it renders + orbits during the formation intro, but isn't
+    // recorded onto the history timeline until its creation tick fires (BirthTicker → markBorn), so
+    // rewinding before that tick shows it absent. A user-driven add is born at once (no flag).
+    if (this.seeding) body.unborn = true;
     this.bodies.push(body);
     this.registry.set(body.id, { id: body.id, type, mass, lensMass, radius, color: color.clone() });
     this.physics.bodies = this.bodies;
     this.physics.reset();
     if (!this.seeding) this.onEvent?.(type); // a user-driven add → a timeline event
     return body;
+  }
+
+  /** Mark a seeded body as **born** — it now appears on the recorded timeline (its creation tick has
+   *  fired). Driven by the {@link BirthTicker} as each seeded body swooshes in during the intro. */
+  markBorn(body: Body): void {
+    body.unborn = false;
   }
 
   /** Make the movable roster *exactly* match `ids` (in order): revive any that were absorbed/removed

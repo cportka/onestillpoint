@@ -36,4 +36,10 @@ export interface Body {
   plunging?: number;
   /** Position captured when the plunge began — the start of the inward path. */
   plungeFrom?: Vector3;
+  /** True for a *seeded* body that has not yet been "born" onto the history timeline — it renders
+   *  (it's swooshing in during the formation intro) and is stepped by the physics, but is **excluded
+   *  from `History.record`** until its creation tick fires (see {@link BirthTicker}). So rewinding to
+   *  before a body's birth marker shows it *absent*, not orbiting. Cleared by `Scene.markBorn`.
+   *  Undefined for user-added bodies (born the instant they're added). */
+  unborn?: boolean;
 }

@@ -18,6 +18,7 @@ import { RaymarchPass } from './render/RaymarchPass';
 import { createBlackHoleNode } from './render/tsl/raymarch';
 import { createUniforms } from './render/uniforms';
 import { Scene } from './scene/Scene';
+import type { Body } from './scene/Body';
 import { createHud, showFatalError } from './ui/hud';
 import { createClipRecorder } from './ui/clipRecorder';
 import { createHistoryBar, EventLog } from './ui/historyBar';
@@ -228,10 +229,14 @@ async function main(): Promise<void> {
     // A body reaching the centre is a merger — fire the spacetime ringdown ripple (Lattice sky).
     if (type === 'absorb') uniforms.ripple.value = 0;
   };
-  // The seeded line-up is created silently, so the first stars and planets would never mark the
-  // timeline. This drops a creation tick for each as it swooshes in during the intro (and re-arms
-  // on replay) — firing the same `onEvent` a user-driven add would. Armed with the current seed.
-  const births = new BirthTicker((type) => scene.onEvent?.(type));
+  // The seeded line-up is created silently (and starts *unborn* — rendered but not yet on the
+  // recorded timeline). This drops a creation tick for each as it swooshes in during the intro (and
+  // re-arms on replay): it fires the same `onEvent` a user-driven add would *and* marks the body born,
+  // so it's recorded from here on — rewinding before its tick now shows it absent. Armed with the seed.
+  const births = new BirthTicker<Body>((body) => {
+    scene.markBorn(body);
+    scene.onEvent?.(body.type);
+  });
   births.arm(scene.companions);
   // While the user drags the bar we freeze the sim (no stepping / recording / replay-advance, in
   // the loop) so the physics doesn't walk the bodies off the restored frame mid-scrub. A transient

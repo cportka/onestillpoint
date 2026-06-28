@@ -144,4 +144,19 @@ describe('History', () => {
     expect(h.length).toBe(0);
     expect(h.peek(0)).toBeNull();
   });
+
+  it('skips unborn bodies — a seeded body joins the recorded roster only once born', () => {
+    const h = new History(8);
+    const primary = body(0, new Vector3(), new Vector3(), true);
+    const star = { ...body(1, new Vector3(5, 0, 0), new Vector3()), unborn: true };
+    const bodies = [primary, star];
+    h.record(bodies); // unborn → excluded from the snapshot
+    expect(Array.from(h.peek(0)!.ids)).toEqual([]); // empty movable roster — absent on a rewind here
+    const g0 = h.currentGeneration;
+    star.unborn = false; // its creation tick fired (markBorn)
+    h.record(bodies);
+    expect(Array.from(h.peek(0)!.ids)).toEqual([1]); // now in the roster…
+    expect(h.peek(0)!.state[0]).toBe(5);
+    expect(h.currentGeneration).toBe(g0 + 1); // …and the birth reads as a roster change (new generation)
+  });
 });
