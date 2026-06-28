@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.36.x — OffscreenCanvas foundation (roadmap #1)
 
+- **0.36.2** — **Less periodic main-thread work in the history bar (the stutter shows on desktop
+  too).** The scrub bar rebuilt **all** its event ticks from scratch every refresh —
+  `replaceChildren()` + new `<div>`s + an array allocation, **~10×/s** — i.e. DOM churn + a container
+  reflow on a regular cadence, on *every* platform (the resolution-scaler resize from 0.36.1 is the
+  GPU-bound half; this is the main-thread half). Now it **reuses a pool of tick nodes** (updates the
+  live ones in place, parks the surplus with `display:none` — no create/destroy on the hot path) and
+  refreshes them **~5×/s** instead of 10 (the ticks drift sub-pixel per frame as the 2-min window
+  scrolls, so there's nothing to gain from refreshing every frame). New reuse test. *The deeper fix
+  for the cold-start lag is still the OffscreenCanvas move — in progress.*
+
 - **0.36.1** — **Fixed the periodic post-load stutter — the dynamic-resolution scaler was thrashing
   the pipeline rebuild.** Every scale change calls `applySize()`, which resizes the drawing buffer
   *and rebuilds the post-pipeline targets* (bloom + FXAA) — a real GPU hitch on a phone. The old
