@@ -61,7 +61,12 @@ export interface ClipRecorder {
 }
 
 const SIZE = 720; // 720×720 square
-const FPS = 30;
+// Capture rate for the rolling share clip. Each captured frame is a `drawImage` off the live
+// WebGPU canvas (a GPU→CPU read) plus a VideoEncoder.encode — real per-capture cost on the main
+// thread, so on a phone a high rate shows up as a regular-cadence stutter. 20 fps is plenty for a
+// short looping share clip and a third cheaper than 30. (The proper fix moves this into the render
+// worker — see docs/offscreen-canvas.md.)
+const FPS = 20;
 const BITRATE = 5_000_000; // ~5 Mbps — plenty for 720p square
 const WINDOW_MS = 5000; // keep ~the last 5 seconds
 const KEYFRAME_MS = 1000; // force a keyframe ~every second (tight rolling-window start)
