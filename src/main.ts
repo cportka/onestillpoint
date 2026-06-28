@@ -216,9 +216,15 @@ async function main(): Promise<void> {
     history.restore(frame, scene.bodies);
   };
   const timeline = new Timeline(history, applyFrame);
+  // A user edit (add / − removal / clear) made *while scrubbed back* rewrites history from here:
+  // commit() makes the scrubbed moment the new live edge and discards the recorded future; we then
+  // drop that future's now-orphaned event ticks. Fired *before* the edit applies. At the live edge
+  // (the common case) commit() is a no-op and history simply extends as before.
+  scene.onUserEdit = () => {
+    if (timeline.commit()) events.dropFrom(history.recorded);
+  };
   scene.onEvent = (type) => {
     events.add(type, history.recorded);
-    timeline.reset();
     // A body reaching the centre is a merger — fire the spacetime ringdown ripple (Lattice sky).
     if (type === 'absorb') uniforms.ripple.value = 0;
   };

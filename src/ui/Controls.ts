@@ -207,6 +207,7 @@ export function createControls(ctx: {
 
   const actions = {
     clear: () => {
+      scene.onUserEdit?.(); // a clear while scrubbed also commits history from here (then drops all)
       scene.clearCompanions();
       physics.syncBodies();
       refreshAll();

@@ -131,4 +131,26 @@ describe('Timeline', () => {
     expect(t.live).toBe(true);
     expect(t.currentPos).toBe(1);
   });
+
+  it('commit() makes the scrubbed moment the new live edge and discards the recorded future', () => {
+    const { history, a, applyFrame } = recorded(6); // a.x = 0..5, length 6
+    const t = new Timeline(history, applyFrame);
+    t.stepBack(3); // park on the x=2 frame (offset 3)
+    expect(t.live).toBe(false);
+    const marker = a.position.x; // = 2
+    expect(t.commit()).toBe(true);
+    expect(t.live).toBe(true); // snapped to the live edge…
+    expect(t.currentPos).toBe(1);
+    expect(history.length).toBe(marker + 1); // …and the future past the marker is gone (frames 0..2)
+    expect(history.peek(0)!.state[0]).toBe(marker); // the live edge is now the marker frame
+  });
+
+  it('commit() is a no-op at the live edge (returns false, discards nothing)', () => {
+    const { history, applyFrame } = recorded(5);
+    const t = new Timeline(history, applyFrame);
+    expect(t.live).toBe(true);
+    expect(t.commit()).toBe(false);
+    expect(history.length).toBe(5);
+    expect(t.live).toBe(true);
+  });
 });

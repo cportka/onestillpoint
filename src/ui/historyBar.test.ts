@@ -36,6 +36,15 @@ describe('EventLog', () => {
     log.clear();
     expect(log.inWindow(0, 10)).toEqual([]);
   });
+
+  it('dropFrom(at) drops events at that frame or newer — the discarded future on a commit', () => {
+    const log = new EventLog();
+    log.add('star', 5);
+    log.add('planet', 8); // exactly at the cut → dropped
+    log.add('absorb', 12); // after the cut → dropped
+    log.dropFrom(8);
+    expect(log.inWindow(0, 20).map((e) => e.type)).toEqual(['star']); // only the at<8 event survives
+  });
 });
 
 describe('HistoryBar', () => {
