@@ -125,22 +125,33 @@ export function createHistoryBar(opts: {
     fill.style.left = `${pos * 100}%`;
   };
 
+  // Reused tick nodes — never `replaceChildren()` + recreate per refresh. That rebuild ran ~10×/s
+  // and, with the whole event set rebuilt each time, churned the DOM (alloc + a container reflow) on
+  // a regular cadence — a cross-platform main-thread stutter. Instead we keep a pool, update the
+  // live ones in place, and hide the rest (no node create/destroy on the hot path).
+  const eventPool: HTMLDivElement[] = [];
   const renderEvents = (): void => {
     const len = history.length;
     const minAt = history.recorded - len; // oldest frame's absolute index
     const maxAt = history.recorded - 1; // newest (now)
     const start = startPos(); // left of here is older history the current layout can't restore
-    eventsEl.replaceChildren();
-    for (const e of events.inWindow(minAt, maxAt)) {
-      const tick = document.createElement('div');
+    const inWin = events.inWindow(minAt, maxAt);
+    for (let i = eventPool.length; i < inWin.length; i++) {
+      const tick = document.createElement('div'); // grow the pool only when more events than ever appear
+      eventsEl.appendChild(tick);
+      eventPool.push(tick);
+    }
+    for (let i = 0; i < inWin.length; i++) {
+      const e = inWin[i]!;
+      const tick = eventPool[i]!;
       // Events before the rewind limit are *locked* (can't scrub to them) — dim them so the
       // bright, scrubable span reads as "live history" against the dim "no-history" past.
       tick.className = e.pos < start - 1e-3 ? 'osp-history__event osp-history__event--locked' : 'osp-history__event';
       tick.style.left = `${e.pos * 100}%`;
-      const c = EVENT_COLOR[e.type];
-      tick.style.setProperty('--osp-ev', c);
-      eventsEl.appendChild(tick);
+      tick.style.setProperty('--osp-ev', EVENT_COLOR[e.type]);
+      tick.style.display = '';
     }
+    for (let i = inWin.length; i < eventPool.length; i++) eventPool[i]!.style.display = 'none'; // park the rest
   };
 
   const posFromEvent = (e: PointerEvent): number => {
@@ -191,7 +202,9 @@ export function createHistoryBar(opts: {
     tick(): void {
       if (!visible) return;
       setHead(currentPos()); // every frame — smooth as the marker rides "now" or replays forward
-      if (frames++ % 6 === 0) {
+      // The event ticks + start marker drift only as the ~2-min window scrolls (sub-pixel per frame),
+      // so refresh them a few times a second, not every frame — less periodic main-thread work.
+      if (frames++ % 12 === 0) {
         setStart(startPos()); // the rewind limit moves slowly (body-set changes / window eviction)
         renderEvents();
       }

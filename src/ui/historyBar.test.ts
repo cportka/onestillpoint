@@ -71,6 +71,27 @@ describe('HistoryBar', () => {
     bar.dispose();
   });
 
+  it('reuses tick nodes across refreshes — no stale ticks, no per-frame node churn', () => {
+    const events = new EventLog();
+    events.add('star', 5);
+    events.add('absorb', 6);
+    events.add('escape', 7);
+    const bar = createHistoryBar({ ...opts(), events });
+    bar.setVisible(true);
+    expect(document.querySelectorAll('.osp-history__events > div').length).toBe(3); // 3 nodes created
+
+    // Fewer events now (eviction / Replay clear): the surplus nodes must be reused + hidden, not
+    // left as stale ticks and not destroyed/recreated.
+    events.clear();
+    events.add('hole', 6);
+    bar.tick(); // drives a throttled refresh (renderEvents runs on the first tick)
+
+    const nodes = [...document.querySelectorAll<HTMLElement>('.osp-history__events > div')];
+    expect(nodes.length).toBe(3); // same 3 nodes — reused, not recreated
+    expect(nodes.filter((n) => n.style.display !== 'none').length).toBe(1); // only the live event shows
+    bar.dispose();
+  });
+
   it('locks (dims) event ticks that fall before the rewind limit', () => {
     const events = new EventLog();
     events.add('absorb', 2); // pos ≈ 0.22 across the 10-frame window — before startPos 0.5 → locked
