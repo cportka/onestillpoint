@@ -21,6 +21,7 @@ import { Scene } from './scene/Scene';
 import type { Body } from './scene/Body';
 import { createHud, showFatalError } from './ui/hud';
 import { createClipRecorder } from './ui/clipRecorder';
+import { recordCanvasClip } from './ui/recordClip';
 import { createHistoryBar, EventLog } from './ui/historyBar';
 import { canUseOffscreenRendering, probeOffscreenEnv } from './worker/capability';
 
@@ -290,14 +291,19 @@ async function main(): Promise<void> {
   const captureShare = async (): Promise<File | null> => {
     if (clip?.ready) {
       const file = await clip.takeClip();
-      if (file) return file; // the rolling mp4 clip
-      console.warn('[onestillpoint] Share: clip was ready but takeClip() produced no mp4 — sending a still.', clip.status);
+      if (file) return file; // the rolling mp4 clip (preferred — ends at ~now, true "last 5 s")
+      console.warn('[onestillpoint] Share: clip was ready but takeClip() produced no mp4 — recording live.', clip.status);
     } else if (clip) {
-      // The desktop "still a PNG" case: say *why* (no encoder / not buffered yet / no avcC) so
-      // it's diagnosable from the console instead of a silent fallback.
-      console.warn('[onestillpoint] Share: no mp4 clip available yet — sending a still.', clip.status);
+      // The "still a PNG" case: say *why* (no encoder / not buffered yet / no avcC) so it's
+      // diagnosable from the console (also `osp.clip.status`) instead of a silent fallback.
+      console.warn('[onestillpoint] Share: no rolling mp4 yet — recording live instead.', clip.status);
     }
-    const blob = await captureFrame(); // fallback: a still PNG of the current frame
+    // Animation-preserving fallback: record a short clip straight off the canvas (MediaRecorder +
+    // captureStream) — works where the rolling WebCodecs encoder can't (no H.264/AV1, or no avcC).
+    // mp4 where the browser records H.264, else WebM; either way an animation rather than a still.
+    const animated = await recordCanvasClip(renderer.domElement);
+    if (animated) return animated;
+    const blob = await captureFrame(); // last resort: a still PNG of the current frame
     return blob ? new File([blob], 'onestillpoint.png', { type: 'image/png' }) : null;
   };
 
@@ -439,7 +445,7 @@ async function main(): Promise<void> {
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline, events },
+    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline, events, clip },
   });
 }
 

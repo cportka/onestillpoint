@@ -12,7 +12,8 @@
  * animation when the share sheet isn't available.
  *
  * `capture` (from main.ts) returns the share-ready File: the rolling mp4 clip where the
- * platform can encode H.264, otherwise a still PNG of the current frame.
+ * platform can encode H.264; otherwise a short clip recorded live off the canvas (mp4 or WebM,
+ * via MediaRecorder); and only if even that can't record, a still PNG of the current frame.
  */
 export function createShareButton(capture: () => Promise<File | null>): HTMLButtonElement {
   const button = document.createElement('button');
