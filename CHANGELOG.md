@@ -5,6 +5,24 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.39.x — Bodies are absent in history before they're born
 
+- **0.39.1** — **Share no longer falls back to a still PNG — it records a live clip instead
+  (roadmap #2).** The rolling share clip is a WebCodecs **mp4**, which only materialises when the
+  browser has an H.264/AV1 *encoder* **and** that encoder emits the `avcC` decoder config — and on
+  many real browsers neither holds (no H.264 encoder, or a hardware H.264 encoder that omits `avcC`),
+  so the clip never became ready and Share silently shared a **still PNG** on both mobile and desktop.
+  Now, when the rolling mp4 isn't available, Share records a short clip straight off the canvas with
+  **`MediaRecorder` + `canvas.captureStream()`** (`recordClip.ts`): `captureStream` taps the
+  compositor (no fragile per-frame `drawImage` of the WebGPU canvas) and `MediaRecorder` muxes the
+  container itself (no `avcC` dependency), so it produces an **animation** where the encoder path
+  can't — an mp4 where the browser records H.264 (Safari / iOS, modern Chrome), otherwise a WebM. A
+  still PNG is now only the *last* resort (a platform that can't record the canvas at all). The
+  recorder is also exposed at `osp.clip.status` so the exact fallback reason is checkable on a real
+  device. *Verified headless: `recordCanvasClip` produces a real animated WebM (honest mp4→WebM MIME
+  selection); the WebGPU-canvas `captureStream` itself can't be exercised on this headless GPU
+  (swiftshader) but is a standard API on real hardware.*
+
+
+
 - **0.39.0** — **Rewinding before a body's creation tick now shows it *absent*, not still orbiting.**
   The seeded line-up (3 stars + 3 planets) is created at load, but its creation marks are dropped
   *later*, staggered, as each body swooshes in during the formation intro — so rewinding to *before*
