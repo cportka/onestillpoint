@@ -88,6 +88,7 @@ export class History {
     for (let i = 0; i < bodies.length && n < SLOTS; i++) {
       const b = bodies[i]!;
       if (b.fixed) continue;
+      if (b.unborn) continue; // a seeded body not yet born onto the timeline — recorded from its birth
       this.ids[base + n] = b.id;
       const o = (base + n) * STRIDE;
       this.state[o] = b.position.x;
@@ -172,7 +173,7 @@ export class History {
 
   private idsChanged(bodies: Body[]): boolean {
     const ids: number[] = [];
-    for (const b of bodies) if (!b.fixed) ids.push(b.id);
+    for (const b of bodies) if (!b.fixed && !b.unborn) ids.push(b.id); // unborn bodies aren't in the roster yet
     let changed = ids.length !== this.prevIds.length;
     if (!changed) for (let i = 0; i < ids.length; i++) if (ids[i] !== this.prevIds[i]) { changed = true; break; }
     this.prevIds = ids;

@@ -25,16 +25,17 @@ const BIRTH_GAP_S = 0.22;
  * It **re-arms on replay**: when `progress` drops sharply (the formation restarting from the top
  * with a fresh line-up), it re-pulls the seed and starts over.
  */
-export class BirthTicker {
-  private pending: Bornable[] = [];
+export class BirthTicker<B extends Bornable = Bornable> {
+  private pending: B[] = [];
   private lastProgress = 0;
   private sinceLast = BIRTH_GAP_S; // pre-charged so the first eligible body is born immediately
 
-  /** @param emit fire a creation event for `type` (wire to `scene.onEvent`). */
-  constructor(private readonly emit: (type: BodyType) => void) {}
+  /** @param emit fire a creation event for a born body — wire to `scene.onEvent` *and* mark the body
+   *  born (it gets the whole bornable, not just its type, so the host can do both). */
+  constructor(private readonly emit: (born: B) => void) {}
 
   /** Arm (or re-arm) with the line-up to watch — the seed bodies, in seed order. */
-  arm(seed: readonly Bornable[]): void {
+  arm(seed: readonly B[]): void {
     this.pending = seed.slice();
     this.sinceLast = BIRTH_GAP_S;
   }
@@ -46,7 +47,7 @@ export class BirthTicker {
    * half-in point — **at most one per `BIRTH_GAP_S`**, so the otherwise-simultaneous arrivals land as
    * separate, cleanly-spaced ticks on the timeline (stars before planets, in seed order).
    */
-  update(progress: number, dt: number, reseed: () => readonly Bornable[]): void {
+  update(progress: number, dt: number, reseed: () => readonly B[]): void {
     // A sharp drop in progress = the formation restarted (replay) — re-arm with the fresh line-up.
     if (progress < this.lastProgress - 0.4) this.arm(reseed());
     this.lastProgress = progress;
@@ -54,7 +55,7 @@ export class BirthTicker {
     if (this.sinceLast < BIRTH_GAP_S) return; // hold the stagger gap between births
     for (let i = 0; i < this.pending.length; i++) {
       if (appearFor(this.pending[i]!.type, progress) >= 0.5) {
-        this.emit(this.pending[i]!.type);
+        this.emit(this.pending[i]!);
         this.pending.splice(i, 1);
         this.sinceLast = 0;
         return; // one birth per gap
