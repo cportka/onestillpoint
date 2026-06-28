@@ -21,6 +21,7 @@ import { Scene } from './scene/Scene';
 import { createHud, showFatalError } from './ui/hud';
 import { createClipRecorder } from './ui/clipRecorder';
 import { createHistoryBar, EventLog } from './ui/historyBar';
+import { canUseOffscreenRendering, probeOffscreenEnv } from './worker/capability';
 
 declare global {
   interface Window {
@@ -49,7 +50,40 @@ declare global {
  * is driven directly each frame (ResolutionScaler) and the canvas CSS upscales,
  * so the heavy volume march stays interactive across GPUs.
  */
+/**
+ * The OffscreenCanvas worker render path (off by default — `?worker=1` to opt in; see
+ * `docs/offscreen-canvas.md`). When enabled *and* supported it transfers the canvas to a worker that
+ * runs the renderer off the main thread, and `main()` returns early — the main-thread engine below
+ * never builds. Step 2 renders a **static formed view** in the worker (the off-thread proof); the
+ * dynamics + UI wiring come in later steps. Returns whether it took over.
+ */
+async function tryStartWorkerRender(): Promise<boolean> {
+  const params = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
+  const enabled = params.get('worker') === '1';
+  if (!canUseOffscreenRendering(probeOffscreenEnv(), { enabled })) return false;
+
+  const canvas = document.createElement('canvas');
+  Object.assign(canvas.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', display: 'block' });
+  document.body.appendChild(canvas);
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  const size = () => ({ width: Math.max(1, Math.floor(window.innerWidth * dpr)), height: Math.max(1, Math.floor(window.innerHeight * dpr)), dpr });
+
+  const { startWorkerHost } = await import('./worker/workerHost'); // lazy — keeps the worker out of the default load
+  const host = startWorkerHost(canvas, { ...size(), quality: 'auto' }, {
+    onReady: (workerBackend) => {
+      document.getElementById('osp-splash')?.classList.add('osp-splash--hide');
+      console.info(`[onestillpoint] worker render ready (${workerBackend})`);
+    },
+    onError: (message) => console.error('[onestillpoint] worker render error:', message),
+  });
+  window.addEventListener('resize', () => host.resize(size().width, size().height, dpr));
+  Object.assign(globalThis, { osp: { workerHost: host } });
+  return true;
+}
+
 async function main(): Promise<void> {
+  if (await tryStartWorkerRender()) return; // off by default; the main-thread path below is unchanged
+
   const uniforms = createUniforms();
   const scene = new Scene();
   const blackHole = scene.blackHole;

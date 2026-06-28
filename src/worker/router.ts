@@ -1,0 +1,39 @@
+/**
+ * Pure main→worker message routing for the render worker — separated from the worker entry so it can
+ * be unit-tested without importing the WebGPU engine (three/webgpu). The {@link WorkerEngine} is
+ * injected; the entry (`renderWorker.ts`) wires the real one. See `docs/offscreen-canvas.md`.
+ */
+import { WORKER_PROTOCOL_VERSION, type MainToWorker, type WorkerToMain } from './protocol';
+import type { WorkerEngine } from './workerEngine';
+
+/** Where worker → main messages go. In a real worker this is `self.postMessage`; injectable for tests. */
+export type Post = (message: WorkerToMain) => void;
+
+/**
+ * Handle one main → worker message against `engine`. On `init` it checks the protocol, builds the
+ * engine, and posts `ready` (or `error`); `resize`/`dispose` drive the engine; the rest are no-ops
+ * until later steps wire them.
+ */
+export function handleMessage(msg: MainToWorker, post: Post, engine: WorkerEngine): void {
+  switch (msg.type) {
+    case 'init':
+      if (msg.protocol !== WORKER_PROTOCOL_VERSION) {
+        post({ type: 'error', message: `protocol mismatch: main ${msg.protocol} vs worker ${WORKER_PROTOCOL_VERSION}` });
+        return;
+      }
+      engine
+        .init(msg)
+        .then(({ backend }) => post({ type: 'ready', protocol: WORKER_PROTOCOL_VERSION, backend }))
+        .catch((err: unknown) => post({ type: 'error', message: err instanceof Error ? err.message : String(err) }));
+      return;
+    case 'resize':
+      engine.resize(msg.width, msg.height, msg.dpr);
+      return;
+    case 'dispose':
+      engine.dispose();
+      return;
+    default:
+      // pointer / wheel / control / command — serviced once the engine drives input + settings.
+      return;
+  }
+}

@@ -3,6 +3,23 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.37.x — OffscreenCanvas: the renderer runs off-thread (roadmap #1)
+
+- **0.37.0** — **The renderer now runs in a Web Worker on an OffscreenCanvas — proven end-to-end
+  (step 2, off by default).** This is the real fix for the cold-start lag: with the WebGPU renderer +
+  the heavy raymarch in a worker, the main thread keeps only the DOM / UI / input, so the splash and
+  first frames never block it. Step 2 lands the **render path** behind a flag (`?worker=1`):
+  `createRenderer` now accepts a transferred canvas; `workerEngine` builds the **real raymarch + post**
+  on it and renders a static formed view; a pure message **`router`** (unit-tested with an injected
+  engine) drives it; and `workerHost` (main side) transfers the canvas and relays `ready`/`error`.
+  `main()` early-returns into the worker path **only** when `canUseOffscreenRendering` says so — the
+  default main-thread path is byte-for-byte unchanged. **Verified in Chromium**: with `?worker=1` the
+  worker creates the renderer, compiles the raymarch shader *in the worker*, and posts `ready
+  (webgpu)` — i.e. three.js WebGPU + the heavy shader run off the main thread in this environment,
+  de-risking the whole migration. *Next (steps 3–6): move Scene/physics/loop in, wire input +
+  Controls + the history bar over the protocol, move Share/clip readback worker-side, then flip the
+  default.*
+
 ## 0.36.x — OffscreenCanvas foundation (roadmap #1)
 
 - **0.36.2** — **Less periodic main-thread work in the history bar (the stutter shows on desktop
