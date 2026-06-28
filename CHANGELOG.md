@@ -5,6 +5,23 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.36.x — OffscreenCanvas foundation (roadmap #1)
 
+- **0.36.1** — **Fixed the periodic post-load stutter — the dynamic-resolution scaler was thrashing
+  the pipeline rebuild.** Every scale change calls `applySize()`, which resizes the drawing buffer
+  *and rebuilds the post-pipeline targets* (bloom + FXAA) — a real GPU hitch on a phone. The old
+  scaler hunted up/down around the target (measured **~10 resizes in 8 s**, and on a GPU-bound device
+  it oscillates near the floor indefinitely), so that rebuild fired on a **regular cadence** — the
+  stutter. Now the scaler **converges and freezes**: once it has held a scale for a moment it widens
+  its acceptable frame-time band (only a large, sustained change pays another resize), and it
+  **excludes the post-resize frames from its average** (the rebuild hitch must not read as "too slow"
+  and trigger another resize — a feedback loop). Measured **10 → 1 resizes** over the same window.
+  Also **removed the intro `maxScale` ramp**: it forced ~a resize per climb step *and* did nothing on
+  a GPU-bound phone (no headroom to climb), so it was pure churn — the deep `introScale` cut + the
+  haze still smooth the reveal, and the scaler now climbs naturally and settles (so your hunch that
+  the ramp "wasn't doing anything" was right). And **dropped the rolling-clip capture 30 → 20 fps**
+  (each capture is a GPU read-back + encode on the main thread — a second periodic cost; the real fix
+  moves it into the render worker). New convergence test. *The deeper fix for the cold-start lag is
+  the OffscreenCanvas move (roadmap #1) — continuing.*
+
 - **0.36.0** — **Scaffolding for the OffscreenCanvas + Web Worker render path** — the real fix for
   the first-load takeover lag (the resolution/haze dial-tuning only *masks* it). Moving the renderer
   + engine into a worker drawing to an `OffscreenCanvas` takes the heavy first-frame work off the

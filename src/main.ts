@@ -113,37 +113,24 @@ async function main(): Promise<void> {
   };
   applyQuality(autoTier);
 
-  // ── Intro resolution ramp — smooth the splash→engine handoff ────────────────
-  // The first ~2s the engine is on screen (the dolly + disk ignition as the splash
-  // lifts) is the heaviest it ever is. Starting at the device's steady-state scale makes
-  // the GPU render too-sharp frames it can't hold — the multi-hundred-ms hitch + choppy
-  // 20–30 fps recovery seen in screen recordings. So we render the pre-warm, the covered
-  // frames *and* the reveal at a lower scale, then let the adaptive ResolutionScaler
-  // climb back to full quality as the scene calms (no permanent quality cut; the scaler
-  // still drops further if a device genuinely can't keep up). Masked by the crossfade.
-  // Arm the deep intro-reveal resolution cut: drop the scale — and, so it actually *holds* that low
-  // through the heavy reveal, the scaler's floor — to the tier's `introScale` (below the steady-state
-  // minScale). The floor is restored to minScale in the loop once the scaler has climbed back past it,
-  // so the deep cut belongs to the reveal alone. Masked + made intentional by the warm-fuzzy haze.
+  // ── Intro resolution: a deep cut for the reveal, then the scaler converges ──────────────────────
+  // The splash→engine takeover (the dolly + disk ignition) is the heaviest the app ever is. Arm a
+  // **deep cut**: drop the scale — and, so it actually *holds* that low through the heavy reveal,
+  // the scaler's floor — to the tier's `introScale` (below the steady-state minScale). The floor is
+  // restored to minScale in the loop once the scaler climbs back past it, so the deep cut belongs to
+  // the reveal alone. From there the adaptive `ResolutionScaler` climbs back **as real headroom
+  // allows** and then **freezes** (it no longer forces a `maxScale` ramp — that just thrashed the
+  // pipeline-target rebuild on a regular cadence, and on a GPU-bound device it can't climb at all).
+  // Masked + made intentional by the warm-fuzzy haze.
   const armIntroScale = (): void => {
     const introScale = introResolutionScale(activeQuality);
     if (scaler.scale > introScale) {
       scaler.scale = introScale;
       scaler.minScale = introScale; // let the floor follow the reveal down (restored as it climbs back)
-      scaler.maxScale = introScale; // …and pin the ceiling there too; the reveal ramp lifts it (below)
       scaler.resetSmoothing(); // don't let the prior full-res frame times drag it down further
       applySize();
     }
   };
-  // The intro reveal **resolution ramp**: rather than let the scaler snap back to full the instant
-  // frames have headroom, hold the deep `introScale` cut and lift the ceiling (`scaler.maxScale`)
-  // back to native over ~`INTRO_REVEAL_S`, so the image *sharpens gradually* across the whole heavy
-  // takeover window — masked by the (now longer) warm-fuzzy haze. `introRevealT` is seconds since the
-  // reveal began (-1 = idle); ticked in the loop. Tuning levers: how long → `INTRO_REVEAL_S`; how it
-  // paces → the `x*x` ease below; how deep it starts → `introScale` (quality.ts); the haze over it →
-  // `FUZZ_FADE_S`.
-  const INTRO_REVEAL_S = 10;
-  let introRevealT = -1;
 
   // The load splash (built by the inline window.__ospSplash in index.html). We
   // *hide* rather than remove it, so "Replay intro" can rebuild + replay it; the
@@ -153,7 +140,6 @@ async function main(): Promise<void> {
   const dismissSplash = (): void => {
     splash?.classList.add('osp-splash--hide');
     armIntroScale(); // the reveal + settle is the heaviest the engine gets — start cheap, then climb
-    introRevealT = 0; // begin the resolution ramp (+ the haze fade) over the takeover window
     uniforms.fuzz.value = 1; // …and reveal it "warm and out of focus", easing to reality in the loop
   };
   // Crossfade out only once the merger has had its minimum time on screen,
@@ -303,26 +289,11 @@ async function main(): Promise<void> {
   let warmFrames = 0;
   const WARM_FRAMES = 5;
   // How long the warm-fuzzy reveal veil takes to ease from full (at the reveal) to
-  // nothing — paced to the resolution ramp (`INTRO_REVEAL_S`) so the warmth fades as
-  // the image sharpens across the whole ~10 s takeover. Lengthened again with the
-  // deeper cut + longer ramp (the second half of the splash→engine tuning lever).
-  const FUZZ_FADE_S = 8.0;
+  // nothing — it masks the deep intro-scale cut while the scaler converges. Paced to
+  // the takeover (a few seconds), not the old forced 10 s ramp.
+  const FUZZ_FADE_S = 5.0;
 
   loop.onTick = (frameDelta) => {
-    // The intro reveal resolution ramp: hold the deep cut, then lift the scaler's ceiling from
-    // `introScale` back to native over `INTRO_REVEAL_S`, easing in (x*x) so it stays soft early and
-    // sharpens late — the whole heavy takeover masked by the haze. After the window, the scaler owns
-    // the full range again.
-    if (introRevealT >= 0) {
-      introRevealT += frameDelta;
-      const x = Math.min(1, introRevealT / INTRO_REVEAL_S);
-      const introScale = introResolutionScale(activeQuality);
-      scaler.maxScale = introScale + (1 - introScale) * (x * x);
-      if (x >= 1) {
-        scaler.maxScale = 1;
-        introRevealT = -1; // ramp complete — hand the full range back to the adaptive scaler
-      }
-    }
     if (scaler.update(frameDelta)) applySize();
     // The intro dropped the scaler's floor below steady state (a deep, haze-masked reveal cut); once
     // it has climbed back past the tier's own minScale, restore that floor so later under-load

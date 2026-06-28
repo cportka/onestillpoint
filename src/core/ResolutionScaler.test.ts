@@ -42,6 +42,26 @@ describe('ResolutionScaler', () => {
     expect(s.scale).toBe(s.maxScale);
   });
 
+  it('converges and then stops resizing at steady state (no thrash)', () => {
+    const s = new ResolutionScaler();
+    s.targetFps = 50;
+    s.scale = 0.7;
+    feed(s, 1 / 50, 400); // ~8 s right at the target → it should settle and hold 0.7
+
+    // Now jitter around the target. A hunting scaler would resize every cooldown forever; a
+    // converged one tolerates the jitter and barely moves (each move is an expensive GPU rebuild).
+    let changes = 0;
+    let prev = s.scale;
+    for (let i = 0; i < 600; i++) {
+      s.update(i % 2 === 0 ? 1 / 44 : 1 / 56); // ~50 fps with ±6 fps jitter
+      if (s.scale !== prev) {
+        changes += 1;
+        prev = s.scale;
+      }
+    }
+    expect(changes).toBeLessThanOrEqual(1); // settled → no continuous up/down resizing
+  });
+
   it('resetSmoothing forgets a heavy backlog so a fresh cheap scale climbs back, not down', () => {
     const s = new ResolutionScaler();
     s.targetFps = 50;
