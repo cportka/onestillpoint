@@ -89,6 +89,16 @@ export class Timeline {
     this.offset = 0;
   }
 
+  /** Commit a live edit made *while scrubbed*: make the current (scrubbed) moment the new live edge —
+   *  discard the recorded future, then snap to live. Returns whether anything was discarded (so the
+   *  caller can drop the now-orphaned future events). A no-op returning `false` when already live. */
+  commit(): boolean {
+    if (this.offset === 0) return false;
+    this.history.truncate(this.offset); // discard the recorded future past the marker…
+    this.reset(); // …then snap to the live edge (now the marker frame)
+    return true;
+  }
+
   private restore(): void {
     const frame = this.history.peek(this.offset);
     if (frame) this.applyFrame(frame);

@@ -3,6 +3,19 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.38.x — Editing while rewound rewrites history from here
+
+- **0.38.0** — **A body change made while you're rewound now commits the timeline from that moment —
+  the recorded "future" is discarded and new history builds from here.** Before, if you scrubbed back
+  and added or removed a body, the change applied but the old recorded frames ahead of the marker
+  lingered — scrubbing forward replayed a future that no longer matched. Now any user edit (a `+`
+  add, a `−` removal, or **Clear companions**) made while the scrub bar is rewound treats the current
+  moment as the new live edge: `Timeline.commit()` truncates the recorded future (`History.truncate`),
+  the orphaned event ticks past it are dropped (`EventLog.dropFrom`), and the sim plays on live from
+  there — so a removal's plunge, for instance, animates forward from exactly where you were watching.
+  A new `Scene.onUserEdit` hook fires at the *start* of an edit (before it applies) to drive this; at
+  the live edge (the common case) it's a no-op and history extends as before.
+
 ## 0.37.x — OffscreenCanvas: the renderer runs off-thread (roadmap #1)
 
 - **0.37.0** — **The renderer now runs in a Web Worker on an OffscreenCanvas — proven end-to-end

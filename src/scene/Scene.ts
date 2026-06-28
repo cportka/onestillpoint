@@ -76,6 +76,11 @@ export class Scene {
   /** Fired for a transient event worth marking on the history timeline — a body
    *  added (by type), absorbed at the centre, or flung clear (escaped). */
   onEvent?: (event: SceneEvent) => void;
+  /** Fired **at the start** of a user-initiated body edit (an add, or a − removal's first frame),
+   *  *before* it takes effect — so the host can commit any in-progress history replay: a live edit
+   *  while scrubbed makes the scrubbed moment the new live edge (the recorded future is discarded).
+   *  Distinct from `onEvent` (which marks the moment *after*); the seeded line-up never fires it. */
+  onUserEdit?: () => void;
   /** True while `seed()` populates the default / reseeded line-up, so those bulk adds
    *  don't each fire an `onEvent` (only user-driven adds are timeline events). */
   private seeding = false;
@@ -165,6 +170,9 @@ export class Scene {
     lensMass: number,
     retrograde = false,
   ): Body {
+    // A user-driven add while scrubbed back commits history from the scrubbed moment first (the host
+    // discards the recorded future), so the new body — and the frames that follow — extend from there.
+    if (!this.seeding) this.onUserEdit?.();
     const azimuth = Math.random() * Math.PI * 2;
     const inclination = (Math.random() - 0.5) * 0.6; // modest orbital tilt
     // Place the body *exactly* on the requested orbit radius: folding cos(incl)
@@ -273,6 +281,9 @@ export class Scene {
     for (let i = this.bodies.length - 1; i >= 0; i--) {
       const b = this.bodies[i]!;
       if (!b.fixed && b.type === type && b.plunging === undefined && b.absorbing === undefined) {
+        // Like an add: a − while scrubbed commits history here first, so the plunge plays out *live*
+        // from the scrubbed moment (the recorded future, and anything it would have replayed, is gone).
+        this.onUserEdit?.();
         b.plunging = 0;
         b.plungeFrom = b.position.clone();
         return true;

@@ -139,6 +139,37 @@ export class History {
     this.prevIds = [];
   }
 
+  /** Discard the `dropNewest` most-recent frames — used when a live edit made *while scrubbed* makes
+   *  the scrubbed moment the new live edge: the recorded "future" is thrown away so fresh history
+   *  accrues from here. Rewinds the head, the count, and the monotonic `total` (so logged events stay
+   *  aligned to their frames), and restores `generation`/`prevIds` to the new newest frame — so the
+   *  next `record()` sees the edit's roster change and opens a clean new generation. `dropNewest` is
+   *  clamped to the recorded length. */
+  truncate(dropNewest: number): void {
+    const drop = Math.min(Math.max(0, Math.floor(dropNewest)), this.count);
+    if (drop === 0) return;
+    this.head = (this.head - drop + this.capacity) % this.capacity;
+    this.count -= drop;
+    this.total -= drop;
+    if (this.count > 0) {
+      this.generation = this.gens[this.head]!;
+      this.prevIds = this.idsAt(this.head);
+    } else {
+      this.head = -1;
+      this.prevIds = [];
+    }
+  }
+
+  /** The movable-body ids stored in ring slot `idx`, in order — used to re-seed `prevIds` after a
+   *  truncate so the next record's change-detection compares against the (new) newest frame. */
+  private idsAt(idx: number): number[] {
+    const n = this.counts[idx]!;
+    const base = idx * SLOTS;
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) out.push(this.ids[base + i]!);
+    return out;
+  }
+
   private idsChanged(bodies: Body[]): boolean {
     const ids: number[] = [];
     for (const b of bodies) if (!b.fixed) ids.push(b.id);

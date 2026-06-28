@@ -51,6 +51,12 @@ export class EventLog {
     return out;
   }
 
+  /** Drop events at frame index `at` or newer — the discarded "future" when a live edit made while
+   *  scrubbed makes the current moment the new live edge (see {@link Timeline.commit}). */
+  dropFrom(at: number): void {
+    this.events = this.events.filter((e) => e.at < at);
+  }
+
   clear(): void {
     this.events = [];
   }

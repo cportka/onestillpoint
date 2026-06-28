@@ -96,4 +96,52 @@ describe('History', () => {
     expect(h.length).toBe(4);
     expect(h.restorableLength).toBe(4); // all the same generation
   });
+
+  it('truncate() drops the newest frames and rewinds the live edge (and the monotonic counter)', () => {
+    const h = new History(16);
+    const a = body(1, new Vector3(0, 0, 0), new Vector3());
+    const bodies = [body(0, new Vector3(), new Vector3(), true), a];
+    for (let i = 0; i < 6; i++) {
+      a.position.x = i;
+      h.record(bodies); // x = 0..5
+    }
+    h.truncate(2); // discard x = 4, 5
+    expect(h.length).toBe(4);
+    expect(h.recorded).toBe(4); // rewound too, so event tags stay aligned to their frames
+    expect(h.peek(0)!.state[0]).toBe(3); // the new live edge is the old x=3 frame
+    expect(h.peek(3)!.state[0]).toBe(0); // the oldest is untouched
+    expect(h.peek(4)).toBeNull(); // nothing beyond the rewound window
+  });
+
+  it('truncate() restores change-detection: re-adding a body after it opens a fresh generation', () => {
+    const h = new History(16);
+    const primary = body(0, new Vector3(), new Vector3(), true);
+    const a = body(1, new Vector3(1, 0, 0), new Vector3());
+    const b = body(2, new Vector3(2, 0, 0), new Vector3());
+    h.record([primary, a]);
+    h.record([primary, a]); // generation G, two frames (a only)
+    const g = h.currentGeneration;
+    h.record([primary, a, b]); // added b → generation G+1
+    expect(h.currentGeneration).toBe(g + 1);
+    h.truncate(1); // discard the (a, b) frame — back to the a-only layout at the edge
+    expect(h.length).toBe(2);
+    expect(h.currentGeneration).toBe(g); // generation restored to the new newest frame
+    h.record([primary, a]); // same layout → no bump
+    expect(h.currentGeneration).toBe(g);
+    h.record([primary, a, b]); // re-adding b is detected (prevIds were restored) → a new generation
+    expect(h.currentGeneration).toBe(g + 1);
+  });
+
+  it('truncate() is clamped: 0 is a no-op, and over-length empties it', () => {
+    const h = new History(8);
+    const bodies = [body(0, new Vector3(), new Vector3(), true), body(1, new Vector3(), new Vector3())];
+    h.record(bodies);
+    h.record(bodies);
+    h.truncate(0); // no-op
+    expect(h.length).toBe(2);
+    expect(h.recorded).toBe(2);
+    h.truncate(99); // more than recorded → empty
+    expect(h.length).toBe(0);
+    expect(h.peek(0)).toBeNull();
+  });
 });
