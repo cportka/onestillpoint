@@ -1,8 +1,11 @@
 # OffscreenCanvas + Web Worker render path — scope & migration plan
 
-**Status:** scaffolding (v0.36.0). The worker render path is **off by default** and built
-incrementally behind a flag; the main-thread path is unchanged until the worker reaches parity and
-we flip the switch.
+**Status:** step 2 — the **renderer runs off-thread, proven** (v0.37.0). With `?worker=1` the worker
+creates a `WebGPURenderer` on the transferred `OffscreenCanvas`, compiles the **real raymarch shader
+in the worker**, and renders a static formed view — confirmed in Chromium (`ready (webgpu)`). So
+three.js WebGPU + the heavy shader run off the main thread here; the migration is de-risked. Still
+**off by default**; the main-thread path is unchanged until the worker reaches parity and we flip the
+switch.
 
 ## Why
 
@@ -73,10 +76,14 @@ stale worker bundle.
 
 ## Migration plan (incremental, behind the flag)
 
-1. **Scaffolding** *(this PR, v0.36.0)* — the protocol, the capability probe, a worker entry stub
-   that completes the `init`/`ready` handshake, and their tests. The live path is untouched.
-2. **Render loop in the worker** — construct the renderer + raymarch + post on the transferred
-   canvas; drive a bare loop; post `ready` after `compileAsync`. Behind the flag, A/B against main.
+1. **Scaffolding** *(v0.36.0, ✅)* — the protocol, the capability probe, a worker entry stub that
+   completes the `init`/`ready` handshake, and their tests. The live path is untouched.
+2. **Render loop in the worker** *(v0.37.0, ✅)* — `createRenderer` takes a transferred canvas;
+   `workerEngine` builds the real raymarch + post on it and renders a static formed view; a pure
+   `router` (unit-tested) drives it; `workerHost` transfers the canvas + relays `ready`/`error`;
+   `main()` early-returns into it behind `?worker=1`. **Verified in Chromium** — the worker compiles
+   the raymarch shader off-thread and posts `ready (webgpu)`. (Worker loops on `setTimeout`; smooth
+   vsync via main-thread ticks comes with input in step 3.)
 3. **Input + resize** — wire `pointer`/`wheel`/`resize` to the worker `CameraRig` + sizing.
 4. **Controls + HUD + timeline** — the generic `control`/`command` channel ↔ the panel; `status` +
    `event` back to the HUD and history bar.
