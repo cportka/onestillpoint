@@ -7,7 +7,7 @@ import { Loop } from './core/Loop';
 import { meltInward } from './intro/melt';
 import { INTRO_DIALS, MELT_MS, SPLASH_COVERS_AT_MS } from './intro/introTimeline';
 import { createRenderer } from './core/Renderer';
-import { detectQualityTier, introResolutionScale, QUALITY_TIERS, type QualityTier } from './core/quality';
+import { detectQualityTier, introResolutionScale, QUALITY_TIERS, revealVolumeStep, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
 import { RevealProfiler } from './core/RevealProfiler';
 import { TimeController } from './core/TimeController';
@@ -371,9 +371,13 @@ async function main(): Promise<void> {
     if (scaler.minScale < activeQuality.minScale && scaler.scale >= activeQuality.minScale) {
       scaler.minScale = activeQuality.minScale;
     }
-    // Ease the warm-fuzzy reveal veil out as the scene settles into focus (PostPipeline).
+    // Ease the warm-fuzzy reveal veil out as the scene settles into focus (PostPipeline), and ride
+    // the *same* clock to coarsen the dust march during the reveal — the haze hides the coarser dust,
+    // and the in-slab volume sampling is the dominant per-step cost after the geodesic. Both land
+    // exactly on steady state at fuzz 0, so neither leaves a permanent quality cut.
     if (uniforms.fuzz.value > 0) {
       uniforms.fuzz.value = Math.max(0, uniforms.fuzz.value - frameDelta / FUZZ_FADE_S);
+      blackHole.volumeStep.value = revealVolumeStep(activeQuality, uniforms.fuzz.value);
     }
     // Age the merger ringdown ripple in wall-clock (it expands + decays after an absorb). Capped so
     // it parks at a large value when idle — the shader envelope is 0 there, so the ripple is a no-op.
@@ -457,9 +461,18 @@ async function main(): Promise<void> {
   perf.begin('compile', performance.now());
   await renderer.compileAsync(pass.scene, pass.camera);
   perf.end('compile', performance.now()); // WGSL compile cost, paid under the splash
+  // Prime the *lit* disk under the splash. FormationSequence's apply(0) leaves `formation` at 0, and
+  // the shader multiplies disk density by `formation` — so the two covered renders below would warm
+  // only a *dark* disk (density ×0 skips the volume compositing), and the first time the lit volume
+  // path runs would land on the first *visible* frame (the hitch we're chasing). Render the formed
+  // state here, hidden by the splash, then hand `formation` back so the dolly + ignition still play
+  // from 0 on the live loop.
+  const formationAtPrewarm = uniforms.formation.value;
+  uniforms.formation.value = 1;
   post.render();
   await new Promise((resolve) => requestAnimationFrame(resolve));
   post.render();
+  uniforms.formation.value = formationAtPrewarm;
   perf.end('bootToLoop', performance.now()); // everything before the live loop
   perf.begin('loopToReveal', performance.now()); // …until the splash lifts (in dismissSplash)
   loop.start();

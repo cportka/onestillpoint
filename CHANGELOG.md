@@ -5,6 +5,21 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.39.x — Bodies are absent in history before they're born
 
+- **0.39.4** — **Two low-risk masking wins for the cold first-load reveal (roadmap #1).** Both are
+  hidden by the existing warm haze and both land *exactly* on steady state once it lifts, so neither
+  leaves a permanent quality cut. **(1) A dust-march ramp.** After the geodesic, the dominant per-step
+  cost is the in-slab volume sampling; the reveal now starts with a **coarser** `volumeStep` (`+60 %`
+  at the peak, `revealVolumeStep` in [`quality.ts`](src/core/quality.ts)) and eases it back to the
+  tier value on the **same clock** as the haze (`fuzz` 1→0) — a march-space companion to the existing
+  screen-space `introScale` cut, so three levers (resolution, dust, haze) now converge together
+  instead of resolution carrying the reveal alone. **(2) Prime the *lit* disk in the pre-warm.** The
+  two covered `post.render()`s under the splash ran with `formation = 0` (FormationSequence's
+  `apply(0)`), and since the shader multiplies disk density by `formation`, they warmed only a *dark*
+  disk — the first time the lit volume-compositing path ran was the first *visible* frame. They now
+  render the formed state (`formation = 1`, restored immediately so the ignition still animates from
+  0), moving that first-use cost under the splash where the rest of the pre-warm already lives.
+  Unit-tested (`quality.test.ts`: the ramp's peak / settle / monotonic ease / clamp). Tune both from
+  the new `osp.perf` numbers (v0.39.3) on a real device.
 - **0.39.3** — **Instrument the cold first-load reveal so it can be *measured* on a real device
   (roadmap #1 groundwork).** The splash→engine hitch only exists on real hardware — this project's
   CI GPU is headless (swiftshader), renders black, and can't capture the WebGPU canvas by any method

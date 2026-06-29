@@ -57,3 +57,22 @@ export function detectQualityTier(): QualityTier {
 export function introResolutionScale(q: QualitySettings): number {
   return q.introScale;
 }
+
+/** How much coarser the dust march runs at the *peak* of the reveal (`fuzz = 1`), as a fraction
+ *  above the tier's steady-state `volumeStep`. After the geodesic, the dominant per-step cost is the
+ *  in-slab volume sampling; a coarser step through the disk slab means fewer samples **and** fewer
+ *  geodesic steps to cross it — cheaper exactly when the reveal is heaviest. Modest on purpose: the
+ *  warm haze must keep the coarser dust from ever reading sharp. */
+export const REVEAL_VOLUME_STEP_BOOST = 0.6;
+
+/**
+ * The dust-march step during the haze-masked reveal. It is the tier's steady-state `volumeStep`,
+ * coarsened in proportion to the reveal veil `fuzz` (1 at the reveal → 0 once settled): at `fuzz = 1`
+ * it is `volumeStep × (1 + REVEAL_VOLUME_STEP_BOOST)`, and at `fuzz = 0` it lands **exactly** on
+ * `volumeStep`, so steady state is untouched. This is the march-space companion to
+ * `introResolutionScale` (the screen-space cut) — together with the haze fade, three levers
+ * converging on one clock to smooth the splash→engine takeover. Pure (no globals) → unit-tested.
+ */
+export function revealVolumeStep(q: QualitySettings, fuzz: number): number {
+  return q.volumeStep * (1 + REVEAL_VOLUME_STEP_BOOST * Math.max(0, fuzz));
+}

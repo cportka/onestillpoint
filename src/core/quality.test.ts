@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { detectQualityTier, introResolutionScale, QUALITY_TIERS, type QualityTier } from './quality';
+import {
+  detectQualityTier,
+  introResolutionScale,
+  QUALITY_TIERS,
+  REVEAL_VOLUME_STEP_BOOST,
+  revealVolumeStep,
+  type QualityTier,
+} from './quality';
 
 describe('quality tiers', () => {
   it('orders cost from low to high', () => {
@@ -33,5 +40,40 @@ describe('intro resolution ramp', () => {
   it('cuts deeper the heavier the tier needs it (ordered with the tiers)', () => {
     expect(QUALITY_TIERS.low.introScale).toBeLessThan(QUALITY_TIERS.high.introScale);
     expect(QUALITY_TIERS.medium.introScale).toBeLessThan(QUALITY_TIERS.high.introScale);
+  });
+});
+
+describe('reveal volume-step ramp', () => {
+  const tiers = Object.keys(QUALITY_TIERS) as QualityTier[];
+
+  it('lands exactly on the tier step once settled (fuzz 0) — steady state untouched', () => {
+    for (const tier of tiers) {
+      const q = QUALITY_TIERS[tier];
+      expect(revealVolumeStep(q, 0)).toBe(q.volumeStep);
+    }
+  });
+
+  it('coarsens the dust march at the reveal peak (fuzz 1) by the boost fraction', () => {
+    for (const tier of tiers) {
+      const q = QUALITY_TIERS[tier];
+      const peak = revealVolumeStep(q, 1);
+      expect(peak).toBeCloseTo(q.volumeStep * (1 + REVEAL_VOLUME_STEP_BOOST));
+      expect(peak).toBeGreaterThan(q.volumeStep); // coarser = cheaper during the heavy reveal
+    }
+  });
+
+  it('eases monotonically from the peak back to the tier step as the haze lifts', () => {
+    const q = QUALITY_TIERS.high;
+    const full = revealVolumeStep(q, 1);
+    const half = revealVolumeStep(q, 0.5);
+    const none = revealVolumeStep(q, 0);
+    expect(full).toBeGreaterThan(half);
+    expect(half).toBeGreaterThan(none);
+    expect(half).toBeCloseTo(q.volumeStep * (1 + REVEAL_VOLUME_STEP_BOOST * 0.5));
+  });
+
+  it('never goes below the tier step for a stray negative fuzz', () => {
+    const q = QUALITY_TIERS.medium;
+    expect(revealVolumeStep(q, -0.2)).toBe(q.volumeStep);
   });
 });
