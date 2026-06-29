@@ -5,6 +5,20 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.39.x — Bodies are absent in history before they're born
 
+- **0.39.3** — **Instrument the cold first-load reveal so it can be *measured* on a real device
+  (roadmap #1 groundwork).** The splash→engine hitch only exists on real hardware — this project's
+  CI GPU is headless (swiftshader), renders black, and can't capture the WebGPU canvas by any method
+  — so every prior judgement about the reveal has been *inferred* from reading curves, never profiled.
+  Added [`src/core/RevealProfiler.ts`](src/core/RevealProfiler.ts), a pure (timestamp-in) profiler
+  wired into `main.ts` and exposed at **`osp.perf`**. It captures: named span durations
+  (`rendererInit`, `compile`, `bootToLoop`, `loopToReveal`); the **true, unclamped** inter-frame
+  interval over the first 120 live frames (mean / p50 / p95 / max / jank count — measured directly,
+  not via the loop's `frameDelta`, which is clamped to 100 ms and would hide the worst hitches); and
+  the count of resolution-scaler resizes during the reveal window (each rebuilds the bloom/FXAA
+  targets — a GPU hitch). On a cold load the loop logs `osp.perf.report()` to the console once the
+  window fills; it's also readable any time. **Zero behavioural change — measurement only**; the next
+  tuning pass picks its lever from these numbers instead of from inference. Unit-tested
+  (`RevealProfiler.test.ts`).
 - **0.39.2** — **Docs: roadmap + handoff refresh for the next session.** Brought the roadmap
   ([`docs/future-improvements.md`](docs/future-improvements.md)) up to date — item 2 (Share) marked
   shipped with the real-device caveat; item 1 (lag) **narrowed to the cold first-load compile** now
