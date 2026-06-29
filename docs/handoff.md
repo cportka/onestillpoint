@@ -5,19 +5,30 @@ A short, living "you are here" for whoever picks this up next. Pairs with the du
 [`future-improvements.md`](future-improvements.md) (what's next). **Update this when you finish a
 session.**
 
-_As of v0.39.1 (2026-06)._
+_As of v0.39.4 (2026-06)._
 
 ## Where things stand
 
-- **Recently shipped.** The **history scrub bar** got two refinements: a live body edit (+ / − /
-  Clear) while rewound now **commits the timeline from that moment** (v0.38.0), and seeded bodies are
-  **absent in history before their birth tick** (v0.39.0). **Share** no longer degrades to a still
-  PNG — it records a live clip when the rolling mp4 isn't available (v0.39.1). **OffscreenCanvas**
-  reached step 2 (v0.37.0): the renderer is proven running off-thread behind `?worker=1`.
-- **The one active problem** is roadmap **#1 — the cold first-load lag** (the first splash→engine
-  reveal on a cold pipeline). The *periodic* post-load stutter is fixed (v0.36.1–.2); the latest user
-  review: **desktop smooth, mobile a slight stutter as it settles**, intro load lag "better but still
-  there." The real fix is finishing the OffscreenCanvas migration.
+- **Recently shipped — the cold reveal got measured *and* masked (this session).** Roadmap #1's
+  splash→engine reveal is now **instrumented**: `osp.perf` exposes the real timings — span durations
+  (`rendererInit` / `compile` / `bootToLoop` / `loopToReveal`), the **unclamped** inter-frame interval
+  over the first 120 live frames (mean / p50 / p95 / max / jank), and the reveal-window scaler-resize
+  count — because the headless CI GPU can't render or capture the canvas, so these numbers only exist
+  on a real device (v0.39.3, `src/core/RevealProfiler.ts`). On top of that, two **haze-masked masking
+  wins** shipped (v0.39.4): a **dust-march ramp** (`revealVolumeStep` in `quality.ts` — a coarser
+  `volumeStep` at the reveal, easing back on the same `fuzz` clock as the haze, the march-space
+  companion to the screen-space `introScale` cut) and a **pre-warm fix** that primes the *lit* disk
+  under the splash (the covered renders were warming a *dark* disk at `formation = 0`, so the first
+  lit-volume draw was landing on the first visible frame). Earlier: history-bar refinements
+  (v0.38.0 / v0.39.0), Share live-clip fallback (v0.39.1), OffscreenCanvas step 2 (v0.37.0).
+- **The one active problem** is still roadmap **#1 — the cold first-load reveal** on a cold pipeline.
+  The dial-tuning is now broad (resolution cut + dust ramp + warm haze, all converging on one clock)
+  **but still unmeasured on the target device.** The immediate next step is concrete: **capture
+  `osp.perf.report()` on the real Mac + a phone after a cold load** (open the console; the loop also
+  logs it once the 120-frame window fills) and let the numbers decide the next lever — if the residual
+  hitch is **compile / pipeline-bound**, push the pre-warm / OffscreenCanvas direction; if it's
+  **ALU-bound**, push the dust ramp (`REVEAL_VOLUME_STEP_BOOST`) harder or add a true raymarch step
+  budget. The real, permanent fix remains finishing the OffscreenCanvas migration.
 - **The big in-flight project** is the **OffscreenCanvas + Worker render path** — see
   [`offscreen-canvas.md`](offscreen-canvas.md). Steps 1–2 done; **next is step 3 (input + resize to
   the worker)**, then Controls/HUD/timeline (4), Share/clip worker-side (5), and the flip (6).
@@ -32,7 +43,14 @@ _As of v0.39.1 (2026-06)._
   read **`osp.clip.status`** (exposed for exactly this) — it says why (no encoder / no avcC / no
   frames). Files: `src/ui/recordClip.ts`, `src/ui/clipRecorder.ts`, `src/main.ts` (`captureShare`).
 - **Roadmap #1 is now about the *first compile*, not the cadence.** Don't re-chase the periodic
-  stutter (fixed). A fresh screen capture should target the **first reveal only**.
+  stutter (fixed). A fresh screen capture should target the **first reveal only** — and now there are
+  **numbers** to pair with it: read `osp.perf.report()` (v0.39.3) on the target device.
+- **The reveal masking wins (v0.39.4) want a real-device feel-check.** The dust-march ramp
+  (`REVEAL_VOLUME_STEP_BOOST = 0.6` in `quality.ts`) and the pre-warm lit-disk prime are masked by the
+  warm haze and revert to steady state at `fuzz = 0`, so they're low-risk — but their *benefit* (and
+  whether `+60 %` is the right coarsening) can only be felt on real hardware. Confirm the reveal still
+  reads clean (no visible dust banding under the haze) on the Mac + a phone, and tune the one dial
+  from the `osp.perf` before/after on the same device.
 
 ## Blocked / out of session scope
 

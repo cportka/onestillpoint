@@ -5,6 +5,15 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.39.x — Bodies are absent in history before they're born
 
+- **0.39.5** — **Docs: handoff + roadmap refresh after the cold-reveal session.** Brought
+  [`docs/handoff.md`](docs/handoff.md) current (now _as of v0.39.4_): recorded the reveal
+  instrumentation (`osp.perf`, v0.39.3) and the two masking wins (the dust-march ramp + the pre-warm
+  lit-disk prime, v0.39.4), and rewrote the active-problem note so the **next step is concrete** —
+  capture `osp.perf.report()` on the real Mac + a phone and let the numbers pick the next lever
+  (compile/pipeline-bound → pre-warm / OffscreenCanvas; ALU-bound → push the dust ramp or a raymarch
+  step budget). Added the matching open caveats (the masking wins want a real-device feel-check). Also
+  updated [`docs/future-improvements.md`](docs/future-improvements.md) #1's "dials" list to include
+  `revealVolumeStep` and the `osp.perf` measurement surface. No runtime changes.
 - **0.39.4** — **Two low-risk masking wins for the cold first-load reveal (roadmap #1).** Both are
   hidden by the existing warm haze and both land *exactly* on steady state once it lifts, so neither
   leaves a permanent quality cut. **(1) A dust-march ramp.** After the geodesic, the dominant per-step
