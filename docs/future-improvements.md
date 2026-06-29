@@ -122,12 +122,19 @@ map (values are current as of v0.39.x — re-check the source, they drift):
   extra bloom glow (`PostPipeline.ts`), so the softer reveal reads as an intentional warm,
   out-of-focus look the whole way in.
 
-**The dials, in one place:** how *deep* → `introScale` per tier (`quality.ts`); how it *sharpens* →
-the converge-and-freeze bands/steps (`ResolutionScaler.ts`); how *long the haze masks it* →
-`FUZZ_FADE_S` + the veil strength (`PostPipeline.ts`). The dial-tuning is largely spent — the cut is
-already deep and the haze long. **The remaining lever for the *cold first compile* is the
-OffscreenCanvas migration** (above), or a short **raymarch step budget** for the first N live frames
-that ramps up as FPS recovers.
+**The dials, in one place:** how *deep* → `introScale` per tier (`quality.ts`); how *coarse the dust
+march* → `revealVolumeStep` / `REVEAL_VOLUME_STEP_BOOST` (`quality.ts`, **shipped v0.39.4** — the
+march-space companion to the screen-space cut, riding the haze clock); how it *sharpens* → the
+converge-and-freeze bands/steps (`ResolutionScaler.ts`); how *long the haze masks it* → `FUZZ_FADE_S`
++ the veil strength (`PostPipeline.ts`). The screen-space dial-tuning is largely spent — the cut is
+already deep and the haze long — but the **dust ramp** (v0.39.4) is a fresh march-space lever with a
+single knob (`REVEAL_VOLUME_STEP_BOOST`) still to tune from real-device numbers, and the **pre-warm
+now primes the *lit* disk** (v0.39.4) so the first lit-volume draw no longer lands on the first
+visible frame. **Measure before dialing further:** `osp.perf.report()` (v0.39.3, `RevealProfiler.ts`)
+exposes the real cold-reveal timings on the target device — the headless CI GPU can't, so this is the
+only honest before/after. **The remaining lever for the *cold first compile* is the OffscreenCanvas
+migration** (above), or pushing the dust ramp / a true **raymarch step budget** harder if `osp.perf`
+shows the residual hitch is ALU-bound rather than compile/pipeline-bound.
 
 - **Effort:** S for residual dial-tuning; **L** for the real fix (finish the OffscreenCanvas/Worker
   render, or a per-frame render-budget scheduler).
