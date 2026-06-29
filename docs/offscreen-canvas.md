@@ -93,7 +93,10 @@ stale worker bundle.
 
 ## Clean switchover
 
-A `RenderHost` seam (to be added in step 2) — `init(canvas, opts)`, `resize`, `dispose`, an event
-sink — with two implementations (`MainThreadHost` wrapping today's `main.ts` wiring, `WorkerHost`
-posting the protocol). `pickRenderHost()` chooses by `canUseOffscreenRendering()`. Flipping the
-default is then a one-line change, with the fallback intact.
+Step 2 took the **minimal seam**: `main()` early-returns into `tryStartWorkerRender()` (behind
+`?worker=1`), which spins up `workerHost.ts` (transfer canvas → `init` → relay `ready`/`error`). The
+fuller `RenderHost` abstraction — `init(canvas, opts)`, `resize`, `dispose`, an event sink, with two
+implementations (`MainThreadHost` wrapping today's `main.ts` wiring, `WorkerHost` posting the
+protocol) and a `pickRenderHost()` chooser — is the **step 6** refactor that makes flipping the
+default a one-line change with the fallback intact. It's deferred until steps 3–5 have moved the
+input, Controls, and Share surfaces across, so the seam is drawn once around the finished shape.

@@ -40,3 +40,11 @@ Portka standard's enforced `VERSION`/`CHANGELOG`/`README` sync.
   physics or shader-maths files change** (`src/physics/**`, `src/render/tsl/**`, `src/scene/**`,
   `scripts/validate-*.mjs`). UI/docs/CSS changes skip it.
 <!-- END portka-standard -->
+
+## Start here — current state & handoff
+
+Read [`docs/handoff.md`](../docs/handoff.md) first: a short, living snapshot of where the project is
+(what shipped recently, the one active problem, the in-flight OffscreenCanvas migration, open caveats
+like Share needing a real-device check, and what's blocked/out-of-scope). Then
+[`docs/future-improvements.md`](../docs/future-improvements.md) is the roadmap (top = next). **Keep
+`docs/handoff.md` current at the end of a session** so the next one starts oriented.
