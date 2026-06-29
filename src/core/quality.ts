@@ -50,9 +50,9 @@ export function detectQualityTier(): QualityTier {
  * the softness, *making it intentional*, fading out as the `ResolutionScaler` climbs back. The
  * scaler's floor is temporarily lowered to here and restored to `minScale` once it has climbed back
  * (see `main.ts`), so the deep cut applies *only* to the reveal, not steady state. Pure (no
- * globals) → unit-tested. **Tuning levers** (the ramp's "steps" + rate): `introScale` here (how
- * deep the cut), `ResolutionScaler`'s `+0.07 / 0.4 s` climb (how fast it sharpens), and
- * `FUZZ_FADE_S` in `main.ts` (how long the haze lingers over it).
+ * globals) → unit-tested. **Tuning levers:** `introScale` here (how deep the cut), the
+ * `ResolutionScaler`'s converge-and-freeze climb-back (how fast it sharpens — `−0.12`/`+0.1` steps,
+ * `0.8 s` cooldown, then it freezes), and `FUZZ_FADE_S` in `main.ts` (how long the haze lingers).
  */
 export function introResolutionScale(q: QualitySettings): number {
   return q.introScale;

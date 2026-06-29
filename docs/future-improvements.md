@@ -2,14 +2,17 @@
 
 A living backlog, **flattened into one loose roadmap** (top = next), aimed at a polished
 **1.0.0**. It distills the development sessions — screen-recording reviews, perf audits,
-feature asks — into a single ordered list rather than tiered buckets. The first two items
-are *active problems*; the rest run roughly fix → polish/brand → features → big physics, and
-the **[Road to 1.0.0](#road-to-100--the-sequence)** below makes that sequence explicit.
+feature asks — into a single ordered list rather than tiered buckets. **Item 1 (cold first-load lag)
+is the one remaining *active problem*** (item 2, Share, shipped in v0.39.1); the rest run roughly fix
+→ polish/brand → features → big physics, and the **[Road to 1.0.0](#road-to-100--the-sequence)** below
+makes that sequence explicit.
 
 The intro/splash is considered **fully tuned for now** — its remaining cost shows up only as
 item 1 below (the engine takeover), not as more splash dialing. The **history scrub bar /
 timeline** (former item 5) is **shipped** (v0.24.0 → v0.26.0: always-on, 2-min window, colour
-key, start/current markers, DVR replay) — see the [CHANGELOG](../CHANGELOG.md).
+key, start/current markers, DVR replay) and refined since (v0.38.0 a live edit while rewound commits
+the timeline from that moment; v0.39.0 seeded bodies are absent in history before their birth tick) —
+see the [CHANGELOG](../CHANGELOG.md).
 
 Each item is annotated:
 
@@ -26,12 +29,14 @@ This is a wish-list, not a commitment. When something here ships, move it to the
 
 ## Road to 1.0.0 — the sequence
 
-A suggested build order (the numbered items below detail each). The two **active problems**
-gate quality; **polish/brand** follows; then the new viz/physics features run **cheap →
-expensive**, with **Kerr deliberately last** — it's the trophy, but it *worsens* problem 1, so
-it waits until 1 is solved and gets its own step budget.
+A suggested build order (the numbered items below detail each). The remaining **active problem**
+(#1, the cold first-load lag) gates quality; **polish/brand** follows; then the new viz/physics
+features run **cheap → expensive**, with **Kerr deliberately last** — it's the trophy, but it
+*worsens* problem 1, so it waits until 1 is solved and gets its own step budget.
 
-1. **Fix what's broken** — #1 engine-takeover lag · #2 Share → mp4. (Quality gates for any "1.0".)
+1. **Fix what's broken** — #1 engine-takeover lag (now **narrowed to the cold first-load compile**;
+   the periodic post-load stutter is fixed, v0.36.1–.2) · ~~#2 Share → mp4~~ (✅ shipped v0.39.1, with
+   a real-device check still owed). (Quality gates for any "1.0".)
 2. **Polish + brand** — #3 theme/logo · #4 README live clip · #5 bundle (delivery done; the
    WebGL2-drop lever is optional).
 3. **Cheap dramatic wins** — #6 merger ripple (✅ shipped v0.27–0.29) → #7 precession (the
@@ -47,14 +52,27 @@ tractable, and **#7/precession is genuinely low-risk once you keep the perturbat
 
 ---
 
-## 1. Persistent lag as the physics visualizer takes over  ⚠️ active problem
+## 1. First-load lag as the physics visualizer takes over  ⚠️ active problem (narrowed)
 
-The single biggest remaining problem, and it **regressed again** with the roadmap-#8 work
-(v0.29–0.32): the torn-stream + disk-feeding additions grew the raymarch WGSL, so the
-**first-load** shader compile is longer and each live frame is a touch heavier. The tell is sharp —
-**"Replay intro" is smooth and near-flawless** (the pipeline is already compiled and the GPU caches
-are warm), while the **first** splash→engine takeover hitches: the camera dolly + disk ignition at
-the reveal (~1–2 s in) is the heaviest the app ever is, now landing on a cold, first-time pipeline.
+The single biggest remaining problem — but now **narrowed to the cold first-load compile**, since the
+*periodic post-load stutter* is fixed (v0.36.1–.2, below) and the latest review confirms it:
+**desktop is completely smooth; mobile has only a slight stutter as it settles.** What remains is the
+**first** splash→engine takeover: the camera dolly + disk ignition at the reveal (~1–2 s in) is the
+heaviest the app ever is, and it lands on a cold, first-time pipeline. The tell is sharp — **"Replay
+intro" is smooth and near-flawless** (the pipeline is already compiled and the GPU caches are warm),
+while the *first* reveal hitches. The roadmap-#8 work (v0.29–0.32) grew the raymarch WGSL, lengthening
+that first compile; the real fix is to move the renderer off the main thread (OffscreenCanvas, below).
+
+### What fixed the *periodic* stutter (v0.36.1–.2) — distinct from the first-load lag
+
+A regular-cadence stutter *after* load was three things, all now fixed: (a) the **resolution scaler
+hunting** up/down around the target — each change rebuilds the bloom+FXAA targets (a GPU hitch) —
+rewritten to **converge-and-freeze** (`ResolutionScaler.ts`: settle a stable scale in a few steps,
+then widen the acceptable band so only a large sustained deviation pays another resize, and discount
+the rebuild-hitch frames so they can't trigger a resize→hitch→resize loop); (b) the **history bar**
+rebuilding all its event ticks ~10×/s — now a reused node pool (`historyBar.ts`); (c) the **clip
+recorder** at 30 fps drawImage+encode — dropped to 20 fps. The remaining item here is the *cold
+compile*, not this cadence.
 
 ### Can we multi-thread the first download + load + render?
 
@@ -72,72 +90,77 @@ Mostly it's *already* multi-threaded — which is why "just thread it" isn't the
   renderer supports OffscreenCanvas, but it's an **L-effort architectural change** (the renderer,
   loop, resolution scaler and every uniform write move to the worker; scene/UI state crosses a
   message boundary) and it risks the same render/sim desync a physics Worker would. It's the right
-  big swing for 1.0 — not a patch. **Scaffolding started (v0.36.0)** — see
-  [`offscreen-canvas.md`](offscreen-canvas.md) for the full scope, the typed main↔worker message
-  protocol, and the 6-step incremental migration plan (build behind a flag, then a clean switchover).
+  big swing for 1.0 — not a patch. **In progress — step 2 of 6 done (v0.36.0 scaffold → v0.37.0 the
+  renderer runs off-thread, proven).** With `?worker=1` the worker creates the `WebGPURenderer` on a
+  transferred `OffscreenCanvas`, compiles the **real raymarch shader in the worker**, and presents a
+  static view — confirmed in Chromium (`ready (webgpu)`), so the migration's riskiest unknown (WebGPU
+  in a worker) is de-risked. Still off by default. **Next: steps 3–6 — input/resize, then the
+  Controls/HUD/timeline message channel, then move Share/clip worker-side, then flip the default.**
+  See [`offscreen-canvas.md`](offscreen-canvas.md) for the full scope, the typed main↔worker protocol,
+  and the 6-step plan.
 
-### What v0.32.1 did (the cheap masking lever) + the tuning dials, defined
+### The cheap masking lever (the reveal cut + haze) + the tuning dials, defined
 
-Cut the reveal resolution **deeper** and **lengthen the haze** that hides it — two halves of one
-dial. The pieces, so the next tuning pass has one map:
+Until the renderer moves off-thread, the reveal cost is *masked*: render the reveal **deep below
+steady-state** and **hide the softness behind warm haze**. The pieces, so the next tuning pass has one
+map (values are current as of v0.39.x — re-check the source, they drift):
 
-- **Resolution ramp — the "steps".** Each tier now carries an explicit `introScale` *below* its
-  steady-state `minScale` (high `0.40 → 0.30`, med `0.36 → 0.27`, low `0.30 → 0.24`; `quality.ts`).
-  `armIntroScale` (`main.ts`) drops both the scale **and the scaler's floor** to it, so the reveal
-  actually *holds* that low through the heavy frames.
-- **How fast it sharpens.** The `ResolutionScaler` then climbs back at **`+0.07` every `0.4 s`** of
-  frame-time headroom (down-steps are `−0.1`); the floor is restored to the tier `minScale` the
-  moment it has climbed past it — so the deep cut belongs to the reveal alone, and a genuinely weak
-  device that never climbs back simply keeps the lower floor.
-- **How long the haze covers it.** The warm-fuzzy veil (`uniforms.fuzz` → `PostPipeline`) is
-  **stronger** (warmer grade + `+1.1×` bloom glow, was `+0.7×`) and **lingers longer**
-  (`FUZZ_FADE_S` `2.0 → 3.0 s`), so the softer/longer reveal reads as an intentional warm,
-  out-of-focus look the whole way through.
+- **Resolution cut — how deep.** Each tier carries an explicit `introScale` *below* its steady-state
+  `minScale` (high `minScale 0.40 → introScale 0.22`, med `0.36 → 0.20`, low `0.30 → 0.18`;
+  `quality.ts`). `armIntroScale` (`main.ts`) drops both the scale **and** the scaler's floor to it
+  (plus `resetSmoothing()` so prior full-res frame-times don't drag it lower), so the reveal *holds*
+  that low through the heavy frames; the floor is restored to the tier `minScale` in the loop once the
+  scaler climbs back past it, so the deep cut belongs to the reveal alone.
+- **How it sharpens — converge-and-freeze (rewritten v0.36.1).** The `ResolutionScaler` is no longer
+  a fixed-rate ramp; it converges to a stable scale (down-steps `−0.12`, up-steps `+0.1`, `0.8 s`
+  cooldown) and then **freezes** — once "settled" (`steady > 2.5 s`) it widens its acceptable
+  frame-time band so only a large sustained deviation pays another resize, and it discounts the
+  rebuild-hitch frames so a resize can't trigger another. (This is the periodic-stutter fix; it also
+  governs the climb-back from `introScale`.)
+- **How long the haze covers it.** The warm-fuzzy veil (`uniforms.fuzz` → `PostPipeline`) starts at
+  `1` on the reveal and eases out over **`FUZZ_FADE_S = 5.0 s`** (`main.ts`), with a warmer grade +
+  extra bloom glow (`PostPipeline.ts`), so the softer reveal reads as an intentional warm,
+  out-of-focus look the whole way in.
 
-**The dials, in one place:** how *deep* → `introScale` per tier (`quality.ts`); how *fast it
-sharpens* → the `+0.07 / 0.4 s` climb + cooldown (`ResolutionScaler.ts`); how *long the haze masks
-it* → `FUZZ_FADE_S` + the veil strength (`PostPipeline.ts`). Next finer steps to try: make the climb
-**rate a curve** (slow-hold-then-fast) rather than a fixed step, and/or a short **raymarch step
-budget** for the first N live frames that ramps up as FPS recovers.
+**The dials, in one place:** how *deep* → `introScale` per tier (`quality.ts`); how it *sharpens* →
+the converge-and-freeze bands/steps (`ResolutionScaler.ts`); how *long the haze masks it* →
+`FUZZ_FADE_S` + the veil strength (`PostPipeline.ts`). The dial-tuning is largely spent — the cut is
+already deep and the haze long. **The remaining lever for the *cold first compile* is the
+OffscreenCanvas migration** (above), or a short **raymarch step budget** for the first N live frames
+that ramps up as FPS recovers.
 
-- **Effort:** S for more dial-tuning of the above; **L** for the real fix (OffscreenCanvas/Worker
+- **Effort:** S for residual dial-tuning; **L** for the real fix (finish the OffscreenCanvas/Worker
   render, or a per-frame render-budget scheduler).
-- **Risks / bugs:** device-dependent, hard to reproduce deterministically; pushing `introScale`
-  lower trades the hitch for a visibly soft reveal (the haze must keep pace); the OffscreenCanvas
-  move risks render/sim desync + message latency; restoring the scaler floor too eagerly can *pop*
-  the resolution.
+- **Risks / bugs:** device-dependent, hard to reproduce deterministically; pushing `introScale` lower
+  trades the hitch for a visibly soft reveal (the haze must keep pace); the OffscreenCanvas move risks
+  render/sim desync + message latency; restoring the scaler floor too eagerly can *pop* the resolution.
 - **Viz / perf:** the highest-value perf win — it's the first impression.
-- **Notes:** re-characterise with a *fresh* screen capture on the target Mac before more dialing
-  (earlier analysis in `docs/`). Touches: `src/main.ts` (`armIntroScale`, the floor restore,
-  `FUZZ_FADE_S`, the pre-warm sequence), `src/core/ResolutionScaler.ts`, `src/core/quality.ts`
-  (`introScale`), `src/render/PostPipeline.ts` (the veil), `src/render/RaymarchPass.ts` (a possible
-  step budget), `src/physics/` (a Worker path).
+- **Notes:** re-characterise with a *fresh* screen capture on the target Mac before more dialing (the
+  *periodic* stutter is already fixed — focus a fresh capture on the **first reveal** only). Touches:
+  `src/main.ts` (`armIntroScale`, the floor restore, `FUZZ_FADE_S`, the pre-warm sequence),
+  `src/core/ResolutionScaler.ts`, `src/core/quality.ts` (`introScale`), `src/render/PostPipeline.ts`
+  (the veil), `src/render/RaymarchPass.ts` (a possible step budget), `src/worker/` (the off-thread path).
 
-## 2. Share saves a PNG, not an mp4  ⚠️ active problem
+## 2. Share saves a PNG, not an mp4 — ✅ shipped (v0.39.1)
 
-The Share button should **always** hand over an **mp4 of the last ~5 seconds**. In
-practice it still falls back to a **still PNG** on the dev Mac / desktop Chromium.
-v0.21.4 made the clip a real H.264 mp4 (WebCodecs + `mp4-muxer`) and removed the old
-WebM, but the recorder's null-return path — which drops Share to a PNG — is still
-being hit, so the shared artifact isn't the animation.
+Share no longer degrades to a still. **Diagnosis:** the rolling clip is a WebCodecs **mp4**, which
+only materialises when the browser has an H.264/AV1 *encoder* **and** that encoder emits the `avcC`
+decoder config — and on many real browsers neither holds (no H.264 encoder, or a hardware H.264
+encoder that omits `avcC`), so `clip.ready` never turned true and Share silently shared a **PNG**.
+**Fix (`src/ui/recordClip.ts`):** when the rolling mp4 isn't available, record a short clip straight
+off the canvas with **`MediaRecorder` + `canvas.captureStream()`** — `captureStream` taps the
+compositor (no fragile per-frame `drawImage` of the WebGPU canvas) and `MediaRecorder` muxes the
+container itself (no `avcC` dependency). It yields an mp4 where the browser records H.264 (Safari /
+iOS, modern Chrome), otherwise a WebM. The order is now: rolling WebCodecs mp4 → live-recorded clip →
+PNG (last resort only). The recorder is exposed at **`osp.clip.status`** for on-device diagnosis.
 
-- **Effort:** S–M — **diagnose first**, then a small fix (eager encoder config, a
-  brief readiness wait on click, or surfacing the reason instead of silently
-  degrading).
-- **Risks / bugs:** several silent fall-throughs to investigate —
-  `VideoEncoder.isConfigSupported` may report unsupported on some Chromium builds;
-  `clip.ready` requires ≥2 s buffered **and** a keyframe **and** decoder meta, so a
-  click too soon returns `null` → PNG; the recorder only `start()`s after the intro;
-  a thrown encode silently marks the recorder `dead` for the whole session. (The
-  desktop `navigator.canShare({files})` → download branch is *correct* — the bug is
-  upstream, where no mp4 is produced.) **CI/headless has no H.264 encoder, so it always
-  PNGs there** — this can't be verified in CI.
-- **Viz / perf:** none — this is correctness of the shared artifact.
-- **Notes:** add a tiny **dev readout of recorder state** (configured? codec chosen?
-  ready? last error?) to see *why* it falls back; consider briefly awaiting `ready` on
-  click, or showing "couldn't record video" rather than silently sending a PNG. **Must
-  be verified on the actual Mac/Chromium.** Touches: `src/ui/clipRecorder.ts`,
-  `src/ui/share.ts`, `src/main.ts` (`captureShare`).
+**⚠️ Still needs a real-device check.** This headless GPU (swiftshader) **can't read the WebGPU
+canvas by any method** (`drawImage` *and* `captureStream` both deliver zero frames), so neither the
+original bug nor the `captureStream`-from-WebGPU fallback could be exercised in CI — only the
+mechanism over a 2D canvas (verified: a real animated WebM, honest mp4→WebM MIME selection).
+`captureStream` is a standard API on real GPUs, but **confirm on the actual Mac + a phone** that the
+live clip records (read `osp.clip.status` if Share still falls back). Touches: `src/ui/recordClip.ts`,
+`src/ui/share.ts`, `src/main.ts` (`captureShare`).
 
 ## 3. Finish the branding / theme pass
 
@@ -365,9 +388,12 @@ deepest coverage (`integrators` incl. reversibility, `Scene`, `TimeController`,
 (`keybindings`, `hudFolder`, `historyBar` markers) and the `History` suite. v0.22.0 added
 `PhysicsController.autoSelect` (the CPU/GPU decision) and a `hud` detail-line suite (the S/P/B
 breakdown + compute token); v0.26.0 added the `Timeline` (DVR scrub / step / replay clamp) suite
-and rewrote the `TimeController` step tests around the new discrete `step`. Default env is Node
-(fast); DOM tests opt in per-file with `// @vitest-environment jsdom`. Next gaps worth covering:
-`stepper` add/remove caps and the `Controls` speed/clamp math.
+and rewrote the `TimeController` step tests around the new discrete `step`. Since then: v0.37.0 the
+worker `router` (mock-engine message routing, no three import); v0.38.0 `History.truncate` +
+`Timeline.commit` + `EventLog.dropFrom` (commit-on-edit-while-rewound); v0.39.0 `History` unborn-skip
++ the now-generic `BirthTicker` emit-the-body; v0.39.1 `recordClip` (MIME preference + capability
+guard). Default env is Node (fast); DOM tests opt in per-file with `// @vitest-environment jsdom`.
+Next gaps worth covering: `stepper` add/remove caps and the `Controls` speed/clamp math.
 
 **Headless splash capture.** Headless *virtual-time* does **not** advance compositor
 CSS animations — freeze them with a Web-Animations `currentTime` (the canvas, on

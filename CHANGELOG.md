@@ -5,6 +5,17 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.39.x — Bodies are absent in history before they're born
 
+- **0.39.2** — **Docs: roadmap + handoff refresh for the next session.** Brought the roadmap
+  ([`docs/future-improvements.md`](docs/future-improvements.md)) up to date — item 2 (Share) marked
+  shipped with the real-device caveat; item 1 (lag) **narrowed to the cold first-load compile** now
+  that the periodic stutter is fixed, with the stale `ResolutionScaler` dials corrected to the
+  converge-and-freeze rewrite (and the matching stale comment in `quality.ts`), the `introScale`/
+  `FUZZ_FADE_S` values refreshed, and the OffscreenCanvas progress (step 2) reflected; the Road-to-1.0
+  sequence and testing-coverage notes updated; and the `offscreen-canvas.md` switchover note corrected
+  (the `RenderHost` seam is the step-6 refactor, not step 2). Added a living
+  [`docs/handoff.md`](docs/handoff.md) — a "you are here" snapshot (recently shipped, the one active
+  problem, the in-flight worker migration, open caveats, what's blocked/out-of-scope, how we work) —
+  and a pointer to it from `CLAUDE.md`. No runtime changes.
 - **0.39.1** — **Share no longer falls back to a still PNG — it records a live clip instead
   (roadmap #2).** The rolling share clip is a WebCodecs **mp4**, which only materialises when the
   browser has an H.264/AV1 *encoder* **and** that encoder emits the `avcC` decoder config — and on
