@@ -9,6 +9,7 @@ import { INTRO_DIALS, MELT_MS, SPLASH_COVERS_AT_MS } from './intro/introTimeline
 import { createRenderer } from './core/Renderer';
 import { detectQualityTier, introResolutionScale, QUALITY_TIERS, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
+import { RevealProfiler } from './core/RevealProfiler';
 import { TimeController } from './core/TimeController';
 import { PhysicsController } from './physics/PhysicsController';
 import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
@@ -86,12 +87,21 @@ async function tryStartWorkerRender(): Promise<boolean> {
 async function main(): Promise<void> {
   if (await tryStartWorkerRender()) return; // off by default; the main-thread path below is unchanged
 
+  // Profile the cold first-load reveal (roadmap #1). Headless CI can't render/capture the WebGPU
+  // canvas, so the splash→engine frame-times only exist on a real device — this exposes them at
+  // `osp.perf` (read `osp.perf.report()` in the console on the target Mac/phone; the loop also logs
+  // it once the first-frames window fills). Zero behavioural effect — measurement only.
+  const perf = new RevealProfiler();
+  perf.begin('bootToLoop', performance.now());
+
   const uniforms = createUniforms();
   const scene = new Scene();
   const blackHole = scene.blackHole;
   const bodyUniforms = createBodyUniforms();
 
+  perf.begin('rendererInit', performance.now());
   const { renderer, backend } = await createRenderer();
+  perf.end('rendererInit', performance.now());
   document.body.appendChild(renderer.domElement);
 
   const rig = new CameraRig(uniforms, renderer.domElement);
@@ -174,6 +184,7 @@ async function main(): Promise<void> {
   // the crossfade.
   const splash = document.getElementById('osp-splash');
   const dismissSplash = (): void => {
+    perf.end('loopToReveal', performance.now()); // splash lifts here — the reveal begins
     splash?.classList.add('osp-splash--hide');
     armIntroScale(); // the reveal + settle is the heaviest the engine gets — start cheap, then climb
     uniforms.fuzz.value = 1; // …and reveal it "warm and out of focus", easing to reality in the loop
@@ -345,7 +356,14 @@ async function main(): Promise<void> {
   const FUZZ_FADE_S = 5.0;
 
   loop.onTick = (frameDelta) => {
-    if (scaler.update(frameDelta)) applySize();
+    // Reveal profiler: log the true (unclamped) inter-frame interval for the first frames, then
+    // print the final report once. Pure measurement — `osp.perf.report()` is also readable any time.
+    if (perf.tick(performance.now())) console.info('[onestillpoint] reveal perf', perf.report());
+    const resized = scaler.update(frameDelta);
+    if (resized) applySize();
+    // Count scaler resizes while the reveal floor is still lowered — each rebuilds the bloom/FXAA
+    // targets (a GPU hitch), so it's a key signal for whether the climb-back itself is stuttering.
+    if (resized && scaler.minScale < activeQuality.minScale) perf.countResize();
     // The intro dropped the scaler's floor below steady state (a deep, haze-masked reveal cut); once
     // it has climbed back past the tier's own minScale, restore that floor so later under-load
     // behaviour is unchanged — the deep cut was the reveal's alone. A genuinely weak device that
@@ -436,16 +454,20 @@ async function main(): Promise<void> {
   //   2. a couple of post renders (a frame apart) compile + prime the bloom chain
   //      and warm the GPU caches, so the disk is already lit under the splash.
   armIntroScale(); // render the pre-warm + covered frames + reveal cheap (climbs back after)
+  perf.begin('compile', performance.now());
   await renderer.compileAsync(pass.scene, pass.camera);
+  perf.end('compile', performance.now()); // WGSL compile cost, paid under the splash
   post.render();
   await new Promise((resolve) => requestAnimationFrame(resolve));
   post.render();
+  perf.end('bootToLoop', performance.now()); // everything before the live loop
+  perf.begin('loopToReveal', performance.now()); // …until the splash lifts (in dismissSplash)
   loop.start();
   scheduleControls(); // mount the panel once the main thread is idle (after the splash)
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {
-    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline, events, clip },
+    osp: { renderer, rig, pass, post, loop, time, formation, uniforms, blackHole, scene, physics, bodyUniforms, scaler, history, timeline, events, clip, perf },
   });
 }
 
