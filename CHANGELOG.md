@@ -5,6 +5,12 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.40.x — Companion orbits precess (a relativistic-looking apsidal drift)
 
+- **0.40.2** — **Docs: handoff refresh after the intro-perf + physics session.** Brought
+  [`docs/handoff.md`](docs/handoff.md) current (now _as of v0.40.1_): recorded the intro-timing tweaks
+  (v0.39.6), the precession (#7, v0.40.0), and the mass-scaled ripple (#6, v0.40.1), and surfaced the
+  two open decisions left for a deliberate call — the `PRECESSION_K` look intent, and #6's two-hole
+  inspiral fork (scripted vs a dissipative drag). The active-problem note now also asks for a screen
+  recording alongside `osp.perf.report()` on the next cold-reveal pass. No runtime changes.
 - **0.40.1** — **A black-hole merger rings harder than a star plunge (roadmap #6 — the ringdown
   cue).** The spacetime ripple (the expanding, decaying sky-warp fired when a body falls into the
   hole, shipped v0.27–0.29) was identical for a dust speck and a black-hole coalescence. It now scales
