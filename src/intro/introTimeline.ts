@@ -42,8 +42,12 @@ export const INTRO_BEATS = [
  * the `introTimeline.test.ts` inline-sync guard keeps the two from drifting.
  */
 export const INTRO_DIALS = {
-  /** (a) Opening black-screen length. */
-  initialBlackMs: 500,
+  /** (a) Opening black-screen length. Held a touch longer (0.6s) than the original 0.5s to buy the
+   *  cold engine bundle more *covered* time — `__ospBoot()` fires at the very start of the intro, so
+   *  every extra ms of black is download + parse + WebGPU init + `compileAsync` pre-warm paid before
+   *  the splash even paints (the splash's first frame anchors the reveal countdown). Well-spent on a
+   *  cold load; on a warm replay it's just a slightly longer hold. */
+  initialBlackMs: 600,
   /** (b) The deliberate split-second of black after the interference pattern. */
   splitBlackMs: 70,
   /** (c) Moment-of-creation animation speed (× its CSS durations). */
@@ -60,8 +64,10 @@ export const INTRO_DIALS = {
   /** (e) Creation→splash crossfade *speed*: how fast the creation fades into the splash. */
   creationFadeMs: 120,
   /** (f) Splash→engine crossfade *hold*: how long the splash stays up before the engine is
-   *  revealed (main.ts's MIN_SPLASH_MS, measured from the splash's first painted frame). */
-  splashHoldMs: 600,
+   *  revealed (main.ts's MIN_SPLASH_MS, measured from the splash's first painted frame). Nudged
+   *  10ms earlier (600 → 590) so the live model — whose horizon is aligned with the splash's —
+   *  begins showing through a hair sooner, without visibly shortening the merger. */
+  splashHoldMs: 590,
   /** (f) Splash→engine crossfade *speed*: how fast the splash fades into the engine. */
   splashFadeMs: 450,
 } as const;

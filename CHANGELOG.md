@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.39.x — Bodies are absent in history before they're born
 
+- **0.39.6** — **Intro timing: a longer black hold to pre-warm under, and the model revealed a hair
+  earlier.** Two small dial tweaks in the intro timeline (`introTimeline.ts` ↔ the inline
+  `__ospDials` mirror in `overlay.html`, kept in lockstep by the `introTimeline.test.ts` guard).
+  **(a)** `initialBlackMs` **500 → 600**: the engine bundle's boot (`__ospBoot()`) already fires at
+  the *very start* of the intro, so every extra ms of opening black is download + parse + WebGPU init
+  + `compileAsync` pre-warm paid **before the splash even paints** (its first frame anchors the reveal
+  countdown) — i.e. the added 0.1s is spent warming the cold pipeline, not idling. **(b)**
+  `splashHoldMs` **600 → 590**: the live model — whose event horizon is aligned with the splash's —
+  now begins showing through the crossfade ~10ms sooner, without visibly shortening the merger. Both
+  are cold-load wins; on a warm replay they're just a slightly longer hold / slightly earlier reveal.
 - **0.39.5** — **Docs: handoff + roadmap refresh after the cold-reveal session.** Brought
   [`docs/handoff.md`](docs/handoff.md) current (now _as of v0.39.4_): recorded the reveal
   instrumentation (`osp.perf`, v0.39.3) and the two masking wins (the dust-march ramp + the pre-warm

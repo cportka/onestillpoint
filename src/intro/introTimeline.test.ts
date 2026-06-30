@@ -15,8 +15,8 @@ describe('intro dials', () => {
     expect(fps.engine).toBe(0); // 0 = the physics model's own (cappable) rate
   });
 
-  it('holds black for 0.5s, then a split-second of black before the burst', () => {
-    expect(INTRO_DIALS.initialBlackMs).toBe(500);
+  it('holds black for 0.6s, then a split-second of black before the burst', () => {
+    expect(INTRO_DIALS.initialBlackMs).toBe(600); // 0.6s: extra covered time for the cold engine pre-warm
     expect(INTRO_DIALS.splitBlackMs).toBeGreaterThan(16);
     expect(INTRO_DIALS.splitBlackMs).toBeLessThan(160);
   });
