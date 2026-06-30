@@ -202,14 +202,14 @@
   // authored, 2 = twice as slow, 0.5 = twice as fast). Exposed on window so you can
   // tweak live in the console, then "Replay intro".
   window.__ospDials = {
-    initialBlackMs: 500, // (a) opening black-screen length
+    initialBlackMs: 600, // (a) opening black-screen length (0.6s: more covered time for the cold engine pre-warm)
     splitBlackMs: 70, // (b) the split-second of black after the interference pattern
     creationSpeed: 1, // (c) moment-of-creation animation speed (× its durations)
     splashSpeed: 1, // (d) splash animation speed (× its durations)
     creationBeatMs: 240, // how long the creation plays before handing to the splash (splash reveals ~0.95s)
     creationToSplashMs: -80, // (e) crossfade overlap: splash start vs the creation fade (− = overlap, + = gap)
     creationFadeMs: 120, // (e) crossfade speed: how fast the creation fades into the splash
-    splashHoldMs: 600, // (f) how long the splash holds before the engine is revealed (read by main.ts)
+    splashHoldMs: 590, // (f) how long the splash holds before the engine is revealed (read by main.ts; 10ms earlier so the model peeks through a hair sooner)
     splashFadeMs: 450, // (f) crossfade speed: how fast the splash fades into the engine
   };
 
