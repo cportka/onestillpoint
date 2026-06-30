@@ -18,6 +18,8 @@ const RIPPLE_WIDTH2 = 0.06; // squared angular half-width of the wavefront band 
 const RIPPLE_FREQ = 20; // spatial ringing frequency within the band (more = more wave crests)
 const RIPPLE_WARP = 0.022; // radians the sky is dragged at the crest — the distortion (was 0.22 on Lattice)
 const RIPPLE_GLOW = 0.07; // brightness of the glow riding the wavefront (¼ of 0.28 — the bright flash was too intense)
+// The amplitude (`rippleStrength` uniform) is computed CPU-side from the absorbed body's mass —
+// see `rippleStrengthForMass` in `src/render/rippleStrength.ts`.
 
 /**
  * The global ringdown distortion: warp the sampled sky direction `dir` radially in an expanding,
@@ -25,11 +27,12 @@ const RIPPLE_GLOW = 0.07; // brightness of the glow riding the wavefront (¼ of 
  * faint glow). Background-agnostic — every sky lenses the same way through it. Idle (`ripple` large)
  * → wave ≈ 0 → `dir` unchanged.
  */
-function rippleWarp(dir: Node<'vec3'>, camFwd: Node<'vec3'>, ripple: Node<'float'>) {
+function rippleWarp(dir: Node<'vec3'>, camFwd: Node<'vec3'>, ripple: Node<'float'>, strength: Node<'float'>) {
   const cosT = clamp(dot(dir, camFwd), float(-0.9999), float(0.9999));
   const theta = acos(cosT); // sky-angle from the merger point
   const front = ripple.mul(RIPPLE_SPEED); // wavefront radius, expanding with time
-  const env = exp(ripple.div(-RIPPLE_TAU)).mul(smoothstep(float(0), float(0.08), ripple)); // rise → ringdown
+  // rise → ringdown, scaled by the merger's mass (idle → exp term ≈ 0, so still a no-op)
+  const env = exp(ripple.div(-RIPPLE_TAU)).mul(smoothstep(float(0), float(0.08), ripple)).mul(strength);
   const d = theta.sub(front);
   const band = exp(d.mul(d).div(-RIPPLE_WIDTH2)); // gaussian band hugging the wavefront
   const wave = sin(d.mul(RIPPLE_FREQ)).mul(band).mul(env); // ringing inside the band
@@ -132,10 +135,11 @@ export function background(
   tint: Node<'float'>,
   camFwd: Node<'vec3'>,
   ripple: Node<'float'>,
+  rippleStrength: Node<'float'>,
 ) {
   // Global merger ringdown: warp the sampled sky direction in an expanding ring (same on every
   // background), so the selected sky lenses through the ripple identically. Idle → `sky` ≈ `dir`.
-  const ring = rippleWarp(dir, camFwd, ripple);
+  const ring = rippleWarp(dir, camFwd, ripple, rippleStrength);
   const sky = ring.dir;
 
   const col = vec3(0).toVar();

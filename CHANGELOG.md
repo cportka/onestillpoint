@@ -5,6 +5,21 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.40.x — Companion orbits precess (a relativistic-looking apsidal drift)
 
+- **0.40.1** — **A black-hole merger rings harder than a star plunge (roadmap #6 — the ringdown
+  cue).** The spacetime ripple (the expanding, decaying sky-warp fired when a body falls into the
+  hole, shipped v0.27–0.29) was identical for a dust speck and a black-hole coalescence. It now scales
+  with the absorbed body's mass: a new `rippleStrength` uniform multiplies the ripple envelope in
+  `rippleWarp` (`render/tsl/background.ts`), set on the `absorb` event from
+  `rippleStrengthForMass(body.mass)` (`render/rippleStrength.ts` — GW strain ∝ mass, so linear and
+  clamped). A star/planet plunge stays at **1×** (the unchanged baseline — no regression for the
+  common case), a secondary hole rings at **~2.6×** (a visibly stronger distortion + brighter
+  wavefront glow). **Zero intro / default-scene cost:** the strength is one extra multiply on the
+  already-gated, once-per-ray sky path (idle ⇒ envelope 0 ⇒ no-op), and the default scene seeds no
+  holes, so a stronger merger only fires for a hole the user added. Unit-tested
+  (`rippleStrength.test.ts`: baseline / hole-louder / clamp / monotonic). The bigger half of #6 — the
+  two-hole **inspiral dynamics** (so holes spiral in and merge rather than slingshot) — is a separate,
+  larger piece with a real design choice (scripted vs a dissipative drag that trades the bit-exact
+  reversibility), left for a deliberate decision.
 - **0.40.0** — **Relativistic-*looking* perihelion precession (roadmap #7), the reversibility-safe
   way.** A companion's pull from the primary now carries one extra **position-only** inverse-cube
   term, so the central force is `f(r) = M/r² + k/r³` (`PRECESSION_K = 0.3`, `integrators.ts`). That

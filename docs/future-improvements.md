@@ -274,28 +274,40 @@ prize trades against browser reach.
 - **Notes:** the build's chunk report names the target (`three.tsl`). Touches: `vite.config.ts`,
   `Renderer.ts` (the fallback path), the `three` import surface.
 
-## 6. Merger ringdown / gravitational-wave cue
+## 6. Merger ringdown / gravitational-wave cue — 🟡 ripple cue done, inspiral dynamics open
 
 The splash *fakes* a binary merger; the live scene could show a real one — two holes that
-inspiral, merge, and ring down, with a spacetime-ripple cue on the **Lattice** background.
-**Better value than its size suggests: it splits cleanly, and most of it is already built.**
+inspiral, merge, and ring down, with a spacetime-ripple cue. **Most of it is already built**: the
+two-hole *render* (a secondary hole + `secondaryDisk` + weak-field lensing) and the **ripple cue**
+itself both ship.
 
-- **Effort:** M, front-loaded with done work. The two-hole *render* already exists (a secondary
-  hole + `secondaryDisk` + weak-field lensing). What's missing is the **dynamics** and the **cue**.
-- **Risks / bugs:** the **inspiral** is the only real work, and it splits well. Newtonian gravity
-  at close separation *slingshots* (and `SOFTENING2` keeps it from merging cleanly), so a
-  believable spiral-in needs an **energy-loss / radiation-reaction** term. That term is
-  *dissipative → irreversible* — but that is **consistent with the existing model** (absorption is
-  already one-way and isn't rewound), so the merged pair just stays merged and it **does not break
-  Step-back / the DVR timeline** (unlike #7's naive route). The inspiral can also simply be
-  *scripted* rather than dynamical.
-- **Viz / perf:** dramatic set piece, and **cheap**. The ripple is a perfect fit for `lattice()`
-  in `background.ts` — a time-decaying distortion of the lat/long grid radiating from the merger
-  point (a few flops). The inspiral is just the N-body you already run.
-- **Science:** phenomenological — a scripted / drag-driven inspiral and a *metaphorical* ripple,
-  **not** a real waveform or metric perturbation. Frame it honestly.
-- **Notes:** start with the ripple cue — the hook is sitting right there. Touches: `src/scene/Scene.ts`
-  (inspiral / merge), `src/render/tsl/background.ts` (`lattice()` ripple).
+**What's shipped:** the **spacetime ripple** — an expanding, decaying sky-warp radiating from the
+hole, fired on any absorption — landed v0.27–0.29 (`rippleWarp` in `background.ts`, applied
+*globally* across every sky, not just the Lattice grid; idle ⇒ envelope 0 ⇒ no-op). v0.40.1 made it a
+proper *merger* cue: the amplitude now **scales with the absorbed body's mass**
+(`rippleStrengthForMass`, the `rippleStrength` uniform), so a black-hole merger rings ~2.6× a star
+plunge while the common plunge stays at the baseline.
+
+**What's open — the two-hole inspiral *dynamics*** (the only real remaining work):
+
+- **The fork (needs a decision).** Newtonian gravity at close separation *slingshots* (and
+  `SOFTENING2` keeps it from merging cleanly), so a believable spiral-in needs either (a) a
+  **scripted** inspiral path — low risk, keeps the integrator's bit-exact reversibility intact — or
+  (b) a **dissipative radiation-reaction drag** — more physical, but velocity-dependent, so it
+  *breaks* the KDK reversibility identity (Step-back / DVR). The roadmap blessed (b) as "consistent
+  with the existing model" (absorption is already one-way), **but** that trades a property `#7`
+  deliberately preserved, and tightening a close binary makes NaN close-encounter blow-ups more
+  likely — so it's a genuine design call, not an implementation detail.
+- **Guardrail:** any "stage a merger" affordance must stay **opt-in** (a body added after load) —
+  never seeded into the default `seed(3,3,0)`, which would turn `lensingActive` on during the cold
+  intro reveal and make it heavier (active problem #1).
+- **Viz / perf:** the inspiral is just the N-body already run; the cost is a per-step drag term (CPU,
+  cheap). The render is already there.
+- **Science:** phenomenological — a scripted / drag-driven inspiral, not a real waveform. Frame it
+  honestly.
+- **Notes:** Touches: `src/scene/Scene.ts` (inspiral / merge + a staging affordance),
+  `scripts/validate-orbit.mjs` (an inspiral-rate assertion), `src/ui/Controls.ts` (the staging
+  control, if added).
 
 ## 7. Relativistic companion orbits (perihelion precession) — ✅ shipped (v0.40.0)
 

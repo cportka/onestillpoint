@@ -74,8 +74,10 @@ export class Scene {
    *  count can refresh. */
   onChange?: () => void;
   /** Fired for a transient event worth marking on the history timeline — a body
-   *  added (by type), absorbed at the centre, or flung clear (escaped). */
-  onEvent?: (event: SceneEvent) => void;
+   *  added (by type), absorbed at the centre, or flung clear (escaped). The absorbed/added
+   *  body is passed along (when there is one) so the host can scale the merger ripple by its
+   *  mass — a black-hole merger rings harder than a star plunge (roadmap #6). */
+  onEvent?: (event: SceneEvent, body?: Body) => void;
   /** Fired **at the start** of a user-initiated body edit (an add, or a − removal's first frame),
    *  *before* it takes effect — so the host can commit any in-progress history replay: a live edit
    *  while scrubbed makes the scrubbed moment the new live edge (the recorded future is discarded).
@@ -353,7 +355,7 @@ export class Scene {
       if (b.absorbing === undefined && b.position.length() <= MERGE_RADIUS) {
         b.absorbing = 0; // just reached the centre — begin the absorption fade
         b.absorbAnchor = b.position.clone();
-        this.onEvent?.('absorb'); // a body fell in — mark the moment on the timeline
+        this.onEvent?.('absorb', b); // a body fell in — mark the moment (+ its mass scales the ripple)
       }
       if (b.absorbing !== undefined) {
         b.absorbing = Math.min(1, b.absorbing + frameDelta / ABSORB_DURATION);
