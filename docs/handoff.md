@@ -5,30 +5,34 @@ A short, living "you are here" for whoever picks this up next. Pairs with the du
 [`future-improvements.md`](future-improvements.md) (what's next). **Update this when you finish a
 session.**
 
-_As of v0.39.4 (2026-06)._
+_As of v0.40.1 (2026-06)._
 
 ## Where things stand
 
-- **Recently shipped — the cold reveal got measured *and* masked (this session).** Roadmap #1's
-  splash→engine reveal is now **instrumented**: `osp.perf` exposes the real timings — span durations
-  (`rendererInit` / `compile` / `bootToLoop` / `loopToReveal`), the **unclamped** inter-frame interval
-  over the first 120 live frames (mean / p50 / p95 / max / jank), and the reveal-window scaler-resize
-  count — because the headless CI GPU can't render or capture the canvas, so these numbers only exist
-  on a real device (v0.39.3, `src/core/RevealProfiler.ts`). On top of that, two **haze-masked masking
-  wins** shipped (v0.39.4): a **dust-march ramp** (`revealVolumeStep` in `quality.ts` — a coarser
-  `volumeStep` at the reveal, easing back on the same `fuzz` clock as the haze, the march-space
-  companion to the screen-space `introScale` cut) and a **pre-warm fix** that primes the *lit* disk
-  under the splash (the covered renders were warming a *dark* disk at `formation = 0`, so the first
-  lit-volume draw was landing on the first visible frame). Earlier: history-bar refinements
-  (v0.38.0 / v0.39.0), Share live-clip fallback (v0.39.1), OffscreenCanvas step 2 (v0.37.0).
+- **Recently shipped — intro perf + two roadmap physics items (this session).** **Intro reveal**
+  (roadmap #1): instrumented via `osp.perf` (`RevealProfiler.ts`, v0.39.3 — real cold-reveal timings,
+  the only place they exist since headless CI can't capture the WebGPU canvas); two haze-masked masking
+  wins (v0.39.4 — the `revealVolumeStep` dust-march ramp + priming the *lit* disk in the pre-warm);
+  and timing tweaks (v0.39.6 — `initialBlackMs` 500 → 600 for more covered pre-warm, `splashHoldMs`
+  600 → 590 so the model reveals ~10ms earlier). **New physics:** roadmap **#7 perihelion precession**
+  shipped (v0.40.0 — a position-only `k/r³` term, `PRECESSION_K = 0.3`, reversibility-safe, validated
+  against the closed form), and roadmap **#6 ringdown cue** advanced (v0.40.1 — the spacetime ripple
+  now scales with the absorbed body's mass, so a hole merger rings ~2.6× a star plunge). Earlier:
+  Share live-clip fallback (v0.39.1), OffscreenCanvas step 2 (v0.37.0).
 - **The one active problem** is still roadmap **#1 — the cold first-load reveal** on a cold pipeline.
-  The dial-tuning is now broad (resolution cut + dust ramp + warm haze, all converging on one clock)
-  **but still unmeasured on the target device.** The immediate next step is concrete: **capture
-  `osp.perf.report()` on the real Mac + a phone after a cold load** (open the console; the loop also
-  logs it once the 120-frame window fills) and let the numbers decide the next lever — if the residual
-  hitch is **compile / pipeline-bound**, push the pre-warm / OffscreenCanvas direction; if it's
-  **ALU-bound**, push the dust ramp (`REVEAL_VOLUME_STEP_BOOST`) harder or add a true raymarch step
-  budget. The real, permanent fix remains finishing the OffscreenCanvas migration.
+  The dial-tuning is now broad (resolution cut + dust ramp + warm haze + a longer pre-warm hold, all
+  converging on one clock) **but still unmeasured on the target device.** The immediate next step is
+  concrete: **capture `osp.perf.report()` on the real Mac + a phone after a cold load** (open the
+  console; the loop also logs it once the 120-frame window fills), ideally with a **screen recording**
+  of the same load, and let the numbers decide the next lever — if the residual hitch is **compile /
+  pipeline-bound**, push the pre-warm / OffscreenCanvas direction; if it's **ALU-bound**, push the
+  dust ramp (`REVEAL_VOLUME_STEP_BOOST`) harder or add a true raymarch step budget. The real,
+  permanent fix remains finishing the OffscreenCanvas migration.
+- **Two open look-/design decisions from this session.** (1) `PRECESSION_K = 0.3` (#7) is subtle by
+  design — raise it for a bolder rosette, or seed a slight orbital eccentricity so it shows on the
+  *default* near-circular orbits (it currently shows mainly after a scattering). (2) #6's two-hole
+  **inspiral dynamics** is the open fork: a **scripted** path (reversibility-safe) vs a **dissipative
+  drag** (more physical, breaks the bit-exact reversibility #7 preserved). Both await a call.
 - **The big in-flight project** is the **OffscreenCanvas + Worker render path** — see
   [`offscreen-canvas.md`](offscreen-canvas.md). Steps 1–2 done; **next is step 3 (input + resize to
   the worker)**, then Controls/HUD/timeline (4), Share/clip worker-side (5), and the flip (6).
