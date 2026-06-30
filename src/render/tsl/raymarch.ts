@@ -245,7 +245,7 @@ export function createBlackHoleNode(u: Uniforms, bh: BlackHole, bodies: BodyUnif
 
     // Background behind the dust: a hit body, else the lensed star field (escaped)
     // or the black horizon. Composite by the surviving transmittance.
-    const sky = background(normalize(vel), u.background, u.bgBrightness, u.bgSaturation, u.bgTint, u.camForward, u.ripple).mul(escaped);
+    const sky = background(normalize(vel), u.background, u.bgBrightness, u.bgSaturation, u.bgTint, u.camForward, u.ripple, u.rippleStrength).mul(escaped);
     const backdrop = select(bodyHit.greaterThan(0.5), bodyColor, sky); // bodyColor already faded by appear
     return radiance.add(transmittance.mul(backdrop));
   })();

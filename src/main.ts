@@ -17,6 +17,7 @@ import { BirthTicker } from './core/BirthTicker';
 import { createPostPipeline } from './render/PostPipeline';
 import { RaymarchPass } from './render/RaymarchPass';
 import { createBlackHoleNode } from './render/tsl/raymarch';
+import { rippleStrengthForMass } from './render/rippleStrength';
 import { createUniforms } from './render/uniforms';
 import { Scene } from './scene/Scene';
 import type { Body } from './scene/Body';
@@ -236,10 +237,14 @@ async function main(): Promise<void> {
   scene.onUserEdit = () => {
     if (timeline.commit()) events.dropFrom(history.recorded);
   };
-  scene.onEvent = (type) => {
+  scene.onEvent = (type, body) => {
     events.add(type, history.recorded);
-    // A body reaching the centre is a merger — fire the spacetime ringdown ripple (Lattice sky).
-    if (type === 'absorb') uniforms.ripple.value = 0;
+    // A body reaching the centre is a merger — fire the spacetime ringdown ripple, its amplitude
+    // scaled by the absorbed body's mass so a black-hole merger rings harder than a star plunge.
+    if (type === 'absorb') {
+      uniforms.ripple.value = 0;
+      uniforms.rippleStrength.value = body ? rippleStrengthForMass(body.mass) : 1;
+    }
   };
   // The seeded line-up is created silently (and starts *unborn* — rendered but not yet on the
   // recorded timeline). This drops a creation tick for each as it swooshes in during the intro (and

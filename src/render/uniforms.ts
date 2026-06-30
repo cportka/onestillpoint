@@ -61,6 +61,12 @@ export function createUniforms() {
      *  advanced each frame; large when idle, so the ripple envelope is 0 and the effect is a
      *  no-op. Only the Lattice sky reads it (see render/tsl/background.ts). */
     ripple: uniform(99),
+
+    /** Amplitude of the current ripple — scaled by the absorbed body's mass at the `absorb` event
+     *  (roadmap #6), so a black-hole merger rings harder than a star/planet plunge. 1 = baseline
+     *  (the star-plunge value, unchanged); larger for a heavier coalescence. Multiplies the ripple
+     *  envelope in `rippleWarp`, so it's a no-op whenever the ripple itself is (idle → envelope 0). */
+    rippleStrength: uniform(1),
   };
 }
 
