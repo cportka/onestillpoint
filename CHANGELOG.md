@@ -3,6 +3,27 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.40.x — Companion orbits precess (a relativistic-looking apsidal drift)
+
+- **0.40.0** — **Relativistic-*looking* perihelion precession (roadmap #7), the reversibility-safe
+  way.** A companion's pull from the primary now carries one extra **position-only** inverse-cube
+  term, so the central force is `f(r) = M/r² + k/r³` (`PRECESSION_K = 0.3`, `integrators.ts`). That
+  force precesses the ellipse *analytically* — apsidal angle `Φ = π√(1 + k/r)`, so the orbit advances
+  `Δφ = 2π(√(1 + k/r) − 1)` per turn (≈ 2–3°/orbit at these radii) — reproducing the GR perihelion
+  advance's `~1/r` falloff with a single constant. The key choice: it is a pure function of position
+  (a gradient of `U = −kM/(2r²)`), **not** a velocity-dependent 1PN term, so velocity-Verlet stays
+  symplectic and **bit-exact time-reversible** — Step-back and the DVR timeline are untouched
+  (`integrators.test.ts` proves the reverse run returns, which now also guards this term). It's a
+  *look* dial, not a geodesic (literal weak-field GR is `k = 6M`, a fast rosette here); `0.3` is a
+  slow, on-theme drift, most visible once an orbit is eccentric (e.g. after a scattering). Gated to
+  the companion↔primary pull only (never companion↔companion), and **zero intro cost** — it's CPU
+  N-body (~6 extra flops/frame at the default N = 7), touches no shader/per-ray path, so the cold
+  splash→engine reveal is unaffected. Validated: `scripts/validate-orbit.mjs` now asserts the measured
+  apsidal advance matches the closed form (within 12%, isolating the physical rate from the
+  integrator's discretisation via a `k = 0` control); circular orbits stay bounded + energy-conserving
+  against the *true* energy (incl. the precession potential). The unreachable GPU N-body path
+  (`GPUPhysicsEngine.accelAt`) is documented as intentionally omitting the term.
+
 ## 0.39.x — Bodies are absent in history before they're born
 
 - **0.39.6** — **Intro timing: a longer black hold to pre-warm under, and the model revealed a hair

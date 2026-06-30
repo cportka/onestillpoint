@@ -68,6 +68,10 @@ function createGPUKernels(renderer: WebGPURenderer, init: InitialState) {
   const dtHalf = uniform(0);
 
   // Newtonian acceleration on the body at xi from all bodies (self contributes 0).
+  // NOTE: this GPU path does NOT carry the CPU integrator's r⁻³ precession term (PRECESSION_K,
+  // integrators.ts) — it is unreachable today (GPU_AUTO_BODIES=256 ≫ MAX_BODIES=14, so autoSelect
+  // always stays on CPU), so the two would only diverge if the GPU path were ever enabled at low N.
+  // If that changes, mirror the companion↔primary k/r³ term here.
   const accelAt = (xi: Node<'vec3'>) => {
     const a = vec3(0).toVar();
     Loop(count, ({ i }) => {
