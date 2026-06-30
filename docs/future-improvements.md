@@ -297,28 +297,24 @@ inspiral, merge, and ring down, with a spacetime-ripple cue on the **Lattice** b
 - **Notes:** start with the ripple cue — the hook is sitting right there. Touches: `src/scene/Scene.ts`
   (inspiral / merge), `src/render/tsl/background.ts` (`lattice()` ripple).
 
-## 7. Relativistic companion orbits (perihelion precession)
+## 7. Relativistic companion orbits (perihelion precession) — ✅ shipped (v0.40.0)
 
-Companions integrate with Newtonian N-body gravity; a slowly **precessing ellipse** is visible,
-correct-looking, and on-theme. **The sharper framing: the old "preserve reversibility" note was
-the trap, not the fix — there's a route that sidesteps it entirely.**
+Done via the **position-only inverse-cube** route (the one that sidesteps the reversibility trap). A
+companion's pull from the primary carries one extra `k/r³` term (`PRECESSION_K = 0.3`,
+`integrators.ts`), so the central force `f(r) = M/r² + k/r³` precesses the ellipse *analytically* —
+apsidal angle `Φ = π√(1 + k/r)`, advance `Δφ = 2π(√(1 + k/r) − 1)` per orbit (~2–3°/orbit here),
+reproducing the GR advance's `~1/r` falloff with one constant. Because it's a pure function of
+position (gradient of `U = −kM/(2r²)`), velocity-Verlet stays symplectic and **bit-exact reversible**
+(Step-back / DVR timeline intact — `integrators.test.ts` guards it); the literal weak-field GR match
+is `k = 6M`, so `0.3` is a deliberately slow, on-theme drift (most visible once an orbit is
+eccentric). Validated against the closed form in `scripts/validate-orbit.mjs`. Zero intro cost (CPU
+N-body, ~6 flops/frame, no shader path). The unreachable GPU N-body path omits the term (documented).
 
-- **Effort:** S–M — the **lowest-risk physics item**, *if* you take the effective-potential route.
-- **Risks / bugs:** the obvious implementation — a true **1PN** correction `a(x, v)` — is
-  **velocity-dependent**, which **breaks** the velocity-Verlet (KDK) reversibility identity (it
-  holds *only* for position-only forces — `integrators.test.ts` proves exactly this). That loses
-  bit-exact Step-back and symplecticity → orbits drift over a session, and the new DVR timeline
-  leans on that reversibility even harder. **The move:** a **position-only inverse-cube (r⁻³)**
-  effective-potential perturbation tuned to the GR precession rate. A `1/r² + 1/r³` force precesses
-  the ellipse *analytically*; match the r⁻³ coefficient to the leading-order GR advance for
-  near-circular orbits. One extra force term, reversibility + symplecticity intact,
-  precession-per-orbit closed-form.
-- **Viz / perf:** subtle, correct-*looking*; negligible cost (one force term).
-- **Science:** "right observable, wrong mechanism" — a Newtonian-shaped perturbation that
-  reproduces the GR rate, not true 1PN. For a look-driven visualizer that's the right trade, and
-  the closed form drops straight into `validate-orbit`.
-- **Notes:** Touches: `src/physics/integrators.ts` (`computeAccelerations` — add the r⁻³ term to
-  the primary's pull), `scripts/validate-orbit.mjs`.
+**Open follow-ups (small):** `PRECESSION_K` is a single look-dial — raise it for a bolder rosette, or
+seed a slight orbital eccentricity so the drift is visible on the *default* near-circular orbits (the
+seed is left circular for now, so precession mainly shows after a scattering). Touched:
+`src/physics/integrators.ts`, `scripts/validate-orbit.mjs`, `src/physics/integrators.test.ts`,
+`src/physics/GPUPhysicsEngine.ts`.
 
 ## 8. Deeper spaghettification / tidal disruption event — ✅ shipped (v0.29.0–v0.32.0)
 
