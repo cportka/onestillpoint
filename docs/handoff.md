@@ -5,34 +5,40 @@ A short, living "you are here" for whoever picks this up next. Pairs with the du
 [`future-improvements.md`](future-improvements.md) (what's next). **Update this when you finish a
 session.**
 
-_As of v0.41.1 (2026-07)._
+_As of v0.42.2 (2026-07)._
 
 ## Where things stand
 
-- **Roadmap #1 got its first real measurement — and the measured stalls are fixed.** A Firefox/Mac
-  cold-load recording + `osp.perf` were analyzed frame-by-frame (Portka `video-bug-analyzer`) — the
-  full evidence, options weighed, and verdict live in
-  [`perf-recording-2026-07-01.md`](perf-recording-2026-07-01.md). Headline: the pre-warm works (532ms
-  compile fully covered), the splash plays smoothly, but the reveal froze ~800ms on **two main-thread
-  JS stalls** — the control panel mounting mid-reveal and a dismiss-moment scaler resize — both fixed
-  in **v0.40.3** (panel mounts at formation-settle; scaler ceiling pinned while covered). Also found:
-  Firefox's macOS WebGPU paces at ~26ms (~38fps) — an upstream ceiling app dials can't raise; a
-  Chrome comparison run on the same Mac is the next measurement.
-- **The feel pass shipped (v0.41.0).** The − plunge no longer spin-kicks — it winds from the body's
-  own captured rate (retrograde stays retrograde) and quickens Kepler-style as it falls; + adds now
-  prefer the widest open orbital gap (stable orbits); the torn-stream is brighter/wispier
-  (`STREAM_EMIT 0.17` / `STREAM_EXT 0.21`) — **all three tuned blind, verify on the next recording.**
-- **The two-scripts policy is now standing** — [`physical-script.md`](physical-script.md) (the
-  reality: what's honest physics vs phenomenological vs theatre) rides alongside the art-directed
-  [`intro-script.md`](intro-script.md), and codifies the **reversibility covenant**: irreversible
-  physics is allowed **during the intro window only**; the settled sim stays bit-exact reversible
-  (Step-back / DVR). This unlocks #6's inspiral as an intro set piece or user-staged event.
-- **The committed path for #1**: if the post-v0.40.3 recording still shows discrete stalls — or as
-  the 1.0 gate regardless — **finish the OffscreenCanvas worker migration (option B, steps 3–6)**;
-  the user has signed off on that commitment. "A little more masking" (option C) is authorized only
-  if the next recording shows GPU-bound strain (moving-but-slow), not stalls.
-- **Earlier this arc:** `osp.perf` instrumentation (v0.39.3), dust-ramp + lit-disk pre-warm masking
-  (v0.39.4), intro timing (v0.39.6), #7 precession (v0.40.0), #6 mass-scaled ripple (v0.40.1).
+- **Roadmap #1: the definitive diagnosis landed (v0.42.2) — verify on-device next.** The second
+  measurement round (Chrome + Firefox cold recordings + `osp.perf`) caught a single **1.5–2s
+  page-wide freeze** at loop start that hard-cut the reveal. Verified against stock three r184
+  source: the pre-warm compiled the raymarch against the **default framebuffer**, but it renders
+  into the post `pass()`'s HalfFloat RT — a **different pipeline-cache variant** — so the real one
+  (+ ~9 post-chain pipelines) compiled **synchronously in the GPU process** at first submit,
+  freezing every rAF on the page (not a main-thread block; that's why v0.40.3 couldn't kill it).
+  Fixed three ways: `post.compileAsync()` (`PassNode.compileAsync` — the correct variant, async),
+  `onSubmittedWorkDone()` drains the primed debt under the splash (new `prime` mark), and a
+  **`SmoothnessGate`** (6 consecutive gaps < 50ms, 4s ceiling, re-armed on Replay) so the reveal
+  can never again fire into a freeze, whatever causes one. Full evidence + morning scoreboard:
+  [`perf-recording-2026-07-02.md`](perf-recording-2026-07-02.md).
+- **The brand landed (v0.42.0).** The **Ember Core** mark: static → `assets/logo.svg` + the app's
+  first favicon (`public/favicon.svg`); animated → `assets/hero.svg` (README) + the About card.
+  Its warm-silver palette is the reference for the remaining roadmap-#3 theme unification.
+- **The ringdown is now a gravitational wave, not a fog (v0.42.1).** From the plunge recording:
+  glow cut to a glint (`RIPPLE_GLOW 0.015`), the warp is the signal (`RIPPLE_WARP 0.09`),
+  asymmetric front (sharp leading edge, ringing trailing wake). **Blind-tuned — verify on the next
+  plunge clip**, together with v0.41.0's plunge feel + spaghettification dials.
+- **The two-scripts policy is standing** — [`physical-script.md`](physical-script.md) alongside the
+  art-directed [`intro-script.md`](intro-script.md), incl. the **reversibility covenant**
+  (irreversible physics during the intro window only). #6's inspiral fork (scripted vs dissipative)
+  and the `PRECESSION_K` look intent remain the two open design calls.
+- **OffscreenCanvas (option B) is no longer *urgent* if v0.42.2 verifies** — the freeze had a
+  precise, app-side cause, now fixed with defense-in-depth. It remains the right 1.0 robustness
+  play (render immune to any main-thread work) and the in-flight plan is unchanged: steps 1–2 done,
+  next is step 3 (input + resize) — see [`offscreen-canvas.md`](offscreen-canvas.md).
+- **Earlier this arc:** `osp.perf` (v0.39.3), dust ramp + lit-disk pre-warm (v0.39.4), intro timing
+  (v0.39.6), #7 precession (v0.40.0), #6 mass-scaled ripple (v0.40.1), main-thread reveal stalls
+  (v0.40.3), body life-cycle feel (v0.41.0).
 - **The big in-flight project** is the **OffscreenCanvas + Worker render path** — see
   [`offscreen-canvas.md`](offscreen-canvas.md). Steps 1–2 done; **next is step 3 (input + resize to
   the worker)**, then Controls/HUD/timeline (4), Share/clip worker-side (5), and the flip (6).
