@@ -36,6 +36,13 @@ export interface Body {
   plunging?: number;
   /** Position captured when the plunge began — the start of the inward path. */
   plungeFrom?: Vector3;
+  /** Signed angular rate (sim rad/s about the vertical, in the plunge path's rotation convention)
+   *  captured from the body's real velocity when the plunge began — the spiral winds *from the
+   *  body's own motion* (same direction, same rate at t = 0), so − never visibly kicks it. */
+  plungeOmega?: number;
+  /** Accumulated wind angle of the plunge spiral (integrated per frame — the rate rises as the
+   *  body falls, Kepler-style, so the dive quickens naturally instead of whipping at a fixed rate). */
+  plungeAngle?: number;
   /** True for a *seeded* body that has not yet been "born" onto the history timeline — it renders
    *  (it's swooshing in during the formation intro) and is stepped by the physics, but is **excluded
    *  from `History.record`** until its creation tick fires (see {@link BirthTicker}). So rewinding to

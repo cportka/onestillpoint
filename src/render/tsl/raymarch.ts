@@ -32,8 +32,10 @@ import { photonAccel, staticObserverRay } from './schwarzschild';
 import { secondaryDisk } from './secondaryDisk';
 
 const MAX_STEPS = 512;
-const STREAM_EMIT = 0.12; // brightness of the additive torn-stream gas (× its HDR colour, per unit length)
-const STREAM_EXT = 0.25; // how much the stream gas occludes (Beer–Lambert) — semi-transparent
+// ⟳ Spaghettification look (tune against a recording): brighter, wispier torn-stream gas so the
+// tear reads clearly against the disk — raised from 0.12/0.25 per the "more spaghettified" pass.
+const STREAM_EMIT = 0.17; // brightness of the additive torn-stream gas (× its HDR colour, per unit length)
+const STREAM_EXT = 0.21; // how much the stream gas occludes (Beer–Lambert) — semi-transparent
 
 /**
  * The black-hole shader. Per-pixel Schwarzschild photon geodesics by RK4

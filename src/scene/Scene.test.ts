@@ -118,6 +118,54 @@ describe('Scene', () => {
     expect(scene.bodies[0]!.fixed).toBe(true); // the primary is untouched
   });
 
+  it('the − plunge winds from the body\'s own motion — no spin kick, direction preserved', () => {
+    const scene = new Scene();
+    scene.clearCompanions();
+    scene.physics.timeScale = 1; // wall-clock = sim, so the rate check is exact
+    const star = scene.addStar(30); // prograde
+    const planet = scene.addPlanet(30); // retrograde — orbits the other way
+
+    // ω₀ about the vertical, in the plunge path's rotation convention (+ = toward +z at +x).
+    const omegaOf = (b: typeof star): number =>
+      (b.position.x * b.velocity.z - b.position.z * b.velocity.x) / (b.position.x ** 2 + b.position.z ** 2);
+    const starOmega = omegaOf(star);
+    const planetOmega = omegaOf(planet);
+    expect(Math.sign(planetOmega)).toBe(-Math.sign(starOmega)); // opposite directions to begin with
+
+    expect(scene.removeOne('planet')).toBe(true);
+    // The captured rate IS the body's own rate — the spiral starts at the spin the eye is tracking.
+    expect(planet.plungeOmega).toBeCloseTo(planetOmega, 8);
+
+    // A small step in: the azimuth advances in the body's OWN direction at ≈ its own rate — the old
+    // fixed 4-turn wind both whipped it faster and could reverse a retrograde body.
+    const dt = 0.01;
+    scene.prune(dt);
+    const f = planet.plungeFrom!;
+    const turned = Math.atan2(
+      f.x * planet.position.z - f.z * planet.position.x, // sin of the swept angle (signed)
+      f.x * planet.position.x + f.z * planet.position.z, // cos
+    );
+    expect(Math.sign(turned)).toBe(Math.sign(planetOmega)); // keeps falling its own way round
+    expect(Math.abs(turned)).toBeGreaterThan(Math.abs(planetOmega) * dt * 0.8); // ≈ its own rate…
+    expect(Math.abs(turned)).toBeLessThan(Math.abs(planetOmega) * dt * 1.5); // …no visible kick
+  });
+
+  it('adding a body with no explicit radius prefers the widest open gap (a stable orbit)', () => {
+    const scene = new Scene();
+    scene.clearCompanions();
+    scene.addStar(26); // occupy the band edges…
+    scene.addStar(48);
+    const added = scene.addStar(); // …so the widest gap is the middle
+    // Gap (26, 48) → centre 37, jitter stays within ±15% of the gap width.
+    expect(added.position.length()).toBeGreaterThan(33);
+    expect(added.position.length()).toBeLessThan(41);
+    // And an empty field lands mid-band, not anywhere at random.
+    scene.clearCompanions();
+    const first = scene.addPlanet();
+    expect(first.position.length()).toBeGreaterThan(20);
+    expect(first.position.length()).toBeLessThan(44);
+  });
+
   it('restoreRoster revives gone bodies (from the registry) and drops ones added since', () => {
     const scene = new Scene();
     scene.clearCompanions(); // start from just the primary
