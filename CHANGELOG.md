@@ -5,6 +5,13 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.42.x — The Ember Core mark (branding, roadmap #3)
 
+- **0.42.3** — **Docs: the second recording analysis + handoff refresh (the overnight batch).**
+  Added [`docs/perf-recording-2026-07-02.md`](docs/perf-recording-2026-07-02.md) — the Chrome +
+  Firefox cold-load evidence, the verified wrong-pipeline-variant mechanism behind the ~2s freeze,
+  the v0.42.2 fix, and the on-device verification scoreboard for the morning (expect `maxMs` < 100,
+  `janks ≈ 0`, a real `prime` mark, a gliding reveal). Handoff brought current (as of v0.42.2):
+  brand landed, ringdown reworked, OffscreenCanvas demoted from *urgent* to the 1.0 robustness play
+  if v0.42.2 verifies. No runtime changes.
 - **0.42.2** — **The cold reveal's real culprit, found and fixed: the pre-warm compiled the *wrong
   pipeline variant*, and the reveal gate couldn't tell (roadmap #1, measured on Chrome + Firefox).**
   The fresh Chrome/Firefox recordings + `osp.perf` showed a single **1.5–2s page-wide freeze** at
