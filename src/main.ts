@@ -171,6 +171,11 @@ async function main(): Promise<void> {
   // Masked + made intentional by the warm-fuzzy haze.
   const armIntroScale = (): void => {
     const introScale = introResolutionScale(activeQuality);
+    // Pin the *ceiling* too: fast covered frames must not let the scaler climb (a resize) under the
+    // splash, because the re-arm at dismiss would then drop it again — a second pipeline-target
+    // rebuild landing exactly on the reveal (the Firefox recording showed both, mid-crossfade).
+    // Released back to native at dismiss, so the climb-back belongs to the haze-masked settle.
+    scaler.maxScale = introScale;
     if (scaler.scale > introScale) {
       scaler.scale = introScale;
       scaler.minScale = introScale; // let the floor follow the reveal down (restored as it climbs back)
@@ -188,6 +193,7 @@ async function main(): Promise<void> {
     perf.end('loopToReveal', performance.now()); // splash lifts here — the reveal begins
     splash?.classList.add('osp-splash--hide');
     armIntroScale(); // the reveal + settle is the heaviest the engine gets — start cheap, then climb
+    scaler.maxScale = 1; // release the covered-frames pin — the climb back to sharp starts here
     uniforms.fuzz.value = 1; // …and reveal it "warm and out of focus", easing to reality in the loop
   };
   // Crossfade out only once the merger has had its minimum time on screen,
@@ -323,12 +329,17 @@ async function main(): Promise<void> {
     return blob ? new File([blob], 'onestillpoint.png', { type: 'image/png' }) : null;
   };
 
-  // Build the control panel *lazily, off the critical path*. lil-gui + the panel
-  // are a heavy, synchronous DOM build that isn't needed during the intro — doing
-  // it under the splash was janking the fresh-load animation. Code-split it (a
-  // dynamic import → its own chunk, out of the initial bundle) and mount it when
-  // the main thread is next idle, after the merger has played.
+  // Build the control panel *lazily, off the critical path*. lil-gui + the panel are a heavy,
+  // synchronous DOM build (plus a ~54KB chunk fetch) that isn't needed during the intro — and the
+  // Firefox Mac recording caught exactly that cost landing **mid-reveal**: the old idle callback
+  // (timeout 2.5s from loop start) fired inside the splash→engine crossfade, freezing the first
+  // visible frames for ~400ms. It now waits for the formation to settle (`formation.onDone`, the
+  // moment "control returns to the audience" — where a control panel belongs anyway), and only then
+  // mounts on the next idle slice. Skip (tap) fires onDone early, so a skipped intro mounts sooner.
+  let controlsMounted = false;
   const mountControls = async (): Promise<void> => {
+    if (controlsMounted) return;
+    controlsMounted = true;
     clip?.start(); // begin buffering now (post-intro) — clear of the heavy reveal frames
     const { createControls } = await import('./ui/Controls');
     createControls({
@@ -481,7 +492,9 @@ async function main(): Promise<void> {
   perf.end('bootToLoop', performance.now()); // everything before the live loop
   perf.begin('loopToReveal', performance.now()); // …until the splash lifts (in dismissSplash)
   loop.start();
-  scheduleControls(); // mount the panel once the main thread is idle (after the splash)
+  // Mount the panel only after the intro settles (or is skipped) — never during the reveal.
+  // `createControls` re-assigns `formation.onDone` for its own replay handling when it mounts.
+  formation.onDone = scheduleControls;
 
   // Expose handles for console poking during development.
   Object.assign(globalThis, {

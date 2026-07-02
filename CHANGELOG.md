@@ -5,7 +5,21 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.40.x — Companion orbits precess (a relativistic-looking apsidal drift)
 
-- **0.40.2** — **Docs: handoff refresh after the intro-perf + physics session.** Brought
+- **0.40.3** — **Kill the ~800ms freeze at the splash→engine reveal (roadmap #1, measured).** A
+  Firefox/Mac screen recording + `osp.perf` (analyzed frame-by-frame with the Portka
+  `video-bug-analyzer`) caught the reveal freezing solid for ~800ms (motion 0.00 from ~4.9–5.7s, two
+  discrete stalls; `maxMs 394`, 31 janks, 2 reveal-window resizes) — **main-thread JS blocks, not GPU
+  load**. Two causes, two fixes. **(a) The control panel was mounting mid-reveal:** the old
+  `requestIdleCallback(timeout 2.5s)` fired its ~54KB chunk fetch + heavy synchronous lil-gui DOM
+  build inside the crossfade. It now waits for **the formation to settle** (`formation.onDone` — the
+  moment "control returns to the audience", where a panel belongs anyway; a tap-skip mounts it
+  early), then mounts on the next idle slice. The rolling share-clip recorder starts there too.
+  **(b) The scaler was resizing at the dismiss moment:** fast covered frames let it climb (resize #1),
+  and the re-arm at dismiss dropped it back (resize #2 — a bloom/FXAA pipeline rebuild landing
+  exactly on the reveal). `armIntroScale` now **pins the ceiling** (`maxScale = introScale`) while
+  covered, released at dismiss — zero reveal-window rebuilds; the climb-back belongs to the
+  haze-masked settle. Re-measure with a fresh recording + `osp.perf` (the `resizes` counter should
+  read 0). Brought
   [`docs/handoff.md`](docs/handoff.md) current (now _as of v0.40.1_): recorded the intro-timing tweaks
   (v0.39.6), the precession (#7, v0.40.0), and the mass-scaled ripple (#6, v0.40.1), and surfaced the
   two open decisions left for a deliberate call — the `PRECESSION_K` look intent, and #6's two-hole
