@@ -193,7 +193,8 @@ scripts/
   capture-splash.mjs   render the load splash to assets/splash.gif — npm run capture:splash
   capture-creation.mjs render the moment of creation to assets/creation.gif — npm run capture:creation
   verify-intro.mjs     headless visual test of the intro prelude beats — npm run verify:intro
-assets/                tracked art: hero.svg (logo) + creation.gif + splash.gif (captured intro loops)
+assets/                tracked art: hero.svg (animated mark) + logo.svg (the static Ember Core mark,
+                       also served as public/favicon.svg) + creation.gif + splash.gif (intro loops)
 ```
 
 ## Deploy

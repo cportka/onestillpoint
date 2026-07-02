@@ -169,15 +169,18 @@ mechanism over a 2D canvas (verified: a real animated WebM, honest mp4→WebM MI
 live clip records (read `osp.clip.status` if Share still falls back). Touches: `src/ui/recordClip.ts`,
 `src/ui/share.ts`, `src/main.ts` (`captureShare`).
 
-## 3. Finish the branding / theme pass
+## 3. Finish the branding / theme pass — 🟡 logo landed (v0.42.0), palette unification open
 
-The checkbox de-saturation (v0.22.0, the `--osp-check` silver) is the first step
-toward a **neutral, barely-warm silver** identity. Remaining: unify the other accent
-greens that are *chrome* rather than *status* (the version-copied check, the HUD
-appear-pulse, the About-copied check) into the palette; **keep the semantic greens
-that mean "success / go"** (the ✓ add-flash, the Resume/running state) — unless the
-new palette defines its own success hue; finalize the **logo / wordmark** and the
-About-card art; align the share/HUD accents. (The CPU/GPU HUD tokens are deliberately
+**The logo is locked (v0.42.0): the "Ember Core" mark** — warm-silver ring, ember-lit horizon —
+ships as the static `assets/logo.svg` (served as the app's first-ever favicon, `public/favicon.svg`)
+and the animated `assets/hero.svg` (README hero + the About-card art in `about.ts`, background-tile
+stripped there). Its warm-silver palette (`#c3bcab` / `#d2cab6` ring, `#ffd2a6` embers) is now the
+brand reference the remaining theme work should align to.
+
+Remaining: unify the other accent greens that are *chrome* rather than *status* (the version-copied
+check, the HUD appear-pulse, the About-copied check) into the palette; **keep the semantic greens
+that mean "success / go"** (the ✓ add-flash, the Resume/running state) — unless the new palette
+defines its own success hue; align the share/HUD accents. (The CPU/GPU HUD tokens are deliberately
 *functional* slate/amber, not branding.)
 
 - **Effort:** S–M — mostly CSS + asset work once the palette and logo are locked.
