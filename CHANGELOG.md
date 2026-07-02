@@ -5,6 +5,16 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.41.x — Body life-cycle feel: stable adds, a plunge that falls from its own motion
 
+- **0.41.1** — **Docs: the recording analysis report + the two-scripts policy.** Added
+  [`docs/perf-recording-2026-07-01.md`](docs/perf-recording-2026-07-01.md) — the full frame-by-frame
+  analysis of the Firefox/Mac cold-load recording + `osp.perf` (evidence, the ~800ms two-stall
+  diagnosis fixed in v0.40.3, the Firefox WebGPU pacing finding, options A/B/C weighed with
+  pros/cons, and the next measurements). Added
+  [`docs/physical-script.md`](docs/physical-script.md) — **the physical script** that now rides
+  alongside the art-directed [`intro-script.md`](docs/intro-script.md) (what's honest physics vs
+  phenomenological vs theatre, beat by beat), codifying the **reversibility covenant**: irreversible
+  physics allowed during the intro window only; the settled sim stays bit-exact reversible
+  (Step-back / DVR). Handoff refreshed. No runtime changes.
 - **0.41.0** — **Adds prefer a stable orbit; the − plunge dives from the body's own motion; the tear
   reads more spaghettified.** Three body-lifecycle refinements from the live review. **(a) The − spin
   kick is gone.** The removal plunge used a fixed wind (4 turns / 4.5s) regardless of the body's real
