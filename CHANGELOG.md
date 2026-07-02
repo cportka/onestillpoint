@@ -5,6 +5,31 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.42.x — The Ember Core mark (branding, roadmap #3)
 
+- **0.42.2** — **The cold reveal's real culprit, found and fixed: the pre-warm compiled the *wrong
+  pipeline variant*, and the reveal gate couldn't tell (roadmap #1, measured on Chrome + Firefox).**
+  The fresh Chrome/Firefox recordings + `osp.perf` showed a single **1.5–2s page-wide freeze** at
+  loop start (`maxMs ≈ loopToReveal − 5 frames` on both), the splash hold expiring *during* it → an
+  abrupt hard-cut reveal. Verified against stock three r184 source: `renderer.compileAsync(scene,
+  camera)` compiles against the **default framebuffer**, but the raymarch actually renders into the
+  post `pass()`'s HalfFloat render target — and the RT's color format is part of the pipeline cache
+  key, so the pre-warm warmed a variant `render()` never uses. The real one — plus ~9 post-chain
+  pipelines (bloom's 7, a hidden RTT that `fxaa()` inserts, the output quad) — compiled
+  **synchronously in the GPU process** at first submit (the normal render path never uses
+  `createRenderPipelineAsync`; only `compileAsync` does), stalling presentation and freezing every
+  rAF on the page (the splash dust too) while main-thread JS stayed runnable. Three fixes: **(a)**
+  the pre-warm now calls **`PassNode.compileAsync(renderer)`** (exposed as `post.compileAsync()`) —
+  binds the pass's RT so the *correct* raymarch variant compiles async; **(b)** the two covered
+  priming renders are followed by **`device.queue.onSubmittedWorkDone()`** (guarded for the WebGL
+  fallback) — the old awaited rAF resolved while ~2s of queued sync compiles were still pending, so
+  the debt landed on the first live frames; now it genuinely drains under the splash (new `prime`
+  perf mark); **(c)** the 5-raw-frames reveal gate is replaced by a **`SmoothnessGate`**
+  (`src/core/SmoothnessGate.ts`): the crossfade schedules only after **6 consecutive inter-tick gaps
+  < 50ms** (widened under a cinematic frame cap; 4s ceiling so a slow device is never stranded) — a
+  stall resets the streak, so the reveal can never again fire into a freeze, whatever causes it
+  (Firefox-internal compiles, GC, the first lit march). Re-armed on Replay. Unit-tested
+  (`SmoothnessGate.test.ts`, 8 cases incl. the measured 2s-stall scenario). Verify on-device:
+  `osp.perf` should show a small `prime`, `maxMs` well under 100, `janks ≈ 0`, and a `smoothGate`
+  mark ≈ the streak length.
 - **0.42.1** — **The ringdown reads as an actual gravitational wave, not a fog (roadmap #6, from the
   plunge recording).** The post-absorption ripple was dominated by its glow band — a huge, diffuse
   milky whiteness swallowing the sky (exactly what the review called "washed-out vibration / vague
@@ -16,7 +41,8 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
   a touch longer (`RIPPLE_TAU 2.2 → 2.6`), and the glow is cut to a faint cool glint on the leading
   edge only (`RIPPLE_GLOW 0.07 → 0.015`, and it no longer rides the whole wake). Still globally
   applied, still mass-scaled (`rippleStrength`), still a no-op when idle. **Blind-tuned — verify
-  against the next plunge recording**; all dials at the top of `background.ts`. The
+  against the next plunge recording**; all dials at the top of `background.ts`.
+- **0.42.0** — **The new logo lands: the "Ember Core" mark, static + animated (roadmap #3).** The
   art-directed mark — a tilted warm-silver accretion ring (`#c3bcab`/`#d2cab6`) wrapping an
   ember-lit event-horizon sphere (`#ffd2a6` embers), with the ring passing *behind* the globe (the
   far side masked + faded) and *in front* with a black occlusion cut — replaces the previous

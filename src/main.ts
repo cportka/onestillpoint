@@ -10,6 +10,7 @@ import { createRenderer } from './core/Renderer';
 import { detectQualityTier, introResolutionScale, QUALITY_TIERS, revealVolumeStep, type QualityTier } from './core/quality';
 import { ResolutionScaler } from './core/ResolutionScaler';
 import { RevealProfiler } from './core/RevealProfiler';
+import { SmoothnessGate } from './core/SmoothnessGate';
 import { TimeController } from './core/TimeController';
 import { PhysicsController } from './physics/PhysicsController';
 import { createBodyUniforms, updateBodyUniforms } from './render/bodyUniforms';
@@ -292,7 +293,11 @@ async function main(): Promise<void> {
         window.__ospIntro?.(); // black hold → test pattern → creation → splash
         window.setTimeout(() => {
           melt.restore(); // un-melt under the now-covering splash (the snap-back is invisible)
-          dismissAfterPlayed(); // the fresh splash start is set by now; play it out
+          // Re-arm the smoothness gate rather than scheduling the dismiss directly: the replayed
+          // reveal also waits for a smooth streak (arm resets the seed, so the melt-spanning gap
+          // never counts as a stall). The gate's open calls dismissAfterPlayed, which still waits
+          // for the fresh splash's first painted frame + hold as before.
+          gate.arm(performance.now(), gateThreshold());
         }, SPLASH_COVERS_AT_MS);
       },
       { durationMs: MELT_MS },
@@ -360,21 +365,31 @@ async function main(): Promise<void> {
   // (`history` + the scrub bar are set up above, before replaySplash; the loop records
   // each running frame into `history` — cheap, zero-allocation, exactly replayable.)
 
-  // Hold the splash until a few frames have rendered — the WebGPU pipeline
-  // finishes compiling over the first frames, which is the fresh-load hitch, so
-  // we let it happen *under* the splash — and until the merger has played
-  // (dismissAfterPlayed). Into the formation playing underneath.
-  let warmFrames = 0;
-  const WARM_FRAMES = 5;
+  // Hold the splash until the loop has *proven* it runs smoothly — N consecutive fast inter-tick
+  // gaps, not a raw frame count. A raw count fired the reveal the instant a multi-second cold
+  // pipeline stall lifted (the splash-hold countdown had expired during it) — an abrupt hard cut,
+  // measured on both Chrome and Firefox. Any stall now resets the streak, so the crossfade only
+  // plays into a flowing loop; the gate's ceiling (4s) still guarantees a slow device is never
+  // stranded under the splash. Armed before loop.start and re-armed on Replay.
+  const gate = new SmoothnessGate();
+  // With a cinematic frame cap active, legitimate gaps pace at the cap interval — widen the gate.
+  const gateThreshold = (): number => (loop.maxFps > 0 ? 1000 / loop.maxFps + 15 : 50);
   // How long the warm-fuzzy reveal veil takes to ease from full (at the reveal) to
   // nothing — it masks the deep intro-scale cut while the scaler converges. Paced to
   // the takeover (a few seconds), not the old forced 10 s ramp.
   const FUZZ_FADE_S = 5.0;
 
   loop.onTick = (frameDelta) => {
+    const now = performance.now(); // one clock read shared by the profiler + the smoothness gate
     // Reveal profiler: log the true (unclamped) inter-frame interval for the first frames, then
     // print the final report once. Pure measurement — `osp.perf.report()` is also readable any time.
-    if (perf.tick(performance.now())) console.info('[onestillpoint] reveal perf', perf.report());
+    if (perf.tick(now)) console.info('[onestillpoint] reveal perf', perf.report());
+    // The reveal gate: once the loop has held a smooth streak (or hit the ceiling), schedule the
+    // crossfade — which still honors the splash-hold minimum inside dismissAfterPlayed.
+    if (gate.tick(now)) {
+      perf.end('smoothGate', now); // how long smoothness took from arm — readable in osp.perf
+      dismissAfterPlayed();
+    }
     const resized = scaler.update(frameDelta);
     if (resized) applySize();
     // Count scaler resizes while the reveal floor is still lowered — each rebuilds the bloom/FXAA
@@ -458,39 +473,41 @@ async function main(): Promise<void> {
       gpu: physics.useGPU,
     });
     historyBar.tick(); // keep the bottom scrub bar live (events scroll, playhead rides "now")
-
-    if (warmFrames < WARM_FRAMES) {
-      warmFrames += 1;
-      // Once the pipeline is warm, schedule the crossfade for when the merger
-      // has finished playing (from its first painted frame).
-      if (warmFrames === WARM_FRAMES) dismissAfterPlayed();
-    }
   };
 
-  // Pre-warm the render pipeline while the splash still covers the screen, so the
-  // fresh-load compile hitch is paid here, not on the first live frame (the intro
-  // "choppiness"):
-  //   1. compileAsync builds the heavy raymarch WGSL up front (awaited → ready);
-  //   2. a couple of post renders (a frame apart) compile + prime the bloom chain
-  //      and warm the GPU caches, so the disk is already lit under the splash.
+  // Pre-warm the render pipeline while the splash still covers the screen, so the fresh-load
+  // compile is paid here, not on the first live frames (the measured splash→engine freeze):
+  //   1. `post.compileAsync()` compiles the heavy raymarch **against the pass's own render
+  //      target** via createRenderPipelineAsync — the RT's color format is part of the pipeline
+  //      cache key, so compiling against the default framebuffer (the old call) warmed the WRONG
+  //      variant and the real one compiled synchronously in the GPU process at first submit;
+  //   2. two covered post renders prime the bloom/FXAA quad pipelines (no async API exists for
+  //      those in three r184) with the *lit* disk (formation forced to 1 — the shader multiplies
+  //      disk density by it, so priming at 0 would skip the whole volume path);
+  //   3. `onSubmittedWorkDone` then *actually drains* that queued GPU work — the old awaited rAF
+  //      resolved while ~2s of sync pipeline compiles were still queued (the swap chain lets the
+  //      CPU run ahead), so the debt landed on the first live frames and froze every rAF on the
+  //      page. Now any residual stall happens here, fully covered by the splash.
   armIntroScale(); // render the pre-warm + covered frames + reveal cheap (climbs back after)
   perf.begin('compile', performance.now());
-  await renderer.compileAsync(pass.scene, pass.camera);
-  perf.end('compile', performance.now()); // WGSL compile cost, paid under the splash
-  // Prime the *lit* disk under the splash. FormationSequence's apply(0) leaves `formation` at 0, and
-  // the shader multiplies disk density by `formation` — so the two covered renders below would warm
-  // only a *dark* disk (density ×0 skips the volume compositing), and the first time the lit volume
-  // path runs would land on the first *visible* frame (the hitch we're chasing). Render the formed
-  // state here, hidden by the splash, then hand `formation` back so the dolly + ignition still play
-  // from 0 on the live loop.
+  await post.compileAsync();
+  perf.end('compile', performance.now()); // the raymarch pass-variant WGSL+pipeline, async, covered
+  perf.begin('prime', performance.now());
   const formationAtPrewarm = uniforms.formation.value;
   uniforms.formation.value = 1;
   post.render();
   await new Promise((resolve) => requestAnimationFrame(resolve));
   post.render();
   uniforms.formation.value = formationAtPrewarm;
+  // Drain the queued compiles/draws for real (guarded — the WebGL fallback backend has no device).
+  const gpuDevice = (renderer as unknown as { backend?: { device?: { queue?: { onSubmittedWorkDone?: () => Promise<void> } } } })
+    .backend?.device;
+  if (gpuDevice?.queue?.onSubmittedWorkDone) await gpuDevice.queue.onSubmittedWorkDone();
+  perf.end('prime', performance.now()); // the post-quad pipelines + first submits, drained under cover
   perf.end('bootToLoop', performance.now()); // everything before the live loop
   perf.begin('loopToReveal', performance.now()); // …until the splash lifts (in dismissSplash)
+  perf.begin('smoothGate', performance.now()); // …and how long the smooth-streak gate takes
+  gate.arm(performance.now(), gateThreshold());
   loop.start();
   // Mount the panel only after the intro settles (or is skipped) — never during the reveal.
   // `createControls` re-assigns `formation.onDone` for its own replay handling when it mounts.
