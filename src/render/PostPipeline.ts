@@ -9,6 +9,16 @@ import type { Uniforms } from './uniforms';
 export interface PostPipeline {
   /** Render the scene through the post chain to the screen. */
   render(): void;
+  /**
+   * Pre-compile the raymarch **as the pass actually renders it** — against the pass's own HDR
+   * render target, using `createRenderPipelineAsync` (non-blocking). This matters: the RT's color
+   * format is part of the pipeline cache key, so `renderer.compileAsync(scene, camera)` against the
+   * default framebuffer compiles a *different variant* than the one `render()` needs — the real one
+   * then compiled **synchronously in the GPU process at first submit**, a multi-second cold-cache
+   * stall that froze every rAF on the page (the measured splash→engine freeze). Await this under
+   * the splash, before the first render.
+   */
+  compileAsync(): Promise<void>;
   /** Call after the renderer's drawing-buffer size changes (dynamic resolution). */
   resize(): void;
   /** The bloom node, exposed so the GUI can drive strength/radius/threshold. */
@@ -64,6 +74,10 @@ export function createPostPipeline(
 
   return {
     render: () => pipeline.render(),
+    // PassNode.compileAsync binds the pass's render target + MRT state, compiles via
+    // createRenderPipelineAsync, and restores — the only sanctioned async hook for the pass chain.
+    // (The bloom/FXAA quads have no async path in three r184; they're primed by the covered renders.)
+    compileAsync: () => scenePass.compileAsync(renderer),
     resize: () => {
       pipeline.needsUpdate = true;
     },
