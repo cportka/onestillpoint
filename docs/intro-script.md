@@ -1,5 +1,10 @@
 # The intro — visual script
 
+**This is the art-directed script** — the agreed, high-level storyboard of what the audience sees.
+Its counterpart, [`physical-script.md`](physical-script.md), is **the physical script**: what the
+engine actually computes under each beat, what's honest physics vs theatre, and the reversibility
+covenant. We keep both, always; when they disagree it's a documented artistic choice.
+
 A living storyboard of the opening, so the opening reads as one deliberate motion. Everything is
 oriented toward **⊙, the One Still Point** — the centre of the screen, where the
 event horizon settles. Each beat moves *toward* ⊙ or *away from* ⊙, brightens or

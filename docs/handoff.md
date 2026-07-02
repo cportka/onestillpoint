@@ -5,34 +5,34 @@ A short, living "you are here" for whoever picks this up next. Pairs with the du
 [`future-improvements.md`](future-improvements.md) (what's next). **Update this when you finish a
 session.**
 
-_As of v0.40.1 (2026-06)._
+_As of v0.41.1 (2026-07)._
 
 ## Where things stand
 
-- **Recently shipped — intro perf + two roadmap physics items (this session).** **Intro reveal**
-  (roadmap #1): instrumented via `osp.perf` (`RevealProfiler.ts`, v0.39.3 — real cold-reveal timings,
-  the only place they exist since headless CI can't capture the WebGPU canvas); two haze-masked masking
-  wins (v0.39.4 — the `revealVolumeStep` dust-march ramp + priming the *lit* disk in the pre-warm);
-  and timing tweaks (v0.39.6 — `initialBlackMs` 500 → 600 for more covered pre-warm, `splashHoldMs`
-  600 → 590 so the model reveals ~10ms earlier). **New physics:** roadmap **#7 perihelion precession**
-  shipped (v0.40.0 — a position-only `k/r³` term, `PRECESSION_K = 0.3`, reversibility-safe, validated
-  against the closed form), and roadmap **#6 ringdown cue** advanced (v0.40.1 — the spacetime ripple
-  now scales with the absorbed body's mass, so a hole merger rings ~2.6× a star plunge). Earlier:
-  Share live-clip fallback (v0.39.1), OffscreenCanvas step 2 (v0.37.0).
-- **The one active problem** is still roadmap **#1 — the cold first-load reveal** on a cold pipeline.
-  The dial-tuning is now broad (resolution cut + dust ramp + warm haze + a longer pre-warm hold, all
-  converging on one clock) **but still unmeasured on the target device.** The immediate next step is
-  concrete: **capture `osp.perf.report()` on the real Mac + a phone after a cold load** (open the
-  console; the loop also logs it once the 120-frame window fills), ideally with a **screen recording**
-  of the same load, and let the numbers decide the next lever — if the residual hitch is **compile /
-  pipeline-bound**, push the pre-warm / OffscreenCanvas direction; if it's **ALU-bound**, push the
-  dust ramp (`REVEAL_VOLUME_STEP_BOOST`) harder or add a true raymarch step budget. The real,
-  permanent fix remains finishing the OffscreenCanvas migration.
-- **Two open look-/design decisions from this session.** (1) `PRECESSION_K = 0.3` (#7) is subtle by
-  design — raise it for a bolder rosette, or seed a slight orbital eccentricity so it shows on the
-  *default* near-circular orbits (it currently shows mainly after a scattering). (2) #6's two-hole
-  **inspiral dynamics** is the open fork: a **scripted** path (reversibility-safe) vs a **dissipative
-  drag** (more physical, breaks the bit-exact reversibility #7 preserved). Both await a call.
+- **Roadmap #1 got its first real measurement — and the measured stalls are fixed.** A Firefox/Mac
+  cold-load recording + `osp.perf` were analyzed frame-by-frame (Portka `video-bug-analyzer`) — the
+  full evidence, options weighed, and verdict live in
+  [`perf-recording-2026-07-01.md`](perf-recording-2026-07-01.md). Headline: the pre-warm works (532ms
+  compile fully covered), the splash plays smoothly, but the reveal froze ~800ms on **two main-thread
+  JS stalls** — the control panel mounting mid-reveal and a dismiss-moment scaler resize — both fixed
+  in **v0.40.3** (panel mounts at formation-settle; scaler ceiling pinned while covered). Also found:
+  Firefox's macOS WebGPU paces at ~26ms (~38fps) — an upstream ceiling app dials can't raise; a
+  Chrome comparison run on the same Mac is the next measurement.
+- **The feel pass shipped (v0.41.0).** The − plunge no longer spin-kicks — it winds from the body's
+  own captured rate (retrograde stays retrograde) and quickens Kepler-style as it falls; + adds now
+  prefer the widest open orbital gap (stable orbits); the torn-stream is brighter/wispier
+  (`STREAM_EMIT 0.17` / `STREAM_EXT 0.21`) — **all three tuned blind, verify on the next recording.**
+- **The two-scripts policy is now standing** — [`physical-script.md`](physical-script.md) (the
+  reality: what's honest physics vs phenomenological vs theatre) rides alongside the art-directed
+  [`intro-script.md`](intro-script.md), and codifies the **reversibility covenant**: irreversible
+  physics is allowed **during the intro window only**; the settled sim stays bit-exact reversible
+  (Step-back / DVR). This unlocks #6's inspiral as an intro set piece or user-staged event.
+- **The committed path for #1**: if the post-v0.40.3 recording still shows discrete stalls — or as
+  the 1.0 gate regardless — **finish the OffscreenCanvas worker migration (option B, steps 3–6)**;
+  the user has signed off on that commitment. "A little more masking" (option C) is authorized only
+  if the next recording shows GPU-bound strain (moving-but-slow), not stalls.
+- **Earlier this arc:** `osp.perf` instrumentation (v0.39.3), dust-ramp + lit-disk pre-warm masking
+  (v0.39.4), intro timing (v0.39.6), #7 precession (v0.40.0), #6 mass-scaled ripple (v0.40.1).
 - **The big in-flight project** is the **OffscreenCanvas + Worker render path** — see
   [`offscreen-canvas.md`](offscreen-canvas.md). Steps 1–2 done; **next is step 3 (input + resize to
   the worker)**, then Controls/HUD/timeline (4), Share/clip worker-side (5), and the flip (6).
