@@ -1,4 +1,4 @@
-import { abs, acos, asin, atan, clamp, dot, exp, float, fract, If, max, mix, normalize, pow, sin, smoothstep, vec3 } from 'three/tsl';
+import { abs, acos, asin, atan, clamp, dot, exp, float, fract, If, max, mix, normalize, pow, select, sin, smoothstep, vec3 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { starfield } from './starfield';
 import { fbm } from './turbulence';
@@ -7,25 +7,30 @@ const TWO_PI = 6.2831853;
 const PI = 3.14159265;
 
 // --- Merger ringdown ripple (roadmap #6) — tuning dials -----------------------------------------
-// A decaying, expanding ring radiating from the hole (the merger point), fired by an absorption.
-// Applied **globally** (in `background()`) by warping the sampled sky direction, so it reads the
-// SAME on every background — not just the Lattice grid. Subtle by design (the Lattice grid made it
-// look enormous; this is ~a tenth of that). `ripple` (uniform) is seconds since the event; large
-// when idle → no-op. Tune against the look on real hardware.
-const RIPPLE_SPEED = 0.55; // how fast the wavefront sweeps outward, in radians of sky-angle per second
-const RIPPLE_TAU = 2.2; // amplitude decay time (s) — the "ringdown" length
-const RIPPLE_WIDTH2 = 0.06; // squared angular half-width of the wavefront band (smaller = tighter ring)
-const RIPPLE_FREQ = 20; // spatial ringing frequency within the band (more = more wave crests)
-const RIPPLE_WARP = 0.022; // radians the sky is dragged at the crest — the distortion (was 0.22 on Lattice)
-const RIPPLE_GLOW = 0.07; // brightness of the glow riding the wavefront (¼ of 0.28 — the bright flash was too intense)
+// A gravitational-wave-styled ringdown radiating from the hole (the merger point), fired by an
+// absorption. Applied **globally** (in `background()`) by warping the sampled sky direction, so it
+// reads the SAME on every background. Reworked 2026-07 from the earlier soft glow-band (which read
+// as "vague spread whiteness" on the recording): a real wave *displaces*, it barely glows — so the
+// signal is now the **distortion**: a thin, crisp leading front that visibly drags the starfield as
+// it passes, trailing a longer wake of ringing crests that decay (the ringdown), with only a faint
+// cool glint riding the front. `ripple` (uniform) is seconds since the event; large when idle →
+// no-op. ⟳ Tune against a recording (a hole merger rides `rippleStrength` up to 3× these).
+const RIPPLE_SPEED = 0.72; // how fast the wavefront sweeps outward, in radians of sky-angle per second
+const RIPPLE_TAU = 2.6; // amplitude decay time (s) — the "ringdown" length
+const RIPPLE_W2_LEAD = 0.012; // squared width AHEAD of the front — small = a sharp, crisp leading edge
+const RIPPLE_W2_TRAIL = 0.1; // squared width BEHIND — wide = a trailing wake with visible ringing crests
+const RIPPLE_FREQ = 26; // spatial ringing frequency — ~2–3 crests visible in the trailing wake
+const RIPPLE_WARP = 0.09; // radians the sky is dragged at the crest — the distortion IS the signal (was 0.022)
+const RIPPLE_GLOW = 0.015; // a faint cool glint at the front only — the old 0.07 fog was the "whiteness"
 // The amplitude (`rippleStrength` uniform) is computed CPU-side from the absorbed body's mass —
 // see `rippleStrengthForMass` in `src/render/rippleStrength.ts`.
 
 /**
  * The global ringdown distortion: warp the sampled sky direction `dir` radially in an expanding,
- * decaying ring from the hole (`camFwd`). Returns the warped direction + the wavefront band (for a
- * faint glow). Background-agnostic — every sky lenses the same way through it. Idle (`ripple` large)
- * → wave ≈ 0 → `dir` unchanged.
+ * decaying wave from the hole (`camFwd`). Asymmetric profile — a sharp leading edge (`W2_LEAD`), a
+ * longer ringing wake behind it (`W2_TRAIL`) — so it reads as a travelling wave train, not a fog.
+ * Returns the warped direction + the front band (for the faint glint). Background-agnostic — every
+ * sky lenses the same way through it. Idle (`ripple` large) → wave ≈ 0 → `dir` unchanged.
  */
 function rippleWarp(dir: Node<'vec3'>, camFwd: Node<'vec3'>, ripple: Node<'float'>, strength: Node<'float'>) {
   const cosT = clamp(dot(dir, camFwd), float(-0.9999), float(0.9999));
@@ -33,12 +38,15 @@ function rippleWarp(dir: Node<'vec3'>, camFwd: Node<'vec3'>, ripple: Node<'float
   const front = ripple.mul(RIPPLE_SPEED); // wavefront radius, expanding with time
   // rise → ringdown, scaled by the merger's mass (idle → exp term ≈ 0, so still a no-op)
   const env = exp(ripple.div(-RIPPLE_TAU)).mul(smoothstep(float(0), float(0.08), ripple)).mul(strength);
-  const d = theta.sub(front);
-  const band = exp(d.mul(d).div(-RIPPLE_WIDTH2)); // gaussian band hugging the wavefront
-  const wave = sin(d.mul(RIPPLE_FREQ)).mul(band).mul(env); // ringing inside the band
+  const d = theta.sub(front); // >0 = ahead of the front, <0 = in the wake
+  const width2 = select(d.greaterThan(0), float(RIPPLE_W2_LEAD), float(RIPPLE_W2_TRAIL));
+  const band = exp(d.mul(d).div(width2.mul(-1))); // sharp edge ahead, ringing wake behind
+  const wave = sin(d.mul(RIPPLE_FREQ)).mul(band).mul(env); // the travelling wave train
   const radial = normalize(dir.sub(camFwd.mul(cosT)).add(vec3(1e-4, 0, 0))); // outward (⟂ to centre)
   const warped = normalize(dir.add(radial.mul(wave.mul(RIPPLE_WARP))));
-  return { dir: warped, glow: band.mul(env) };
+  // The glint hugs only the leading edge (the tight profile), not the whole wake — no fog.
+  const glint = exp(d.mul(d).div(-RIPPLE_W2_LEAD)).mul(env);
+  return { dir: warped, glow: glint };
 }
 
 /** Thin bright lines wherever `coord × count` lands on an integer. */

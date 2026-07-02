@@ -5,7 +5,18 @@ live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
 ## 0.42.x — The Ember Core mark (branding, roadmap #3)
 
-- **0.42.0** — **The new logo lands: the "Ember Core" mark, static + animated (roadmap #3).** The
+- **0.42.1** — **The ringdown reads as an actual gravitational wave, not a fog (roadmap #6, from the
+  plunge recording).** The post-absorption ripple was dominated by its glow band — a huge, diffuse
+  milky whiteness swallowing the sky (exactly what the review called "washed-out vibration / vague
+  spread whiteness"). A real wave *displaces*, it barely glows — so the signal is now the
+  **distortion**: `RIPPLE_WARP 0.022 → 0.09` (the sky visibly drags as the front passes), the profile
+  is **asymmetric** — a sharp, crisp leading edge (`RIPPLE_W2_LEAD 0.012`) with a longer trailing
+  wake of ringing crests (`RIPPLE_W2_TRAIL 0.1`, `RIPPLE_FREQ 26` ⇒ ~2–3 visible crests decaying
+  behind the front — the ringdown) — the front sweeps faster (`RIPPLE_SPEED 0.55 → 0.72`) and rings
+  a touch longer (`RIPPLE_TAU 2.2 → 2.6`), and the glow is cut to a faint cool glint on the leading
+  edge only (`RIPPLE_GLOW 0.07 → 0.015`, and it no longer rides the whole wake). Still globally
+  applied, still mass-scaled (`rippleStrength`), still a no-op when idle. **Blind-tuned — verify
+  against the next plunge recording**; all dials at the top of `background.ts`. The
   art-directed mark — a tilted warm-silver accretion ring (`#c3bcab`/`#d2cab6`) wrapping an
   ember-lit event-horizon sphere (`#ffd2a6` embers), with the ring passing *behind* the globe (the
   far side masked + faded) and *in front* with a black occlusion cut — replaces the previous
