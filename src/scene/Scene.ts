@@ -36,9 +36,12 @@ const ABSORB_DURATION = 0.6;
 // this, then the absorption fade adds ~ABSORB_DURATION on top). The UI blocks
 // another removal until the whole thing completes.
 const PLUNGE_DURATION = 4.5;
-// How many turns the plunge winds as it spirals in — more turns = a less direct,
-// prettier fall (it reads as an inspiral, not a straight dive to the centre).
-const PLUNGE_TURNS = 4;
+// The plunge spiral's spin now comes from the *body's own motion* (its real angular rate at the
+// moment − was pressed — direction and speed), accelerating as it falls like a true infall
+// (Kepler sweep, ω ∝ r^{-3/2}): no visible kick at the start, a quickening dive at the end. This
+// floor on the *fractional* radius caps that acceleration (0.22^{-3/2} ≈ 9.7× the starting rate)
+// so the final wind is dramatic, not silly.
+const PLUNGE_KEPLER_FLOOR = 0.22;
 
 /**
  * The scene graph: the primary black hole (body 0, fixed at the origin) plus any
@@ -141,14 +144,41 @@ export class Scene {
     return this.bodies.filter((b) => !b.fixed && b.type === 'hole').length;
   }
 
-  addStar(orbitRadius = 26 + Math.random() * 22): Body {
+  /** Pick an orbit radius in [min, max] that *prefers a stable orbit*: the middle of the widest
+   *  radial gap between the companions already there (and the band's edges), plus a little jitter so
+   *  repeated adds don't stack on one ring. Radial separation is what keeps a newcomer from an early
+   *  close encounter (the thing that scatters orbits) — the seeded intro line-up already hand-picks
+   *  separated radii, so this is for *user* adds, which used to land anywhere at random. */
+  private openOrbitRadius(min: number, max: number): number {
+    const taken = this.companions
+      .map((b) => b.position.length())
+      .filter((r) => Number.isFinite(r))
+      .sort((a, b) => a - b);
+    // Walk the sorted radii as gap edges (band edges included); track the widest gap's centre.
+    let bestMid = (min + max) / 2;
+    let bestGap = 0;
+    let prev = min;
+    for (const r of [...taken, max]) {
+      const lo = Math.max(min, Math.min(max, prev));
+      const hi = Math.max(min, Math.min(max, r));
+      if (hi - lo > bestGap) {
+        bestGap = hi - lo;
+        bestMid = (lo + hi) / 2;
+      }
+      prev = Math.max(prev, r);
+    }
+    const jitter = bestGap * 0.15 * (Math.random() - 0.5); // stay well inside the gap
+    return bestMid + jitter;
+  }
+
+  addStar(orbitRadius = this.openOrbitRadius(26, 48)): Body {
     const warm = Math.random() < 0.5;
     const tint = warm ? new Vector3(1.0, 0.84, 0.62) : new Vector3(0.7, 0.82, 1.0);
     // HDR colour → blooms; test-particle mass; too light to lens (lensMass 0).
     return this.addBody('star', orbitRadius, 1.2, tint.multiplyScalar(7), 1e-3, 0);
   }
 
-  addPlanet(orbitRadius = 24 + Math.random() * 24): Body {
+  addPlanet(orbitRadius = this.openOrbitRadius(20, 44)): Body {
     // Planets orbit retrograde — the reverse-direction swoosh vs the stars.
     return this.addBody('planet', orbitRadius, 0.6, new Vector3(0.5, 0.6, 0.8).multiplyScalar(1.2), 1e-5, 0, true);
   }
@@ -245,6 +275,8 @@ export class Scene {
         delete existing.absorbAnchor;
         delete existing.plunging;
         delete existing.plungeFrom;
+        delete existing.plungeOmega;
+        delete existing.plungeAngle;
         movable.push(existing);
       } else {
         const tmpl = this.registry.get(id);
@@ -298,6 +330,13 @@ export class Scene {
         this.onUserEdit?.();
         b.plunging = 0;
         b.plungeFrom = b.position.clone();
+        // The spiral winds *from the body's own motion*: capture its signed angular rate about the
+        // vertical (sim rad/s, positive = the path's +angle rotation) from its real velocity, so the
+        // plunge starts at exactly the spin the eye is already tracking — no visible kick, and a
+        // retrograde body keeps falling retrograde instead of reversing.
+        const rxz2 = Math.max(b.position.x * b.position.x + b.position.z * b.position.z, 1e-6);
+        b.plungeOmega = (b.position.x * b.velocity.z - b.position.z * b.velocity.x) / rxz2;
+        b.plungeAngle = 0;
         return true;
       }
     }
@@ -326,7 +365,14 @@ export class Scene {
         b.plunging = Math.min(1, b.plunging + frameDelta / PLUNGE_DURATION);
         const t = b.plunging;
         const radial = 1 - smoothstep(0, 1, t); // 1 → 0, eased out of the orbit and into the centre
-        const angle = t * PLUNGE_TURNS * Math.PI * 2; // wind inward
+        // Wind at the body's own captured rate (`plungeOmega`, sim rad/s → wall-clock via the
+        // physics timeScale so it matches the spin the eye was tracking), accelerating as it falls
+        // like a real infall — Kepler sweep ω ∝ (r/r₀)^{-3/2}, floored so the final wind stays sane.
+        // Integrated per frame (the rate varies), accumulated on the body.
+        const sweep = Math.pow(Math.max(radial, PLUNGE_KEPLER_FLOOR), -1.5);
+        const omega = (b.plungeOmega ?? 0) * this.physics.timeScale * sweep; // wall-clock rad/s
+        b.plungeAngle = (b.plungeAngle ?? 0) + omega * frameDelta;
+        const angle = b.plungeAngle;
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         const f = b.plungeFrom;
@@ -337,12 +383,12 @@ export class Scene {
         // it dives), at a sane orbital magnitude. The render reads `body.velocity` for the torn-stream
         // axis, so this is what makes the stream trail along the plunge path rather than spike
         // radially. (A finite difference fails here — the physics pre-step moves the body first, and
-        // its gravity-driven velocity is ~radial.)
-        const radialP = -6 * t * (1 - t); // d(radial)/dt
-        const angleP = PLUNGE_TURNS * Math.PI * 2; // d(angle)/dt
-        const tx = rx * radialP - rz * angleP * radial;
+        // its gravity-driven velocity is ~radial.) Both derivative terms are per wall-clock second
+        // (radial'/dt via the plunge duration, the wind at `omega`), so the direction mix is honest.
+        const radialP = (-6 * t * (1 - t)) / PLUNGE_DURATION; // d(radial)/dt, wall-clock
+        const tx = rx * radialP - rz * omega * radial;
         const ty = f.y * radialP;
-        const tz = rz * radialP + rx * angleP * radial;
+        const tz = rz * radialP + rx * omega * radial;
         const tl = Math.hypot(tx, ty, tz) || 1;
         const speed = Math.sqrt(PRIMARY_MASS / Math.max(b.position.length(), 2));
         b.velocity.set((tx / tl) * speed, (ty / tl) * speed, (tz / tl) * speed);

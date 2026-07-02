@@ -3,6 +3,26 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.41.x — Body life-cycle feel: stable adds, a plunge that falls from its own motion
+
+- **0.41.0** — **Adds prefer a stable orbit; the − plunge dives from the body's own motion; the tear
+  reads more spaghettified.** Three body-lifecycle refinements from the live review. **(a) The − spin
+  kick is gone.** The removal plunge used a fixed wind (4 turns / 4.5s) regardless of the body's real
+  motion — an instant whip-up at the press, and a *retrograde* body visibly reversed. The spiral now
+  winds **from the body's own captured angular rate** (signed, converted to wall-clock via the physics
+  time scale — exactly the spin the eye is tracking, so there is no visible acceleration at the start)
+  and **quickens as it falls like a true infall** (Kepler sweep, ω ∝ (r/r₀)^{-3/2}, floored at
+  `PLUNGE_KEPLER_FLOOR = 0.22` ⇒ ≤ ~9.7× the starting rate at the finale) — beautiful *and*
+  physically-shaped. New per-body `plungeOmega`/`plungeAngle` state (cleared on timeline rewinds).
+  **(b) Adding a body prefers a stable orbit.** A + add with no explicit radius now lands in the
+  **widest open radial gap** between the companions already there (`openOrbitRadius`, with a little
+  jitter), instead of anywhere at random — radial separation is what prevents the early close
+  encounters that scatter orbits. The seeded intro line-up (hand-picked radii) is untouched, so the
+  intro is byte-identical. **(c) More spaghettified.** The torn-stream gas is brighter and wispier
+  (`STREAM_EMIT 0.12 → 0.17`, `STREAM_EXT 0.25 → 0.21`, dials at the top of `raymarch.ts`) so the tear
+  reads clearly against the disk — **verify against the next screen recording** and dial from there.
+  Unit-tested (plunge keeps the body's direction + rate at the press; gap placement lands mid-gap).
+
 ## 0.40.x — Companion orbits precess (a relativistic-looking apsidal drift)
 
 - **0.40.3** — **Kill the ~800ms freeze at the splash→engine reveal (roadmap #1, measured).** A
