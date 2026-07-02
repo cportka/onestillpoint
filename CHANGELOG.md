@@ -3,6 +3,21 @@
 All notable changes to One Still Point, newest first. Dev notes and deep dives
 live in [`docs/`](docs/) (intro script, recording findings, perf audits).
 
+## 0.42.x — The Ember Core mark (branding, roadmap #3)
+
+- **0.42.0** — **The new logo lands: the "Ember Core" mark, static + animated (roadmap #3).** The
+  art-directed mark — a tilted warm-silver accretion ring (`#c3bcab`/`#d2cab6`) wrapping an
+  ember-lit event-horizon sphere (`#ffd2a6` embers), with the ring passing *behind* the globe (the
+  far side masked + faded) and *in front* with a black occlusion cut — replaces the previous
+  wireframe mark everywhere: **(a)** the static mark ships as [`assets/logo.svg`](assets/logo.svg)
+  and as the app's **first-ever favicon** (`public/favicon.svg`, linked from `index.html` — the app
+  had none); **(b)** the animated mark (stardust spiralling inward along the ring via CSS
+  `offset-path`, settling still under `prefers-reduced-motion`) replaces
+  [`assets/hero.svg`](assets/hero.svg) (the README hero) **and** the About-card art (`about.ts`,
+  with the background tile stripped so it sits transparent on the card). The mark's warm-silver
+  palette is now the brand reference for the remaining #3 theme unification (roadmap updated). No
+  engine/runtime changes.
+
 ## 0.41.x — Body life-cycle feel: stable adds, a plunge that falls from its own motion
 
 - **0.41.1** — **Docs: the recording analysis report + the two-scripts policy.** Added
